@@ -3,6 +3,7 @@ Settings Dialog for QuillScribe
 Beautiful settings panel with modern UI
 """
 
+import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
@@ -17,8 +18,10 @@ from PySide6.QtGui import QFont, QIcon, QPixmap, QPainter, QPen, QColor, QKeySeq
 from .audio_manager import AudioManager
 from .whisper_manager import WhisperManager
 from .config_manager import ConfigManager
-from .icon_manager import get_icon, get_button_icon, get_white_button_icon
+from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon, get_themed_icon
+from .theme_manager import get_theme_manager
 from .ui_components import ModernButton, ModernGroupBox as BaseModernGroupBox
+from .statistics_manager import StatisticsManager
 
 
 class ModernGroupBox(BaseModernGroupBox):
@@ -1063,10 +1066,8 @@ class WhisperTab(QWidget):
 
         self.mode_group = QButtonGroup()
         self.api_radio = ModernRadioButton("OpenAI Whisper API (Fast, requires internet)")
-        self.api_radio.setIcon(get_button_icon('api', 16))
         self.api_radio.setIconSize(QSize(16, 16))
         self.local_radio = ModernRadioButton("Local Whisper.cpp (Private, works offline)")
-        self.local_radio.setIcon(get_button_icon('local', 16))
         self.local_radio.setIconSize(QSize(16, 16))
 
         self.mode_group.addButton(self.api_radio, 0)
@@ -1103,6 +1104,21 @@ class WhisperTab(QWidget):
         self.api_key_edit = ModernLineEdit("sk-...")
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         api_key_layout.addWidget(self.api_key_edit)
+
+        # Add eye toggle button
+        self.api_key_toggle_btn = QPushButton()
+        self.api_key_toggle_btn.setObjectName("api_key_toggle_btn")
+        # Icon will be set by theme manager and toggle method
+        self.api_key_toggle_btn.setIconSize(QSize(16, 16))
+        self.api_key_toggle_btn.setFixedSize(32, 32)
+        # Styling will be applied by theme manager
+        self.api_key_toggle_btn.setToolTip("Show/hide API key")
+        self.api_key_toggle_btn.clicked.connect(self.toggle_api_key_visibility)
+        api_key_layout.addWidget(self.api_key_toggle_btn)
+
+        # Initialize the toggle button icon (will be updated by theme manager)
+        self._update_api_key_toggle_icon()
+
         api_key_layout.addStretch()
 
         # Create properly aligned label for API key
@@ -1378,6 +1394,62 @@ class WhisperTab(QWidget):
             # Update pricing display based on selected model
             self.update_pricing_display(model_name)
 
+    def _update_api_key_toggle_icon(self):
+        """Update the API key toggle button icon based on current state and theme"""
+        # Get current theme from theme manager
+        theme_manager = get_theme_manager()
+        is_dark = theme_manager.is_dark_theme()
+
+        # Apply theme-based styling to the button
+        self._apply_toggle_button_theme(is_dark)
+
+        if self.api_key_edit.echoMode() == QLineEdit.EchoMode.Password:
+            # Key is hidden, show eye-off icon
+            self.api_key_toggle_btn.setIcon(get_themed_button_icon('eye-off', 16, is_dark))
+            self.api_key_toggle_btn.setToolTip("Show API key")
+        else:
+            # Key is visible, show eye icon
+            self.api_key_toggle_btn.setIcon(get_themed_button_icon('eye', 16, is_dark))
+            self.api_key_toggle_btn.setToolTip("Hide API key")
+
+    def _apply_toggle_button_theme(self, is_dark: bool):
+        """Apply theme-based styling to the API key toggle button"""
+        if is_dark:
+            # Dark theme colors
+            hover_bg = "#495057"  # Darker gray for hover
+            pressed_bg = "#343a40"  # Even darker for pressed
+        else:
+            # Light theme colors
+            hover_bg = "#e9ecef"  # Light gray for hover
+            pressed_bg = "#dee2e6"  # Slightly darker for pressed
+
+        self.api_key_toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                border: none;
+                border-radius: 4px;
+                padding: 4px;
+            }}
+            QPushButton:hover {{
+                background: {hover_bg};
+            }}
+            QPushButton:pressed {{
+                background: {pressed_bg};
+            }}
+        """)
+
+    def toggle_api_key_visibility(self):
+        """Toggle API key visibility between password and normal mode"""
+        if self.api_key_edit.echoMode() == QLineEdit.EchoMode.Password:
+            # Show the key
+            self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Normal)
+        else:
+            # Hide the key
+            self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+
+        # Update the icon to match the new state
+        self._update_api_key_toggle_icon()
+
     def update_pricing_display(self, model_name: str):
         """Update pricing display based on selected model"""
         # Get model-specific pricing
@@ -1571,11 +1643,9 @@ class OutputTab(QWidget):
         options_layout = QVBoxLayout(options_group)
 
         self.silent_mode = ModernCheckBox("Silent mode (hide transcription text)")
-        self.silent_mode.setIcon(get_button_icon('silent', 16))
         self.silent_mode.setIconSize(QSize(16, 16))
 
         self.auto_clear = ModernCheckBox("Auto-clear after copying/pasting")
-        self.auto_clear.setIcon(get_button_icon('trash', 16))
         self.auto_clear.setIconSize(QSize(16, 16))
 
         # Auto-clear delay setting
@@ -1705,6 +1775,10 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         # Use shared config manager from parent if provided, otherwise create new one
         self.config_manager = config_manager if config_manager is not None else ConfigManager()
+
+        # Initialize statistics manager
+        self.statistics_manager = StatisticsManager(self.config_manager)
+
         self.setup_ui()
         self.setModal(True)
         # Apply initial theme
@@ -1746,12 +1820,14 @@ class SettingsDialog(QDialog):
         self.whisper_tab = WhisperTab(self.config_manager)
         self.output_tab = OutputTab(self.config_manager)
         self.ui_tab = UITab(self.config_manager)
+        self.statistics_tab = StatisticsTab(self.statistics_manager)
 
         # Wrap each tab in a scroll area for compact layout
         self.audio_scroll = self._create_scroll_area(self.audio_tab)
         self.whisper_scroll = self._create_scroll_area(self.whisper_tab)
         self.output_scroll = self._create_scroll_area(self.output_tab)
         self.ui_scroll = self._create_scroll_area(self.ui_tab)
+        self.statistics_scroll = self._create_scroll_area(self.statistics_tab)
 
         self.tabs.addTab(self.audio_scroll, "Audio")
         self.tabs.setTabIcon(self.tabs.indexOf(self.audio_scroll), get_icon('audio', 16))
@@ -1761,6 +1837,8 @@ class SettingsDialog(QDialog):
         self.tabs.setTabIcon(self.tabs.indexOf(self.output_scroll), get_icon('clipboard', 16))
         self.tabs.addTab(self.ui_scroll, "UI Settings")
         self.tabs.setTabIcon(self.tabs.indexOf(self.ui_scroll), get_icon('settings', 16))
+        self.tabs.addTab(self.statistics_scroll, "Statistics")
+        self.tabs.setTabIcon(self.tabs.indexOf(self.statistics_scroll), get_icon('dashboard', 16))
 
         layout.addWidget(self.tabs)
 
@@ -1830,22 +1908,22 @@ class SettingsDialog(QDialog):
         return scroll_area
 
     def _apply_scrollbar_theme(self, scroll_area, theme_name):
-        """Apply themed styling to scrollbar"""
+        """Apply themed styling to scrollbar with rounded design"""
         colors = self._get_theme_colors(theme_name)
         is_dark = self._is_dark_color(colors["primary"])
 
         if is_dark:
-            # Dark theme scrollbar
-            scrollbar_bg = "#3c3c3c"
-            scrollbar_handle = "#666666"
-            scrollbar_handle_hover = "#777777"
-            scrollbar_handle_pressed = "#555555"
+            # Dark theme scrollbar - more subtle and rounded
+            scrollbar_bg = "transparent"  # Invisible background
+            scrollbar_handle = "#555555"  # Subtle gray handle
+            scrollbar_handle_hover = "#666666"  # Slightly lighter on hover
+            scrollbar_handle_pressed = "#444444"  # Darker when pressed
         else:
-            # Light theme scrollbar
-            scrollbar_bg = "#f8f9fa"
-            scrollbar_handle = "#ced4da"
-            scrollbar_handle_hover = "#adb5bd"
-            scrollbar_handle_pressed = "#6c757d"
+            # Light theme scrollbar - more subtle and rounded
+            scrollbar_bg = "transparent"  # Invisible background
+            scrollbar_handle = "#d0d0d0"  # Light gray handle
+            scrollbar_handle_hover = "#b0b0b0"  # Darker on hover
+            scrollbar_handle_pressed = "#a0a0a0"  # Even darker when pressed
 
         scroll_area.setStyleSheet(f"""
             /* Ensure the scroll area and its viewport use the theme background */
@@ -1859,18 +1937,19 @@ class SettingsDialog(QDialog):
             QWidget#qt_scrollarea_viewport {{
                 background-color: {colors["primary"]};
             }}
+            /* Modern rounded scrollbar */
             QScrollBar:vertical {{
                 background: {scrollbar_bg};
-                width: 12px;
+                width: 8px;
                 border: none;
-                border-radius: 6px;
-                margin: 0px;
+                border-radius: 4px;
+                margin: 4px;
             }}
             QScrollBar::handle:vertical {{
                 background: {scrollbar_handle};
-                min-height: 20px;
-                border-radius: 6px;
-                margin: 2px;
+                min-height: 30px;
+                border-radius: 4px;
+                margin: 0px;
             }}
             QScrollBar::handle:vertical:hover {{
                 background: {scrollbar_handle_hover};
@@ -1878,12 +1957,43 @@ class SettingsDialog(QDialog):
             QScrollBar::handle:vertical:pressed {{
                 background: {scrollbar_handle_pressed};
             }}
+            /* Hide scrollbar arrows and page areas */
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 border: none;
                 background: none;
                 height: 0px;
+                width: 0px;
             }}
             QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                background: none;
+            }}
+            /* Horizontal scrollbar (if needed) */
+            QScrollBar:horizontal {{
+                background: {scrollbar_bg};
+                height: 8px;
+                border: none;
+                border-radius: 4px;
+                margin: 4px;
+            }}
+            QScrollBar::handle:horizontal {{
+                background: {scrollbar_handle};
+                min-width: 30px;
+                border-radius: 4px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:horizontal:hover {{
+                background: {scrollbar_handle_hover};
+            }}
+            QScrollBar::handle:horizontal:pressed {{
+                background: {scrollbar_handle_pressed};
+            }}
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                border: none;
+                background: none;
+                height: 0px;
+                width: 0px;
+            }}
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
                 background: none;
             }}
         """)
@@ -1907,6 +2017,10 @@ class SettingsDialog(QDialog):
 
     def apply_theme(self, theme_name):
         """Apply the selected theme to the dialog background and all group boxes"""
+        # Use theme manager for consistent theming
+        theme_manager = get_theme_manager()
+        theme_manager.set_theme(theme_name)
+
         colors = self._get_theme_colors(theme_name)
 
         # Apply to dialog background
@@ -1935,6 +2049,13 @@ class SettingsDialog(QDialog):
             widget.apply_theme(is_dark)
         for widget in self.findChildren(ModernCheckBox):
             widget.apply_theme(is_dark)
+
+        # Apply unified icon theming to all components
+        theme_manager.apply_icons_to_widget(self, is_dark)
+
+        # Update API key toggle icon for current theme
+        if hasattr(self, 'api_key_toggle_btn'):
+            self._update_api_key_toggle_icon()
 
         # Update important form labels for dark/light
         is_dark = self._is_dark_color(colors["primary"])
@@ -2132,31 +2253,7 @@ class SettingsDialog(QDialog):
                     elif name == 'icon_model':
                         lbl.setPixmap((get_icon('brain', 16, QColor(255, 255, 255)) if is_dark else get_icon('brain', 16)).pixmap(16, 16))
 
-            # Output tab icons
-            if hasattr(self, 'output_tab'):
-                # Find and update radio button icons
-                for radio in self.output_tab.findChildren(ModernRadioButton):
-                    text = radio.text().lower()
-                    if 'copy' in text and 'paste' not in text:
-                        if is_dark:
-                            radio.setIcon(get_white_button_icon('clipboard', 16))
-                        else:
-                            radio.setIcon(get_button_icon('clipboard', 16))
-                    elif 'paste' in text and 'copy' not in text:
-                        if is_dark:
-                            radio.setIcon(get_white_button_icon('paste', 16))
-                        else:
-                            radio.setIcon(get_button_icon('paste', 16))
-                    elif 'copy' in text and 'paste' in text:
-                        if is_dark:
-                            radio.setIcon(get_white_button_icon('clipboard', 16))
-                        else:
-                            radio.setIcon(get_button_icon('clipboard', 16))
-                    elif 'display' in text:
-                        if is_dark:
-                            radio.setIcon(get_white_button_icon('eye', 16))
-                        else:
-                            radio.setIcon(get_button_icon('eye', 16))
+            # Output tab icons are now handled automatically by theme manager
 
                 # Find and update checkbox icons
                 for checkbox in self.output_tab.findChildren(ModernCheckBox):
@@ -2172,31 +2269,7 @@ class SettingsDialog(QDialog):
                         else:
                             checkbox.setIcon(get_button_icon('trash', 16))
 
-            # UI tab icons
-            if hasattr(self, 'ui_tab'):
-                # Find and update checkbox icons
-                for checkbox in self.ui_tab.findChildren(ModernCheckBox):
-                    text = checkbox.text().lower()
-                    if 'compact' in text:
-                        if is_dark:
-                            checkbox.setIcon(get_white_button_icon('compact', 16))
-                        else:
-                            checkbox.setIcon(get_button_icon('compact', 16))
-                    elif 'title' in text or 'titlebar' in text:
-                        if is_dark:
-                            checkbox.setIcon(get_white_button_icon('window', 16))
-                        else:
-                            checkbox.setIcon(get_button_icon('window', 16))
-                    elif 'waveform' in text:
-                        if is_dark:
-                            checkbox.setIcon(get_white_button_icon('zap', 16))
-                        else:
-                            checkbox.setIcon(get_button_icon('zap', 16))
-                    elif 'minimize' in text:
-                        if is_dark:
-                            checkbox.setIcon(get_white_button_icon('window', 16))
-                        else:
-                            checkbox.setIcon(get_button_icon('window', 16))
+            # UI tab icons are now handled automatically by theme manager
 
                 # Update theme icon and shortcut icon in the UI tab
                 if hasattr(self.ui_tab, 'findChildren'):
@@ -2348,7 +2421,6 @@ class UITab(QWidget):
         box = ModernGroupBox("UI Settings")
         form = QVBoxLayout(box)
         self.compact_checkbox = ModernCheckBox("Enable Super Compact UI")
-        self.compact_checkbox.setIcon(get_button_icon('compact', 16))
         self.compact_checkbox.setIconSize(QSize(16, 16))
         form.addWidget(self.compact_checkbox)
 
@@ -2359,7 +2431,6 @@ class UITab(QWidget):
 
         # Add custom title bar setting
         self.custom_titlebar_checkbox = ModernCheckBox("Enable custom title bar")
-        self.custom_titlebar_checkbox.setIcon(get_button_icon('window', 16))
         self.custom_titlebar_checkbox.setIconSize(QSize(16, 16))
         form.addWidget(self.custom_titlebar_checkbox)
 
@@ -2482,14 +2553,12 @@ class UITab(QWidget):
 
         # Window Management Settings
         self.always_on_top_checkbox = ModernCheckBox("Always on top")
-        self.always_on_top_checkbox.setIcon(get_button_icon('zap', 16))  # Use zap icon instead of pin
         self.always_on_top_checkbox.setIconSize(QSize(16, 16))
         self.always_on_top_checkbox.setChecked(False)
         self.always_on_top_checkbox.setToolTip("Keep the QuillScribe window always on top of other windows")
         shortcuts_layout.addRow(self.always_on_top_checkbox)
 
         self.snap_to_edges_checkbox = ModernCheckBox("Snap to screen edges")
-        self.snap_to_edges_checkbox.setIcon(get_button_icon('dashboard', 16))  # Use dashboard instead of grid
         self.snap_to_edges_checkbox.setIconSize(QSize(16, 16))
         self.snap_to_edges_checkbox.setChecked(True)
         self.snap_to_edges_checkbox.setToolTip("Automatically snap window to screen edges when dragged close to them")
@@ -2596,7 +2665,7 @@ class UITab(QWidget):
 
             # Apply theme to the parent dialog immediately
             dialog = self.parent()
-            while dialog and not isinstance(dialog, SettingsDialog):
+            while dialog and not (hasattr(dialog, 'apply_theme') and hasattr(dialog, 'tabs')):
                 dialog = dialog.parent()
             if dialog:
                 dialog.apply_theme(theme_data)
@@ -2957,3 +3026,233 @@ class UISettingsDialog(QDialog):
         self.config_manager.save_settings()
         self.settings_saved.emit()
         self.accept()
+
+
+class StatisticsTab(QWidget):
+    """Statistics and performance monitoring tab"""
+
+    def __init__(self, statistics_manager: StatisticsManager, parent=None):
+        super().__init__(parent)
+        self.statistics_manager = statistics_manager
+        self.setup_ui()
+        self.load_statistics()
+
+        # Connect to statistics updates
+        self.statistics_manager.stats_updated.connect(self.load_statistics)
+
+    def setup_ui(self):
+        """Setup the statistics tab UI"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+
+        # Usage Statistics Group
+        usage_group = ModernGroupBox("Usage Statistics")
+        usage_layout = QFormLayout(usage_group)
+
+        self.total_sessions_label = QLabel("0")
+        self.total_recordings_label = QLabel("0")
+        self.total_duration_label = QLabel("0h 0m")
+        self.success_rate_label = QLabel("0%")
+
+        usage_layout.addRow("Total Sessions:", self.total_sessions_label)
+        usage_layout.addRow("Total Recordings:", self.total_recordings_label)
+        usage_layout.addRow("Total Duration:", self.total_duration_label)
+        usage_layout.addRow("Success Rate:", self.success_rate_label)
+
+        layout.addWidget(usage_group)
+
+        # Performance Metrics Group
+        performance_group = ModernGroupBox("Performance Metrics")
+        performance_layout = QFormLayout(performance_group)
+
+        self.avg_transcription_time_label = QLabel("0.0s")
+        self.fastest_transcription_label = QLabel("0.0s")
+        self.slowest_transcription_label = QLabel("0.0s")
+        self.avg_audio_duration_label = QLabel("0.0s")
+
+        performance_layout.addRow("Avg Transcription Time:", self.avg_transcription_time_label)
+        performance_layout.addRow("Fastest Transcription:", self.fastest_transcription_label)
+        performance_layout.addRow("Slowest Transcription:", self.slowest_transcription_label)
+        performance_layout.addRow("Avg Audio Duration:", self.avg_audio_duration_label)
+
+        layout.addWidget(performance_group)
+
+        # Mode Usage Group
+        mode_group = ModernGroupBox("Mode Usage")
+        mode_layout = QFormLayout(mode_group)
+
+        self.api_usage_label = QLabel("0")
+        self.local_usage_label = QLabel("0")
+        self.total_characters_label = QLabel("0")
+
+        mode_layout.addRow("API Transcriptions:", self.api_usage_label)
+        mode_layout.addRow("Local Transcriptions:", self.local_usage_label)
+        mode_layout.addRow("Total Characters:", self.total_characters_label)
+
+        layout.addWidget(mode_group)
+
+        # Current Session Group
+        session_group = ModernGroupBox("Current Session")
+        session_layout = QFormLayout(session_group)
+
+        self.session_duration_label = QLabel("0h 0m")
+        self.session_recordings_label = QLabel("0")
+        self.session_success_label = QLabel("0")
+        self.session_failed_label = QLabel("0")
+
+        session_layout.addRow("Session Duration:", self.session_duration_label)
+        session_layout.addRow("Recordings:", self.session_recordings_label)
+        session_layout.addRow("Successful:", self.session_success_label)
+        session_layout.addRow("Failed:", self.session_failed_label)
+
+        layout.addWidget(session_group)
+
+        # Recent History Group
+        history_group = ModernGroupBox("Recent History (Last 7 Days)")
+        history_layout = QVBoxLayout(history_group)
+
+        # History list
+        self.history_list = QTextEdit()
+        self.history_list.setMaximumHeight(150)
+        self.history_list.setReadOnly(True)
+        self.history_list.setStyleSheet("""
+            QTextEdit {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 8px;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 11px;
+            }
+        """)
+        history_layout.addWidget(self.history_list)
+
+        layout.addWidget(history_group)
+
+        # Action buttons
+        button_layout = QHBoxLayout()
+
+        self.refresh_button = ModernButton("Refresh")
+        self.refresh_button.clicked.connect(self.load_statistics)
+        button_layout.addWidget(self.refresh_button)
+
+        self.export_button = ModernButton("Export Statistics")
+        self.export_button.clicked.connect(self.export_statistics)
+        button_layout.addWidget(self.export_button)
+
+        self.reset_button = ModernButton("Reset Statistics")
+        self.reset_button.clicked.connect(self.reset_statistics)
+        button_layout.addWidget(self.reset_button)
+
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
+
+    def load_statistics(self):
+        """Load and display current statistics"""
+        stats = self.statistics_manager.get_statistics()
+        session_stats = self.statistics_manager.get_session_statistics()
+
+        # Usage statistics
+        self.total_sessions_label.setText(str(stats['total_sessions']))
+        self.total_recordings_label.setText(str(stats['total_recordings']))
+
+        # Format duration
+        total_minutes = int(stats['total_duration'] / 60)
+        hours = total_minutes // 60
+        minutes = total_minutes % 60
+        self.total_duration_label.setText(f"{hours}h {minutes}m")
+
+        # Success rate
+        success_rate = self.statistics_manager.get_accuracy_rate()
+        self.success_rate_label.setText(f"{success_rate:.1f}%")
+
+        # Performance metrics
+        perf = stats['performance_metrics']
+        self.avg_transcription_time_label.setText(f"{perf['average_transcription_time']:.2f}s")
+
+        if perf['fastest_transcription'] != float('inf'):
+            self.fastest_transcription_label.setText(f"{perf['fastest_transcription']:.2f}s")
+        else:
+            self.fastest_transcription_label.setText("N/A")
+
+        self.slowest_transcription_label.setText(f"{perf['slowest_transcription']:.2f}s")
+        self.avg_audio_duration_label.setText(f"{perf['average_audio_duration']:.2f}s")
+
+        # Mode usage
+        self.api_usage_label.setText(str(stats['usage_by_mode']['api']))
+        self.local_usage_label.setText(str(stats['usage_by_mode']['local']))
+        self.total_characters_label.setText(f"{stats['total_characters']:,}")
+
+        # Current session
+        session_minutes = int(session_stats['session_duration'] / 60)
+        session_hours = session_minutes // 60
+        session_mins = session_minutes % 60
+        self.session_duration_label.setText(f"{session_hours}h {session_mins}m")
+        self.session_recordings_label.setText(str(session_stats['recordings']))
+        self.session_success_label.setText(str(session_stats['successful_transcriptions']))
+        self.session_failed_label.setText(str(session_stats['failed_transcriptions']))
+
+        # Recent history
+        self.load_recent_history()
+
+    def load_recent_history(self):
+        """Load and display recent transcription history"""
+        history = self.statistics_manager.get_recent_history(7)
+
+        if not history:
+            self.history_list.setText("No recent transcriptions")
+            return
+
+        history_text = []
+        for entry in history[:20]:  # Show last 20 entries
+            timestamp = entry['timestamp'][:19].replace('T', ' ')  # Format datetime
+            mode = entry['mode'].upper()
+            duration = f"{entry['duration']:.1f}s"
+
+            if entry['success']:
+                status = "✓"
+                chars = entry.get('text_length', 0)
+                line = f"{timestamp} | {mode} | {duration} | {status} | {chars} chars"
+            else:
+                status = "✗"
+                line = f"{timestamp} | {mode} | {duration} | {status} | Failed"
+
+            history_text.append(line)
+
+        self.history_list.setText('\n'.join(history_text))
+
+    def export_statistics(self):
+        """Export statistics to a file"""
+        from PySide6.QtWidgets import QFileDialog
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Statistics",
+            f"quillscribe_stats_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            "JSON Files (*.json)"
+        )
+
+        if file_path:
+            if self.statistics_manager.export_statistics(file_path):
+                QMessageBox.information(self, "Export Successful",
+                                      f"Statistics exported to:\n{file_path}")
+            else:
+                QMessageBox.warning(self, "Export Failed",
+                                  "Failed to export statistics.")
+
+    def reset_statistics(self):
+        """Reset all statistics after confirmation"""
+        from PySide6.QtWidgets import QMessageBox
+
+        reply = QMessageBox.question(
+            self,
+            "Reset Statistics",
+            "Are you sure you want to reset all statistics?\n\nThis action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+
+        if reply == QMessageBox.StandardButton.Yes:
+            self.statistics_manager.reset_statistics()
+            QMessageBox.information(self, "Reset Complete",
+                                  "All statistics have been reset.")

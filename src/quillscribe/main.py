@@ -5,6 +5,7 @@ Beautiful voice-to-text transcription with minimal, elegant UI
 
 import sys
 import math
+import time
 from typing import Optional
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -94,15 +95,15 @@ class WindowsGlobalHotkeyManager:
     def _parse_shortcut(self, shortcut_text: str) -> tuple[int, int] | None:
         if not shortcut_text:
             return None
-        
+
         # Split on + and clean up tokens
         tokens = [t.strip() for t in shortcut_text.split("+") if t.strip()]
         if not tokens:
             return None
-            
+
         mods = 0
         vk = None
-        
+
         # Process all tokens except the last one as modifiers
         for token in tokens[:-1]:
             t = token.lower()
@@ -114,11 +115,11 @@ class WindowsGlobalHotkeyManager:
                 mods |= MOD_ALT
             elif t == "shift":
                 mods |= MOD_SHIFT
-        
+
         # Process the last token as the key
         key = tokens[-1].strip()
         key_lower = key.lower()
-        
+
         # Function keys F1..F24
         if key_lower.startswith("f") and key_lower[1:].isdigit():
             n = int(key_lower[1:])
@@ -150,7 +151,7 @@ class WindowsGlobalHotkeyManager:
                 "/": 0xBF,  # VK_OEM_2
                 "?": 0xBF,  # VK_OEM_2
             }
-            
+
             if key in special_char_map:
                 vk = special_char_map[key]
             else:
@@ -176,10 +177,10 @@ class WindowsGlobalHotkeyManager:
                 "down": 0x28,
             }
             vk = special_map.get(key_lower)
-        
+
         if vk is None:
             return None
-            
+
         return mods, vk
 
     def register_hotkey(self, shortcut_text: str, callback: callable) -> bool:
@@ -191,21 +192,21 @@ class WindowsGlobalHotkeyManager:
         hotkey_id = self.id_counter
         self.id_counter += 1
         hwnd = int(self.window.winId())
-        
+
         res = int(self.user32.RegisterHotKey(hwnd, hotkey_id, mods, vk))
-        
+
         if res == 0:
             # Get the last error code for debugging
             last_error = ctypes.windll.kernel32.GetLastError()
             error_messages = {
                 1409: "Hot key is already registered",
-                87: "The parameter is incorrect", 
+                87: "The parameter is incorrect",
                 1413: "Invalid hotkey"
             }
             error_msg = error_messages.get(last_error, f"Unknown error {last_error}")
             print(f"Failed to register hotkey '{shortcut_text}': {error_msg}")
             return False
-            
+
         self.id_to_callback[hotkey_id] = callback
         self.registered_ids.add(hotkey_id)
         return True
@@ -244,21 +245,23 @@ class WindowsGlobalHotkeyManager:
 
 from .audio_manager import AudioManager
 from .whisper_manager import WhisperManager
-from .settings_dialog import SettingsDialog, UISettingsDialog, WindowManagerDialog
+from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
 from .output_manager import OutputManager
 from .config_manager import ConfigManager
 from .sound_manager import SoundManager
 from .tray_manager import TrayManager
 from .window_manager import WindowManager
-from .icon_manager import get_icon, get_button_icon, get_white_button_icon
+from .statistics_manager import StatisticsManager
+from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
+from .theme_manager import get_theme_manager
 
 
 class BreathingMicrophone(QWidget):
     """Beautiful breathing microphone widget with smooth animations"""
-    
+
     # Signal for when microphone is clicked
     clicked = Signal()
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(200, 200)
@@ -268,10 +271,10 @@ class BreathingMicrophone(QWidget):
         self.show_waveform = True
         self.level_smoothed = 0.0
         self.animation_strength = 3.0  # Default amplification factor
-        
+
         # Make the widget clickable
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        
+
         # Animation setup (disabled breathing; mic remains static)
         self.animation = QPropertyAnimation(self, b"scaleFactor")
         self.animation.setDuration(1500)
@@ -283,30 +286,30 @@ class BreathingMicrophone(QWidget):
         self.wave_timer = QTimer(self)
         self.wave_timer.setInterval(33)  # ~30 FPS
         self.wave_timer.timeout.connect(self.advance_wave)
-        
+
         # Drop shadow effect
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(20)
         shadow.setColor(QColor(0, 0, 0, 50))
         shadow.setOffset(0, 5)
         self.setGraphicsEffect(shadow)
-    
+
     # Property for animation
     def getScaleFactor(self):
         return self.scale_factor
-    
+
     def setScaleFactor(self, value):
         if isinstance(value, (int, float)):
             self.scale_factor = float(value)
             self.update()  # Trigger repaint
-    
+
     scaleFactor = Property(float, getScaleFactor, setScaleFactor)
-    
+
     def set_show_waveform(self, value: bool):
         """Enable/disable waveform rendering around the microphone"""
         self.show_waveform = bool(value)
         self.update()
-    
+
     def set_animation_strength(self, value: float):
         """Set the animation amplification strength"""
         self.animation_strength = max(1.0, min(10.0, float(value)))
@@ -317,7 +320,7 @@ class BreathingMicrophone(QWidget):
         self.animation.stop()
         self.scale_factor = 1.0
         self.update()
-    
+
     def start_recording_breathing(self):
         """Enable circular waveform while recording; mic remains static."""
         self.is_recording = True
@@ -325,14 +328,14 @@ class BreathingMicrophone(QWidget):
         self.scale_factor = 1.0
         self.wave_timer.start()
         self.update()  # Force visual refresh
-    
+
     def stop_recording(self):
         """Stop recording and clear waveform (mic stays static)."""
         self.is_recording = False
         self.wave_timer.stop()
         self.animation.stop()
         self.update()  # Force visual refresh
-    
+
     @Slot(float)
     def update_audio_level(self, level: float):
         """Update level (used for waveform only); do not scale mic with level"""
@@ -349,17 +352,17 @@ class BreathingMicrophone(QWidget):
         speed = 0.15 + (amplified_level * 0.5)
         self.wave_phase = (self.wave_phase + speed) % (2 * math.pi)
         self.update()
-    
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
+
         # Get the center and radius
         center_x = self.width() // 2
         center_y = self.height() // 2
         base_radius = min(self.width(), self.height()) // 3
         radius = int(base_radius * self.scale_factor)
-        
+
         # Create gradient background
         if self.is_recording:
             # Recording state - brand purple hues
@@ -368,42 +371,42 @@ class BreathingMicrophone(QWidget):
             inner_color = QColor(128, 0, 128, 100)
             mic_color = QColor(255, 255, 255)
         else:
-            # Idle state - elegant grey gradient  
+            # Idle state - elegant grey gradient
             outer_color = QColor(128, 128, 128, 20)
             middle_color = QColor(100, 100, 100, 40)
             inner_color = QColor(80, 80, 80, 80)
             mic_color = QColor(220, 220, 220)
-        
+
         # Draw concentric circles for depth
         painter.setBrush(QBrush(outer_color))
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center_x - radius - 20, center_y - radius - 20, 
+        painter.drawEllipse(center_x - radius - 20, center_y - radius - 20,
                           (radius + 20) * 2, (radius + 20) * 2)
-        
+
         painter.setBrush(QBrush(middle_color))
         painter.drawEllipse(center_x - radius - 10, center_y - radius - 10,
                           (radius + 10) * 2, (radius + 10) * 2)
-        
+
         painter.setBrush(QBrush(inner_color))
         painter.drawEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
-        
+
         # Draw microphone icon
         painter.setPen(QPen(mic_color, 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(QBrush(mic_color))
-        
+
         # Microphone body (capsule)
         mic_width = radius // 2
         mic_height = radius // 1.5
         mic_x = center_x - mic_width // 2
         mic_y = center_y - mic_height // 2 - 5
-        
+
         painter.drawRoundedRect(mic_x, mic_y, mic_width, mic_height, 8, 8)
-        
+
         # Microphone stand
         stand_y = mic_y + mic_height
         painter.drawLine(center_x, stand_y, center_x, stand_y + 15)
         painter.drawLine(center_x - 8, stand_y + 15, center_x + 8, stand_y + 15)
-        
+
         # Circular waveform around mic while recording
         if self.is_recording and self.show_waveform:
             num_bars = 64
@@ -450,7 +453,7 @@ class BreathingMicrophone(QWidget):
                 bar_width = 2 + int(2 * amplified_level)
                 painter.setPen(QPen(QColor(128, 0, 128, bar_alpha), bar_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
                 painter.drawLine(x1, y1, x2, y2)
-    
+
     def mousePressEvent(self, event):
         """Handle mouse press events to make microphone clickable"""
         if event.button() == Qt.MouseButton.LeftButton:
@@ -460,12 +463,12 @@ class BreathingMicrophone(QWidget):
 
 class ModernButton(QPushButton):
     """Beautiful modern button with hover effects"""
-    
+
     def __init__(self, text: str, primary: bool = False, parent=None):
         super().__init__(text, parent)
         self.primary = primary
         self.apply_theme(is_dark=False, compact=False)
-        
+
         # Hover animation
         self.animation = QPropertyAnimation(self, b"geometry")
         self.animation.setDuration(150)
@@ -541,7 +544,7 @@ class ModernButton(QPushButton):
                     QPushButton:pressed {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e9ecef, stop:1 #dee2e6); }}
                 """
         self.setStyleSheet(stylesheet)
-        
+
         # Drop shadow
         shadow = QGraphicsDropShadowEffect()
         shadow.setBlurRadius(10)
@@ -552,7 +555,7 @@ class ModernButton(QPushButton):
 
 class QuillScribeMainWindow(QMainWindow):
     """Main application window with beautiful minimal UI"""
-    
+
     # Theme color definitions (same as SettingsDialog)
     THEMES = {
         "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
@@ -568,7 +571,7 @@ class QuillScribeMainWindow(QMainWindow):
         "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
         "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
     }
-    
+
     def __init__(self):
         super().__init__()
         # Initialize essential components first
@@ -591,6 +594,7 @@ class QuillScribeMainWindow(QMainWindow):
         self._whisper_manager = None
         self._output_manager = None
         self._sound_manager = None
+        self._statistics_manager = None
 
         # Background initialization flags
         self._audio_monitoring_started = False
@@ -609,6 +613,9 @@ class QuillScribeMainWindow(QMainWindow):
 
         # Schedule background initialization
         QTimer.singleShot(100, self._initialize_background_components)
+
+        # Record session start
+        QTimer.singleShot(200, self._record_session_start)
 
     @property
     def audio_manager(self):
@@ -637,6 +644,13 @@ class QuillScribeMainWindow(QMainWindow):
         if self._sound_manager is None:
             self._sound_manager = SoundManager()
         return self._sound_manager
+
+    @property
+    def statistics_manager(self):
+        """Lazy-loaded statistics manager"""
+        if self._statistics_manager is None:
+            self._statistics_manager = StatisticsManager(self.config_manager)
+        return self._statistics_manager
 
     def _initialize_background_components(self):
         """Initialize components in background for better startup performance"""
@@ -671,6 +685,13 @@ class QuillScribeMainWindow(QMainWindow):
         except Exception as e:
             print(f"Warning: Could not preload components: {e}")
 
+    def _record_session_start(self):
+        """Record the start of a new session"""
+        try:
+            self.statistics_manager.record_session_start()
+        except Exception as e:
+            print(f"Warning: Could not record session start: {e}")
+
     def _ensure_hotkey_manager(self):
         """Create platform-specific hotkey manager if not yet created."""
         if hasattr(self, "hotkey_manager") and self.hotkey_manager is not None:
@@ -681,12 +702,12 @@ class QuillScribeMainWindow(QMainWindow):
                 self.hotkey_manager = WindowsGlobalHotkeyManager(self)
         except Exception:
             self.hotkey_manager = None
-        
+
     def setup_ui(self):
         """Create the beautiful UI"""
         self.setWindowTitle("QuillScribe")
         self.setFixedSize(400, 500)
-        
+
         # Check if custom titlebar is enabled (default to True for backward compatibility)
         custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
         if custom_titlebar:
@@ -695,7 +716,7 @@ class QuillScribeMainWindow(QMainWindow):
         else:
             # Use standard window with system titlebar
             self.setWindowFlags(Qt.WindowType.Window)
-        
+
         # Set window icon (ICO format only - guaranteed to be present)
         try:
             from pathlib import Path
@@ -706,49 +727,49 @@ class QuillScribeMainWindow(QMainWindow):
             else:
                 # Running from source
                 ico_path = Path(__file__).parent / "app_logo.ico"
-            
+
             self.setWindowIcon(QIcon(str(ico_path)))
         except Exception as e:
             print(f"Error: Could not load window icon: {e}")
-        
+
         # Central widget
         central_widget = QWidget()
         central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
-        
+
         # Main layout
         layout = QVBoxLayout(central_widget)
         self.main_layout = layout
-        
+
         # Store custom titlebar flag for later use
         self.custom_titlebar_enabled = custom_titlebar
-        
+
         if custom_titlebar:
             # Custom titlebar mode: remove spacing and margins to accommodate titlebar
             layout.setSpacing(0)
             layout.setContentsMargins(0, 0, 0, 0)
-            
+
             # Create and add custom titlebar
             self.create_custom_titlebar()
             layout.addWidget(self.custom_titlebar)
-            
+
             # Main content area with original spacing
             content_widget = QWidget()
             content_layout = QVBoxLayout(content_widget)
             content_layout.setSpacing(30)
             content_layout.setContentsMargins(40, 20, 40, 40)
             layout.addWidget(content_widget)
-            
+
             # Update main_layout to point to content layout for adding widgets
             self.main_layout = content_layout
         else:
             # Standard titlebar mode: use standard spacing and margins
             layout.setSpacing(30)
             layout.setContentsMargins(40, 20, 40, 40)
-            
+
             # No custom titlebar needed
             self.custom_titlebar = None
-        
+
         # Topbar with right-aligned close button (visible only in compact mode)
         self.topbar = QHBoxLayout()
         self.topbar.setContentsMargins(0, 8, 8, 0)  # Add right margin
@@ -760,11 +781,11 @@ class QuillScribeMainWindow(QMainWindow):
         # Ensure the text is perfectly centered
         self.close_button.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         self.topbar.addWidget(self.close_button)
-        
+
         # Apply initial close button styling
         self.apply_close_button_theme(False)
         layout.addLayout(self.topbar)
-        
+
         # Title - properly centered
         title = QLabel("QuillScribe")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -779,7 +800,7 @@ class QuillScribeMainWindow(QMainWindow):
         """)
         layout.addWidget(title)
         self.title_label = title
-        
+
         # Breathing microphone
         self.microphone = BreathingMicrophone()
         mic_layout = QHBoxLayout()
@@ -787,25 +808,25 @@ class QuillScribeMainWindow(QMainWindow):
         mic_layout.addWidget(self.microphone)
         mic_layout.addStretch()
         layout.addLayout(mic_layout)
-        
+
         layout.addStretch()
-        
+
         # Settings button only
         self.settings_button = ModernButton("Settings", primary=False)
         self.settings_button.setIcon(get_button_icon('settings', 16))
         self.settings_button.setIconSize(QSize(16, 16))
         # Ensure button doesn't expand horizontally beyond its content
         self.settings_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        
-        
+
+
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         button_layout.addWidget(self.settings_button, 0, Qt.AlignmentFlag.AlignCenter)
         button_layout.addStretch()
         layout.addLayout(button_layout, 0)
-        
-        # Status label
-        self.status_label = QLabel("Click microphone or press shortcut to start recording")
+
+        # Status label (will be updated with actual shortcut after config loads)
+        self.status_label = QLabel("Click microphone or press [Win + `] to start recording")
         self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_label.setStyleSheet("""
             QLabel {
@@ -815,7 +836,7 @@ class QuillScribeMainWindow(QMainWindow):
             }
         """)
         layout.addWidget(self.status_label)
-        
+
         # Window styling
         self.setStyleSheet("""
             QMainWindow {
@@ -823,7 +844,7 @@ class QuillScribeMainWindow(QMainWindow):
                     stop:0 #ffffff, stop:1 #f8f9fa);
             }
         """)
-    
+
     def create_custom_titlebar(self):
         """Create a custom titlebar with perfectly centered title"""
         self.custom_titlebar = QWidget()
@@ -834,19 +855,19 @@ class QuillScribeMainWindow(QMainWindow):
                 border-bottom: 1px solid #d0d0d0;
             }
         """)
-        
+
         titlebar_layout = QHBoxLayout(self.custom_titlebar)
         titlebar_layout.setContentsMargins(0, 0, 0, 0)
         titlebar_layout.setSpacing(0)
         titlebar_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-        
+
         # Left section: icon + spacer (fixed width to balance right section)
         left_section = QWidget()
         left_section.setFixedWidth(100)  # Fixed width to match right section
         left_layout = QHBoxLayout(left_section)
         left_layout.setContentsMargins(8, 0, 0, 0)
         left_layout.setSpacing(8)
-        
+
         # Window icon (ICO format only - guaranteed to be present)
         icon_label = QLabel()
         try:
@@ -856,7 +877,7 @@ class QuillScribeMainWindow(QMainWindow):
             icon_label.setPixmap(pixmap)
         except Exception as e:
             print(f"Error: Could not load titlebar icon: {e}")
-        
+
         icon_label.setFixedSize(16, 16)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_label.setStyleSheet("""
@@ -871,13 +892,13 @@ class QuillScribeMainWindow(QMainWindow):
         left_layout.addWidget(icon_label)
         left_layout.addStretch()
         titlebar_layout.addWidget(left_section)
-        
+
         # Center section: title (expandable)
         center_section = QWidget()
         center_layout = QHBoxLayout(center_section)
         center_layout.setContentsMargins(0, 0, 0, 0)
         center_layout.setSpacing(0)
-        
+
         self.titlebar_title = QLabel("QuillScribe")
         self.titlebar_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.titlebar_title.setStyleSheet("""
@@ -891,7 +912,7 @@ class QuillScribeMainWindow(QMainWindow):
         """)
         center_layout.addWidget(self.titlebar_title)
         titlebar_layout.addWidget(center_section)
-        
+
         # Right section: window controls (fixed width to balance left section)
         right_section = QWidget()
         right_section.setFixedWidth(100)  # Fixed width to match left section
@@ -899,17 +920,17 @@ class QuillScribeMainWindow(QMainWindow):
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
         right_layout.addStretch()
-        
+
         # Minimize button
-        self.minimize_btn = QPushButton("−")
+        self.minimize_btn = QPushButton()
+        self.minimize_btn.setObjectName("minimize_btn")  # For theme manager identification
+        self.minimize_btn.setIconSize(QSize(16, 16))
         self.minimize_btn.setFixedSize(46, 32)  # Match titlebar height exactly
         self.minimize_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
                 border: none;
                 color: #2c3e50;
-                font-size: 16px;
-                font-weight: bold;
                 text-align: center;
                 margin: 0px;
                 padding: 0px;
@@ -923,7 +944,7 @@ class QuillScribeMainWindow(QMainWindow):
         """)
         self.minimize_btn.clicked.connect(self.minimize_window)
         right_layout.addWidget(self.minimize_btn)
-        
+
         # Close button
         self.titlebar_close_btn = QPushButton("×")
         self.titlebar_close_btn.setFixedSize(46, 32)  # Match titlebar height exactly
@@ -949,16 +970,16 @@ class QuillScribeMainWindow(QMainWindow):
         """)
         self.titlebar_close_btn.clicked.connect(self.close)
         right_layout.addWidget(self.titlebar_close_btn)
-        
+
         titlebar_layout.addWidget(right_section)
-        
+
         # Make titlebar draggable
         self.custom_titlebar.mousePressEvent = self.titlebar_mouse_press
         self.custom_titlebar.mouseMoveEvent = self.titlebar_mouse_move
         self.custom_titlebar.mouseReleaseEvent = self.titlebar_mouse_release
         self._titlebar_drag_active = False
         self._titlebar_drag_offset = None
-    
+
     def titlebar_mouse_press(self, event):
         """Handle titlebar mouse press for dragging"""
         if event.button() == Qt.MouseButton.LeftButton:
@@ -968,7 +989,7 @@ class QuillScribeMainWindow(QMainWindow):
             except Exception:
                 global_pos = event.globalPos()
             self._titlebar_drag_offset = global_pos - self.frameGeometry().topLeft()
-    
+
     def titlebar_mouse_move(self, event):
         """Handle titlebar mouse move for dragging"""
         if self._titlebar_drag_active and event.buttons() & Qt.MouseButton.LeftButton:
@@ -977,12 +998,12 @@ class QuillScribeMainWindow(QMainWindow):
             except Exception:
                 global_pos = event.globalPos()
             self.move(global_pos - self._titlebar_drag_offset)
-    
+
     def titlebar_mouse_release(self, event):
         """Handle titlebar mouse release"""
         if event.button() == Qt.MouseButton.LeftButton:
             self._titlebar_drag_active = False
-    
+
     def setup_connections(self):
         """Connect signals and slots"""
         self.microphone.clicked.connect(self.toggle_recording)
@@ -993,11 +1014,11 @@ class QuillScribeMainWindow(QMainWindow):
             self.audio_manager.audio_level_changed.connect(self.microphone.update_audio_level)
         except Exception as e:
             print(f"Warning: Could not connect audio level signal: {e}")
-        
-        # Whisper manager connections  
+
+        # Whisper manager connections
         self.whisper_manager.transcription_ready.connect(self.handle_transcription)
         self.whisper_manager.transcription_error.connect(self.handle_transcription_error)
-        
+
         # Output manager connections
         self.output_manager.operation_complete.connect(self.update_status)
         self.output_manager.operation_failed.connect(self.handle_output_error)
@@ -1094,19 +1115,23 @@ class QuillScribeMainWindow(QMainWindow):
             self.start_recording()
         else:
             self.stop_recording()
-    
+
     def start_recording(self):
         """Start voice recording"""
         # Play start sound
         self.sound_manager.play_start_sound()
-        
+
         self.is_recording = True
-        self.status_label.setText("Recording... (Click microphone or press shortcut to stop)")
+        self.status_label.setText(f"Recording... (Click microphone or press {self.get_formatted_shortcut()} to stop)")
         self.microphone.start_recording_breathing()
 
         # Update tray manager
         if self.tray_manager:
             self.tray_manager.set_recording_state(True)
+
+        # Track recording start
+        self.statistics_manager.record_recording_start()
+        self._recording_start_time = time.time()
 
         # Start audio capture
         try:
@@ -1114,12 +1139,12 @@ class QuillScribeMainWindow(QMainWindow):
         except Exception as e:
             self.handle_recording_error(f"Failed to start recording: {str(e)}")
             self.is_recording = False
-            self.status_label.setText("Click microphone or press shortcut to start recording")
+            self.status_label.setText(f"Click microphone or press {self.get_formatted_shortcut()} to start recording")
             self.microphone.stop_recording()
             # Update tray manager
             if self.tray_manager:
                 self.tray_manager.set_recording_state(False)
-    
+
     def stop_recording(self):
         """Stop voice recording"""
         self.is_recording = False
@@ -1137,42 +1162,83 @@ class QuillScribeMainWindow(QMainWindow):
         else:
             # Play stop sound even when no audio data
             self.sound_manager.play_stop_sound()
-            self.status_label.setText("No audio data recorded - Click microphone or press shortcut to try again")
-    
+            self.status_label.setText(f"No audio data recorded - Click microphone or press {self.get_formatted_shortcut()} to try again")
+
     def handle_transcription(self, text: str):
         """Handle transcription result"""
         if text:
             # Process the transcription through output manager
             self.output_manager.process_transcription(text)
+
+            # Record successful transcription
+            if hasattr(self, '_recording_start_time'):
+                duration = time.time() - self._recording_start_time
+                transcription_time = getattr(self, '_transcription_time', 0.0)
+                mode = self.config_manager.get_setting("whisper/mode", "api")
+
+                self.statistics_manager.record_transcription_result(
+                    success=True,
+                    mode=mode,
+                    duration=duration,
+                    transcription_time=transcription_time,
+                    text=text
+                )
         else:
             # Play stop sound even when no speech detected
             self.sound_manager.play_stop_sound()
-            self.status_label.setText("No speech detected - Click microphone or press shortcut to try again")
-    
+            self.status_label.setText(f"No speech detected - Click microphone or press {self.get_formatted_shortcut()} to try again")
+
+            # Record failed transcription (no speech)
+            if hasattr(self, '_recording_start_time'):
+                duration = time.time() - self._recording_start_time
+                transcription_time = getattr(self, '_transcription_time', 0.0)
+                mode = self.config_manager.get_setting("whisper/mode", "api")
+
+                self.statistics_manager.record_transcription_result(
+                    success=False,
+                    mode=mode,
+                    duration=duration,
+                    transcription_time=transcription_time
+                )
+
     def handle_transcription_error(self, error: str):
         """Handle transcription errors"""
         # Play stop sound on error too
         self.sound_manager.play_stop_sound()
         self.status_label.setText(f"Error: {error}")
         print(f"Transcription error: {error}")
-    
-    def handle_output_error(self, error: str):  
+
+        # Record failed transcription
+        if hasattr(self, '_recording_start_time'):
+            duration = time.time() - self._recording_start_time
+            transcription_time = getattr(self, '_transcription_time', 0.0)
+            mode = self.config_manager.get_setting("whisper/mode", "api")
+
+            self.statistics_manager.record_transcription_result(
+                success=False,
+                mode=mode,
+                duration=duration,
+                transcription_time=transcription_time
+            )
+
+    def handle_output_error(self, error: str):
         """Handle output operation errors"""
         self.status_label.setText(f"Output error: {error}")
         print(f"Output error: {error}")
-    
+
     def update_status(self, message: str):
-        """Update status label with message"""
+        """Update status label after transcription is complete"""
         # Play stop sound when transcription is complete
         self.sound_manager.play_stop_sound()
-        
-        self.status_label.setText(f"{message} - Click microphone or press shortcut to record again")
-    
+
+        # Don't show the result on homepage, just reset to ready state
+        self.status_label.setText(f"Click microphone or press {self.get_formatted_shortcut()} to start recording")
+
     def handle_recording_error(self, error: str):
         """Handle recording errors"""
         self.status_label.setText(f"Recording error: {error}")
         print(f"Recording error: {error}")
-        
+
     def show_settings(self):
         """Show settings dialog"""
         if self.compact_mode:
@@ -1199,6 +1265,12 @@ class QuillScribeMainWindow(QMainWindow):
         """Show window manager dialog"""
         dialog = WindowManagerDialog(self, self.config_manager, self.window_manager)
         dialog.settings_saved.connect(self.load_settings)
+
+        # Apply current theme to window manager dialog
+        current_theme = self.config_manager.get_setting("ui/theme", "white")
+        if hasattr(dialog, 'apply_theme'):
+            dialog.apply_theme(current_theme)
+
         dialog.exec()
 
     def contextMenuEvent(self, event):
@@ -1230,7 +1302,7 @@ class QuillScribeMainWindow(QMainWindow):
             # Load Whisper settings
             whisper_mode = self.config_manager.get_setting("whisper/mode", "api")
             self.whisper_manager.set_mode(whisper_mode)
-            
+
             if whisper_mode == "api":
                 api_key = self.config_manager.get_setting("whisper/api_key", "")
                 if api_key:
@@ -1251,7 +1323,7 @@ class QuillScribeMainWindow(QMainWindow):
                             f"Please check your settings to select a valid model.",
                             QMessageBox.StandardButton.Ok
                         )
-                        
+
                         # Fallback to default model and clear invalid config
                         try:
                             self.whisper_manager.set_api_model("whisper-1")
@@ -1267,23 +1339,23 @@ class QuillScribeMainWindow(QMainWindow):
             else:
                 # Local model will be set below in the local model section
                 pass
-                    
+
             # Load audio settings
             device_id = self.config_manager.get_setting("audio/device_id")
             if device_id is not None:
                 self.audio_manager.set_input_device(device_id)
-            
+
             # Load sound settings
             sounds_enabled = self.config_manager.get_setting("audio/sounds_enabled", True)
             self.sound_manager.set_sounds_enabled(sounds_enabled)
             # Load UI visualization settings
             show_waveform = self.config_manager.get_setting("ui/show_waveform", True)
             self.microphone.set_show_waveform(bool(show_waveform))
-            
+
             # Load animation strength setting
             animation_strength = self.config_manager.get_setting("ui/animation_strength", 3.0)
             self.microphone.set_animation_strength(float(animation_strength))
-            
+
             # Apply compact mode
             compact = bool(self.config_manager.get_setting("ui/compact_mode", False))
             if compact != self.compact_mode:
@@ -1291,27 +1363,31 @@ class QuillScribeMainWindow(QMainWindow):
             else:
                 # Ensure consistent UI after startup
                 self.apply_compact_mode(compact)
-                
+
             # Set local model name if available
             if whisper_mode == "local":
                 local_model = self.config_manager.get_setting("whisper/local_model", "")
                 if local_model:
                     # Convert old file names to new model names
                     self.whisper_manager.set_local_model(local_model)
-            
+
             # Apply recording shortcut
             self.apply_hotkey_setting()
-            
+
+            # Update status label with actual shortcut
+            if not self.is_recording:
+                self.status_label.setText(f"Click microphone or press {self.get_formatted_shortcut()} to start recording")
+
             # Apply theme
             theme = self.config_manager.get_setting("ui/theme", "white")
             self.apply_theme(theme)
-            
+
             # Apply custom titlebar setting (requires restart to take effect)
             custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
             if hasattr(self, 'custom_titlebar_enabled') and custom_titlebar != self.custom_titlebar_enabled:
                 # Setting has changed - show popup that restart is required
                 self.show_restart_required_popup()
-                
+
         except Exception as e:
             print(f"Error loading settings: {e}")
 
@@ -1320,14 +1396,14 @@ class QuillScribeMainWindow(QMainWindow):
         # Get current setting to show specific message
         custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
         action = "enabled" if custom_titlebar else "disabled"
-        
+
         msg_box = QMessageBox(self)
         msg_box.setWindowTitle("Restart Required")
         msg_box.setIcon(QMessageBox.Icon.Information)
         msg_box.setText("Title Bar Setting Changed")
         msg_box.setInformativeText(f"The custom title bar has been {action}. Please restart QuillScribe for the changes to take effect.")
         msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
-        
+
         # Apply theme styling to the message box
         if hasattr(self, 'is_dark') and self.is_dark:
             msg_box.setStyleSheet("""
@@ -1368,8 +1444,18 @@ class QuillScribeMainWindow(QMainWindow):
                     background-color: #357ABD;
                 }
             """)
-        
+
         msg_box.exec()
+
+    def get_formatted_shortcut(self) -> str:
+        """Get a nicely formatted shortcut string for display"""
+        shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
+        if not isinstance(shortcut_text, str) or not shortcut_text:
+            shortcut_text = "Meta+`"
+
+        # Convert to a more user-friendly format
+        formatted = shortcut_text.replace("Meta", "Win").replace("+", " + ")
+        return f"[{formatted}]"
 
     def apply_hotkey_setting(self):
         """Register the configured recording shortcut; fallback to app-level shortcut if global fails."""
@@ -1419,7 +1505,7 @@ class QuillScribeMainWindow(QMainWindow):
                 self._app_shortcut.activated.connect(self.toggle_recording)
             except Exception as e:
                 print(f"Failed to set app shortcut '{qt_seq_text}': {e}")
-    
+
     def apply_close_button_theme(self, is_dark: bool):
         """Apply theme-appropriate styling to the close button for compact mode"""
         if is_dark:
@@ -1464,22 +1550,21 @@ class QuillScribeMainWindow(QMainWindow):
                 }
             """
         self.close_button.setStyleSheet(style)
-    
+
     def apply_theme(self, theme_name):
         """Apply the selected theme to the main window background and text colors"""
+        # Use theme manager for consistent theming
+        theme_manager = get_theme_manager()
+        theme_manager.set_theme(theme_name)
+
         theme = self.THEMES.get(theme_name, self.THEMES["white"])
         primary_color = theme["primary"]
         secondary_color = theme["secondary"]
-        
-        # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-        is_dark = luminance < 0.5
-        self.is_dark = is_dark
-        
-        if is_dark:
+
+        # Get dark theme status from theme manager
+        self.is_dark = theme_manager.is_dark_theme()
+
+        if self.is_dark:
             text_primary = "#ffffff"
             text_secondary = "#e0e0e0"
             text_muted = "#b0b0b0"
@@ -1487,7 +1572,7 @@ class QuillScribeMainWindow(QMainWindow):
             text_primary = "#2c3e50"
             text_secondary = "#495057"
             text_muted = "#6c757d"
-        
+
         self.setStyleSheet(f"""
             QMainWindow {{
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
@@ -1500,18 +1585,19 @@ class QuillScribeMainWindow(QMainWindow):
                 color: {text_primary};
             }}
         """)
-        
+
         # Apply theme to settings button
         self.settings_button.apply_theme(self.is_dark, self.compact_mode)
-        if self.is_dark:
-            self.settings_button.setIcon(get_white_button_icon('settings', 16))
-        else:
-            self.settings_button.setIcon(get_button_icon('settings', 16))
-        
+        self.settings_button.setIcon(get_themed_button_icon('settings', 16, self.is_dark))
+
+        # Apply themed icons to all components
+        theme_manager = get_theme_manager()
+        theme_manager.apply_icons_to_widget(self)
+
         # Apply theme to close button
         self.apply_close_button_theme(self.is_dark)
 
-        
+
 
         # Update text colors for existing widgets
         if hasattr(self, 'title_label'):
@@ -1525,11 +1611,11 @@ class QuillScribeMainWindow(QMainWindow):
                     text-align: center;
                 }}
             """)
-        
+
         # Update custom titlebar colors
         if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
             # Determine titlebar colors based on theme
-            if is_dark:
+            if self.is_dark:
                 titlebar_bg = "#3c3c3c"
                 titlebar_border = "#555555"
                 titlebar_text = "#ffffff"
@@ -1541,7 +1627,7 @@ class QuillScribeMainWindow(QMainWindow):
                 titlebar_text = "#2c3e50"
                 titlebar_btn_color = "#2c3e50"
                 titlebar_btn_hover = "#e0e0e0"
-            
+
             self.custom_titlebar.setStyleSheet(f"""
                 QWidget {{
                     background: {titlebar_bg};
@@ -1555,7 +1641,7 @@ class QuillScribeMainWindow(QMainWindow):
                     text-decoration: none;
                 }}
             """)
-            
+
             if hasattr(self, 'titlebar_title'):
                 self.titlebar_title.setStyleSheet(f"""
                     QLabel {{
@@ -1565,15 +1651,14 @@ class QuillScribeMainWindow(QMainWindow):
                         padding: 0px 20px;
                     }}
                 """)
-            
+
             if hasattr(self, 'minimize_btn'):
+                # Update icon color for theme
+                self.minimize_btn.setIcon(get_themed_button_icon('minimize', 16, self.is_dark))
                 self.minimize_btn.setStyleSheet(f"""
                     QPushButton {{
                         background: transparent;
                         border: none;
-                        color: {titlebar_btn_color};
-                        font-size: 16px;
-                        font-weight: bold;
                         text-align: center;
                         margin: 0px;
                         padding: 0px;
@@ -1582,10 +1667,10 @@ class QuillScribeMainWindow(QMainWindow):
                         background: {titlebar_btn_hover};
                     }}
                     QPushButton:pressed {{
-                        background: {titlebar_bg if is_dark else '#d0d0d0'};
+                        background: {titlebar_bg if self.is_dark else '#d0d0d0'};
                     }}
                 """)
-            
+
             if hasattr(self, 'titlebar_close_btn'):
                 self.titlebar_close_btn.setStyleSheet(f"""
                     QPushButton {{
@@ -1607,7 +1692,7 @@ class QuillScribeMainWindow(QMainWindow):
                         color: white;
                     }}
                 """)
-        
+
         if hasattr(self, 'status_label'):
             font_size = "11px" if self.compact_mode else "14px"
             margin = "4px" if self.compact_mode else "10px"
@@ -1619,7 +1704,7 @@ class QuillScribeMainWindow(QMainWindow):
                     background-color: transparent;
                 }}
             """)
-    
+
     def apply_compact_mode(self, enabled: bool):
         """Apply or remove super-compact UI mode."""
         self.compact_mode = enabled
@@ -1674,8 +1759,8 @@ class QuillScribeMainWindow(QMainWindow):
                 child.installEventFilter(self)
         except Exception:
             pass
-    
-    
+
+
     def closeEvent(self, event):
         """Handle application close event"""
         # Check if we're forcing exit (from tray menu)
@@ -1707,6 +1792,10 @@ class QuillScribeMainWindow(QMainWindow):
     def _perform_exit(self, event=None):
         """Perform the actual application exit"""
         try:
+            # Record session end
+            if hasattr(self, '_statistics_manager') and self._statistics_manager is not None:
+                self.statistics_manager.record_session_end()
+
             if self.is_recording:
                 self.stop_recording()
             self.audio_manager.stop_monitoring()
@@ -1822,7 +1911,7 @@ def main():
     app.setApplicationName("QuillScribe")
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("QuillScribe")
-    
+
     # Windows-specific taskbar configuration
     if sys.platform == "win32" and ctypes is not None:
         try:
@@ -1831,7 +1920,7 @@ def main():
             windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuillScribe.VoiceTranscription.1.0")
         except Exception as e:
             print(f"Warning: Could not set Windows App Model ID: {e}")
-    
+
     # Set application icon (ICO format only - guaranteed to be present)
     try:
         from pathlib import Path
@@ -1842,11 +1931,11 @@ def main():
         else:
             # Running from source
             ico_path = Path(__file__).parent / "app_logo.ico"
-        
+
         app.setWindowIcon(QIcon(str(ico_path)))
     except Exception as e:
         print(f"Error: Could not load application icon: {e}")
-    
+
     # Create and show main window
     window = QuillScribeMainWindow()
 

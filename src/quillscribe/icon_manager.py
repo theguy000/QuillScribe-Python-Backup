@@ -22,10 +22,12 @@ class IconManager:
         'audio': 'mic.svg',  # Use microphone icon for audio settings
         'settings': 'settings.svg',
         'close': 'x.svg',  # Simple X icon for close buttons
+        'minimize': 'minimize.svg',  # Simple horizontal line for minimize buttons
         
         # Output/clipboard icons
         'clipboard': 'clipboard.svg',
         'eye': 'eye.svg',
+        'eye-off': 'eye-off.svg',
         'copy': 'clipboard.svg',
         'paste': 'clipboard.svg',  # Could also use a separate paste icon if available
         
@@ -207,3 +209,19 @@ def get_white_button_icon(icon_name: str, size: int = 16) -> QIcon:
     """Convenience function to get a white button icon for dark backgrounds with improved alignment."""
     # Apply a 2px vertical offset to improve alignment with text
     return icon_manager.create_button_icon(icon_name, size, QColor(255, 255, 255), vertical_offset=2)
+
+
+def get_themed_button_icon(icon_name: str, size: int = 16, is_dark: bool = False) -> QIcon:
+    """Get a button icon with appropriate color for the current theme."""
+    if is_dark:
+        return get_white_button_icon(icon_name, size)
+    else:
+        return get_button_icon(icon_name, size)
+
+
+def get_themed_icon(icon_name: str, size: int = 24, is_dark: bool = False) -> QIcon:
+    """Get an icon with appropriate color for the current theme."""
+    if is_dark:
+        return get_icon(icon_name, size, QColor(255, 255, 255))
+    else:
+        return get_icon(icon_name, size)
