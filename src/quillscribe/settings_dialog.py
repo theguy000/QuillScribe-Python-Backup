@@ -579,6 +579,26 @@ class AudioTab(QWidget):
         self.refresh_button.clicked.connect(self.refresh_devices)
         mic_selection_layout.addWidget(self.refresh_button)
 
+        # Add blocklist button
+        self.blocklist_button = QPushButton("Blocklist")
+        self.blocklist_button.setIcon(get_white_button_icon('block', 16))
+        self.blocklist_button.setIconSize(QSize(16, 16))
+        self.blocklist_button.setStyleSheet("""
+            QPushButton {
+                background: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            QPushButton:hover {
+                background: #c82333;
+            }
+        """)
+        self.blocklist_button.clicked.connect(self.show_blocklist_dialog)
+        mic_selection_layout.addWidget(self.blocklist_button)
+
         mic_layout.addRow("Select Microphone:", mic_selection_layout)
 
         # Add device change connection
@@ -772,7 +792,29 @@ class AudioTab(QWidget):
         self.mic_combo.clear()
         devices = self.audio_manager.get_available_devices()
 
+        # Get blocklist from config
+        blocklist = self.config_manager.get_setting("audio/microphone_blocklist", [])
+
+        # Remove duplicates and apply blocklist
+        seen_names = set()
+        filtered_devices = []
+
         for device in devices:
+            device_name = device['name']
+            device_id = device['id']
+
+            # Skip if device is in blocklist
+            if device_name in blocklist:
+                continue
+
+            # Skip if we've already seen this device name (remove duplicates)
+            if device_name in seen_names:
+                continue
+
+            seen_names.add(device_name)
+            filtered_devices.append(device)
+
+        for device in filtered_devices:
             self.mic_combo.addItem(f"{device['name']}", device['id'])
 
         # Try to restore previous selection
@@ -783,11 +825,14 @@ class AudioTab(QWidget):
                     break
 
         # If no devices found, show helpful message
-        if len(devices) == 0:
-            self.mic_combo.addItem("No microphones found", None)
+        if len(filtered_devices) == 0:
+            if len(devices) > 0:
+                self.mic_combo.addItem("All microphones are blocked", None)
+            else:
+                self.mic_combo.addItem("No microphones found", None)
 
         # Store current device list for comparison
-        self.last_device_list = [device['id'] for device in devices]
+        self.last_device_list = [device['id'] for device in filtered_devices]
 
     def test_microphone(self):
         """Test the selected microphone with continuous level monitoring"""
@@ -950,6 +995,193 @@ class AudioTab(QWidget):
                         break
         except Exception as e:
             print(f"Error auto-selecting microphone: {e}")
+
+    def show_blocklist_dialog(self):
+        """Show dialog to manage microphone blocklist"""
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem, QPushButton, QLabel
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Microphone Blocklist")
+        dialog.setModal(True)
+        dialog.resize(600, 400)
+
+        layout = QVBoxLayout(dialog)
+
+        # Instructions
+        instructions = QLabel("Blocked microphones will not appear in the microphone selection list.")
+        instructions.setWordWrap(True)
+        instructions.setStyleSheet("color: #6c757d; font-size: 12px; margin-bottom: 10px;")
+        layout.addWidget(instructions)
+
+        # Available devices section
+        available_label = QLabel("Available Microphones:")
+        available_label.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
+        layout.addWidget(available_label)
+
+        available_list = QListWidget()
+        available_list.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: #ffffff;
+                selection-background-color: #ffebee;
+                selection-color: #d32f2f;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #f0f0f0;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item:selected {
+                background-color: #ffcdd2;
+                color: #d32f2f;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item:hover {
+                background-color: #fce4ec;
+            }
+            QListWidget::item:focus {
+                outline: none;
+                border: none;
+            }
+        """)
+        layout.addWidget(available_list)
+
+        # Buttons for available devices
+        available_buttons = QHBoxLayout()
+        block_button = QPushButton("Block Selected")
+        block_button.setIcon(get_button_icon('block', 16))
+        block_button.clicked.connect(lambda: self._move_to_blocklist(available_list, blocked_list))
+        available_buttons.addWidget(block_button)
+        available_buttons.addStretch()
+        layout.addLayout(available_buttons)
+
+        # Blocked devices section
+        blocked_label = QLabel("Blocked Microphones:")
+        blocked_label.setStyleSheet("font-weight: bold; margin-bottom: 5px; margin-top: 10px;")
+        layout.addWidget(blocked_label)
+
+        blocked_list = QListWidget()
+        blocked_list.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: #ffffff;
+                selection-background-color: #ffebee;
+                selection-color: #d32f2f;
+                outline: none;
+            }
+            QListWidget::item {
+                padding: 12px;
+                border-bottom: 1px solid #f0f0f0;
+                background-color: #ffebee;
+                color: #d32f2f;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item:selected {
+                background-color: #ffcdd2;
+                color: #d32f2f;
+                border: none;
+                outline: none;
+            }
+            QListWidget::item:hover {
+                background-color: #fce4ec;
+            }
+            QListWidget::item:focus {
+                outline: none;
+                border: none;
+            }
+        """)
+        layout.addWidget(blocked_list)
+
+        # Buttons for blocked devices
+        blocked_buttons = QHBoxLayout()
+        unblock_button = QPushButton("Unblock Selected")
+        unblock_button.setIcon(get_button_icon('refresh', 16))
+        unblock_button.clicked.connect(lambda: self._move_from_blocklist(blocked_list, available_list))
+        blocked_buttons.addWidget(unblock_button)
+        blocked_buttons.addStretch()
+        layout.addLayout(blocked_buttons)
+
+        # Dialog buttons
+        dialog_buttons = QHBoxLayout()
+        dialog_buttons.addStretch()
+
+        save_button = QPushButton("Save")
+        save_button.clicked.connect(lambda: self._save_blocklist(dialog, available_list, blocked_list))
+        dialog_buttons.addWidget(save_button)
+
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(dialog.reject)
+        dialog_buttons.addWidget(cancel_button)
+
+        layout.addLayout(dialog_buttons)
+
+        # Populate lists
+        self._populate_blocklist_dialog(available_list, blocked_list)
+
+        dialog.exec()
+
+    def _populate_blocklist_dialog(self, available_list, blocked_list):
+        """Populate the blocklist dialog with current devices"""
+        # Get all devices (including blocked ones)
+        self.audio_manager.update_available_devices()
+        all_devices = self.audio_manager.get_available_devices()
+
+        # Get current blocklist
+        blocklist = self.config_manager.get_setting("audio/microphone_blocklist", [])
+
+        # Remove duplicates from all devices
+        seen_names = set()
+        unique_devices = []
+        for device in all_devices:
+            if device['name'] not in seen_names:
+                seen_names.add(device['name'])
+                unique_devices.append(device)
+
+        # Populate lists
+        for device in unique_devices:
+            device_name = device['name']
+            if device_name in blocklist:
+                blocked_list.addItem(device_name)
+            else:
+                available_list.addItem(device_name)
+
+    def _move_to_blocklist(self, available_list, blocked_list):
+        """Move selected device from available to blocked list"""
+        current_item = available_list.currentItem()
+        if current_item:
+            device_name = current_item.text()
+            available_list.takeItem(available_list.row(current_item))
+            blocked_list.addItem(device_name)
+
+    def _move_from_blocklist(self, blocked_list, available_list):
+        """Move selected device from blocked to available list"""
+        current_item = blocked_list.currentItem()
+        if current_item:
+            device_name = current_item.text()
+            blocked_list.takeItem(blocked_list.row(current_item))
+            available_list.addItem(device_name)
+
+    def _save_blocklist(self, dialog, available_list, blocked_list):
+        """Save the blocklist configuration"""
+        # Build new blocklist from blocked_list widget
+        new_blocklist = []
+        for i in range(blocked_list.count()):
+            item = blocked_list.item(i)
+            new_blocklist.append(item.text())
+
+        # Save to config
+        self.config_manager.set_setting("audio/microphone_blocklist", new_blocklist)
+
+        # Refresh the device list to apply changes
+        self.refresh_devices()
+
+        dialog.accept()
 
     def detect_active_microphone_now(self):
         """Manually trigger active microphone detection"""
