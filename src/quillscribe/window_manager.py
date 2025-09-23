@@ -280,8 +280,7 @@ class WindowManager(QObject):
 
     def reapply_always_on_top(self):
         """Reapply always-on-top setting (useful after window flag changes)"""
-        if self.always_on_top:
-            self._apply_always_on_top()
+        self._apply_always_on_top()
 
     def set_snap_enabled(self, enabled: bool):
         """Enable or disable snap-to-edges functionality"""

@@ -46,6 +46,8 @@ class IconManager:
         'trash': 'trash-2.svg',
         'zap': 'zap.svg',
         'category': 'category.svg',
+        'monitor': 'window-minimize.svg',  # Window icon for window manager
+        'x': 'x.svg',  # X icon for exit/close actions
         
 
         

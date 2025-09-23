@@ -52,6 +52,13 @@ class StatisticsManager(QObject):
                     content = f.read().strip()
                     if content:
                         return json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"Error loading statistics: JSON decode error at line {e.lineno}, column {e.colno}: {e.msg}")
+            # Backup corrupted file and create new one
+            if self.stats_file.exists():
+                backup_file = self.stats_file.with_suffix('.json.backup')
+                self.stats_file.rename(backup_file)
+                print(f"Corrupted statistics file backed up to: {backup_file}")
         except Exception as e:
             print(f"Error loading statistics: {e}")
         

@@ -128,9 +128,12 @@ class WindowManagerDialog(QDialog):
         
         layout.addLayout(button_layout)
 
-        # Apply theme manager for icon theming
+        # Apply theme manager for icon theming and connect to theme changes
         theme_manager = get_theme_manager()
         theme_manager.apply_icons_to_widget(self)
+
+        # Connect to theme changes for dynamic theming
+        theme_manager.theme_changed.connect(self._on_theme_changed)
     
     def load_settings(self):
         """Load current window management settings"""
@@ -155,14 +158,23 @@ class WindowManagerDialog(QDialog):
         # Apply to window manager
         if self.window_manager:
             try:
-                if self.always_on_top_checkbox.isChecked():
-                    self.window_manager.set_always_on_top(True)
-                else:
-                    self.window_manager.set_always_on_top(False)
-                
+                always_on_top_enabled = self.always_on_top_checkbox.isChecked()
+                print(f"Applying always-on-top setting: {always_on_top_enabled}")
+
+                self.window_manager.set_always_on_top(always_on_top_enabled)
+
+                # Verify the setting was applied
+                actual_state = self.window_manager.is_always_on_top()
+                print(f"Always-on-top state after setting: {actual_state}")
+
                 self.status_label.setText("Settings applied successfully")
                 self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
+
+                # Update status to reflect actual state
+                self.update_status()
+
             except Exception as e:
+                print(f"Error applying always-on-top setting: {e}")
                 self.status_label.setText(f"Error: {str(e)}")
                 self.status_label.setStyleSheet("color: #dc3545; font-weight: bold;")
         
@@ -172,36 +184,51 @@ class WindowManagerDialog(QDialog):
         """Move window to specified position"""
         if not self.parent_window:
             return
-        
+
         try:
-            if self.window_manager:
-                self.window_manager.move_to_position(self.parent_window, position)
-                self.status_label.setText(f"Moved to {position.replace('_', ' ').title()}")
-                self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
+            # Temporarily disable snap detection to prevent interference
+            snap_was_enabled = False
+            if self.window_manager and hasattr(self.window_manager, 'snap_enabled'):
+                snap_was_enabled = self.window_manager.snap_enabled
+                self.window_manager.snap_enabled = False
+
+            # Use direct positioning since window manager doesn't have move_to_position method
+            screen = self.parent_window.screen().availableGeometry()
+            window_size = self.parent_window.size()
+
+            if position == "top_left":
+                new_x = screen.x()
+                new_y = screen.y()
+            elif position == "top_right":
+                new_x = screen.x() + screen.width() - window_size.width()
+                new_y = screen.y()
+            elif position == "bottom_left":
+                new_x = screen.x()
+                new_y = screen.y() + screen.height() - window_size.height()
+            elif position == "bottom_right":
+                new_x = screen.x() + screen.width() - window_size.width()
+                new_y = screen.y() + screen.height() - window_size.height()
+            elif position == "center":
+                new_x = screen.x() + (screen.width() - window_size.width()) // 2
+                new_y = screen.y() + (screen.height() - window_size.height()) // 2
             else:
-                # Fallback positioning without window manager
-                screen = self.parent_window.screen().availableGeometry()
-                window_size = self.parent_window.size()
-                
-                if position == "top_left":
-                    self.parent_window.move(screen.x(), screen.y())
-                elif position == "top_right":
-                    self.parent_window.move(screen.x() + screen.width() - window_size.width(), screen.y())
-                elif position == "bottom_left":
-                    self.parent_window.move(screen.x(), screen.y() + screen.height() - window_size.height())
-                elif position == "bottom_right":
-                    self.parent_window.move(
-                        screen.x() + screen.width() - window_size.width(),
-                        screen.y() + screen.height() - window_size.height()
-                    )
-                elif position == "center":
-                    center_x = screen.x() + (screen.width() - window_size.width()) // 2
-                    center_y = screen.y() + (screen.height() - window_size.height()) // 2
-                    self.parent_window.move(center_x, center_y)
-                
-                self.status_label.setText(f"Moved to {position.replace('_', ' ').title()}")
-                self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
-        
+                return
+
+            # Debug output
+            print(f"Moving window to position {position}: ({new_x}, {new_y})")
+            print(f"Screen geometry: {screen}")
+            print(f"Window size: {window_size}")
+
+            self.parent_window.move(new_x, new_y)
+
+            # Re-enable snap detection after a short delay
+            if self.window_manager and snap_was_enabled:
+                from PySide6.QtCore import QTimer
+                QTimer.singleShot(500, lambda: setattr(self.window_manager, 'snap_enabled', True))
+
+            self.status_label.setText(f"Moved to {position.replace('_', ' ').title()}")
+            self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
+
         except Exception as e:
             self.status_label.setText(f"Error moving window: {str(e)}")
             self.status_label.setStyleSheet("color: #dc3545; font-weight: bold;")
@@ -224,36 +251,20 @@ class WindowManagerDialog(QDialog):
             self.status_label.setStyleSheet("color: #6c757d; font-weight: bold;")
 
     def apply_theme(self, theme_name: str):
-        """Apply theme to the window manager dialog"""
-        # Theme color definitions (same as main settings dialog)
-        THEMES = {
-            "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-            "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-            "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-            "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-            "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-            "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
-            # Dark theme variations
-            "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-            "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-            "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-            "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-            "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
-        }
+        """Apply theme to the window manager dialog using theme manager"""
+        # Get theme manager but don't call set_theme to avoid recursion
+        theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
 
-        if theme_name not in THEMES:
-            theme_name = "white"
-
-        theme = THEMES[theme_name]
-        primary_color = theme["primary"]
-        secondary_color = theme["secondary"]
-
-        # Determine if this is a dark theme
+        # Determine if dark theme manually to avoid recursion
+        primary_color = colors["primary"]
         r = int(primary_color.lstrip('#')[0:2], 16)
         g = int(primary_color.lstrip('#')[2:4], 16)
         b = int(primary_color.lstrip('#')[4:6], 16)
         brightness = (r * 299 + g * 587 + b * 114) / 1000
         is_dark = brightness < 128
+
+        secondary_color = colors["secondary"]
 
         # Apply theme to dialog background
         if is_dark:
@@ -285,13 +296,24 @@ class WindowManagerDialog(QDialog):
 
         self.setStyleSheet(dialog_style)
 
-        # Apply theme to buttons
+        # Apply theme to buttons using ModernButton's apply_theme method
         for button in [self.top_left_button, self.top_right_button, self.bottom_left_button,
                       self.bottom_right_button, self.center_button, self.apply_button, self.close_button]:
             if hasattr(button, 'apply_theme'):
                 button.apply_theme(primary_color, secondary_color)
 
-        # Apply theme to group boxes
-        for group in [getattr(self, attr) for attr in dir(self) if attr.endswith('_group')]:
-            if hasattr(group, 'apply_theme'):
-                group.apply_theme(primary_color, secondary_color)
+        # Apply theme to group boxes using ModernGroupBox's apply_theme method
+        from ..ui_components import ModernGroupBox
+        for group_box in self.findChildren(ModernGroupBox):
+            if hasattr(group_box, 'apply_theme'):
+                group_box.apply_theme(primary_color, secondary_color)
+
+        # Apply themed icons without calling theme manager methods that might cause recursion
+        try:
+            theme_manager.apply_icons_to_widget(self, is_dark)
+        except Exception as e:
+            print(f"Warning: Error applying themed icons: {e}")
+
+    def _on_theme_changed(self, theme_name: str, is_dark: bool):
+        """Handle theme change signal for dynamic theming"""
+        self.apply_theme(theme_name)

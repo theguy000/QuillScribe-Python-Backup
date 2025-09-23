@@ -1034,7 +1034,7 @@ class QuillScribeMainWindow(QMainWindow):
     def setup_tray_manager(self):
         """Setup system tray manager"""
         try:
-            self.tray_manager = TrayManager(self)
+            self.tray_manager = TrayManager(self.config_manager, self)
 
             # Connect tray manager signals
             self.tray_manager.show_window_requested.connect(self.show_from_tray)
@@ -1285,6 +1285,9 @@ class QuillScribeMainWindow(QMainWindow):
         """Show context menu with application options"""
         context_menu = QMenu(self)
 
+        # Apply theme to context menu
+        self._apply_context_menu_theme(context_menu)
+
         # Settings action
         settings_action = context_menu.addAction("Settings")
         settings_action.setIcon(get_icon('settings', 16))
@@ -1303,6 +1306,72 @@ class QuillScribeMainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
 
         context_menu.exec(event.globalPos())
+
+    def _apply_context_menu_theme(self, menu):
+        """Apply current theme to context menu"""
+        current_theme = self.config_manager.get_setting("ui/theme", "white")
+        theme = self.THEMES.get(current_theme, self.THEMES["white"])
+        primary_color = theme["primary"]
+
+        # Determine if this is a dark theme
+        r = int(primary_color.lstrip('#')[0:2], 16)
+        g = int(primary_color.lstrip('#')[2:4], 16)
+        b = int(primary_color.lstrip('#')[4:6], 16)
+        brightness = (r * 299 + g * 587 + b * 114) / 1000
+        is_dark = brightness < 128
+
+        if is_dark:
+            # Dark theme styling
+            menu_style = f"""
+                QMenu {{
+                    background-color: {primary_color};
+                    color: #e9ecef;
+                    border: 1px solid #495057;
+                    border-radius: 4px;
+                    padding: 4px;
+                }}
+                QMenu::item {{
+                    background-color: transparent;
+                    padding: 6px 20px;
+                    border-radius: 2px;
+                }}
+                QMenu::item:selected {{
+                    background-color: #495057;
+                    color: #ffffff;
+                }}
+                QMenu::separator {{
+                    height: 1px;
+                    background-color: #495057;
+                    margin: 4px 8px;
+                }}
+            """
+        else:
+            # Light theme styling
+            menu_style = f"""
+                QMenu {{
+                    background-color: {primary_color};
+                    color: #212529;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 4px;
+                }}
+                QMenu::item {{
+                    background-color: transparent;
+                    padding: 6px 20px;
+                    border-radius: 2px;
+                }}
+                QMenu::item:selected {{
+                    background-color: #e9ecef;
+                    color: #212529;
+                }}
+                QMenu::separator {{
+                    height: 1px;
+                    background-color: #dee2e6;
+                    margin: 4px 8px;
+                }}
+            """
+
+        menu.setStyleSheet(menu_style)
 
     def load_settings(self):
         """Load and apply saved settings"""
@@ -1601,6 +1670,10 @@ class QuillScribeMainWindow(QMainWindow):
         # Apply themed icons to all components
         theme_manager = get_theme_manager()
         theme_manager.apply_icons_to_widget(self)
+
+        # Update tray menu theme
+        if hasattr(self, 'tray_manager') and self.tray_manager:
+            self.tray_manager.update_theme()
 
         # Apply theme to close button
         self.apply_close_button_theme(self.is_dark)
