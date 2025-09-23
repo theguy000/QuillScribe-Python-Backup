@@ -8,9 +8,10 @@ import math
 from typing import Optional
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QGraphicsDropShadowEffect, QSizePolicy, QMessageBox
+    QPushButton, QLabel, QGraphicsDropShadowEffect, QSizePolicy, QMessageBox,
+    QSystemTrayIcon, QMenu
 )
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher, Slot
 from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QIcon, QPixmap, QShortcut, QKeySequence
 
 try:
@@ -45,12 +46,12 @@ class WindowsHotkeyEventFilter(QAbstractNativeEventFilter):
                     # If message is an integer pointer
                     msg_ptr = ctypes.cast(int(message), ctypes.POINTER(wintypes.MSG))
                 elif hasattr(message, 'value'):
-                    # If message is a sip.voidptr 
+                    # If message is a sip.voidptr
                     msg_ptr = ctypes.cast(message.value, ctypes.POINTER(wintypes.MSG))
                 else:
                     # Try direct cast as fallback
                     msg_ptr = ctypes.cast(message, ctypes.POINTER(wintypes.MSG))
-                
+
                 msg = msg_ptr.contents
                 if msg.message == WM_HOTKEY:
                     hotkey_id = int(msg.wParam)
@@ -61,6 +62,9 @@ class WindowsHotkeyEventFilter(QAbstractNativeEventFilter):
                         except Exception as e:
                             print(f"Hotkey callback error: {e}")
                     return True, 0
+        except KeyboardInterrupt:
+            # Handle Ctrl+C gracefully - don't process the event
+            return False, 0
         except Exception as e:
             # Only print this occasionally to avoid spam
             import time
@@ -219,20 +223,33 @@ class WindowsGlobalHotkeyManager:
             self.id_to_callback.pop(hotkey_id, None)
 
     def cleanup(self):
-        self.unregister_all()
-        dispatcher = QAbstractEventDispatcher.instance()
-        if dispatcher is not None and self.event_filter is not None:
-            try:
+        """Clean up hotkey manager resources"""
+        try:
+            self.unregister_all()
+        except Exception as e:
+            print(f"Warning: Error unregistering hotkeys: {e}")
+
+        # Remove native event filter
+        try:
+            dispatcher = QAbstractEventDispatcher.instance()
+            if dispatcher is not None and self.event_filter is not None:
                 dispatcher.removeNativeEventFilter(self.event_filter)
-            except Exception:
-                pass
+                self.event_filter = None
+        except Exception as e:
+            print(f"Warning: Error removing native event filter: {e}")
+
+        # Clear references
+        self.id_to_callback.clear()
+        self.registered_ids.clear()
 
 from .audio_manager import AudioManager
 from .whisper_manager import WhisperManager
-from .settings_dialog import SettingsDialog, UISettingsDialog
+from .settings_dialog import SettingsDialog, UISettingsDialog, WindowManagerDialog
 from .output_manager import OutputManager
 from .config_manager import ConfigManager
 from .sound_manager import SoundManager
+from .tray_manager import TrayManager
+from .window_manager import WindowManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon
 
 
@@ -316,6 +333,7 @@ class BreathingMicrophone(QWidget):
         self.animation.stop()
         self.update()  # Force visual refresh
     
+    @Slot(float)
     def update_audio_level(self, level: float):
         """Update level (used for waveform only); do not scale mic with level"""
         # Additional gentle smoothing for visual stability
@@ -553,11 +571,10 @@ class QuillScribeMainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        # Initialize essential components first
         self.config_manager = ConfigManager()
-        self.audio_manager = AudioManager()
-        self.whisper_manager = WhisperManager()
-        self.output_manager = OutputManager(self.config_manager)
-        self.sound_manager = SoundManager()
+
+        # Initialize UI state variables
         self.settings_dialog = None
         self.is_recording = False
         self.compact_mode = False
@@ -565,25 +582,94 @@ class QuillScribeMainWindow(QMainWindow):
         self._drag_active = False
         self._drag_offset = None
         self._app_shortcut = None
-        
+        self.tray_manager = None
+        self.window_manager = None
+        self._force_exit = False
+
+        # Lazy-loaded managers (initialized when first needed)
+        self._audio_manager = None
+        self._whisper_manager = None
+        self._output_manager = None
+        self._sound_manager = None
+
+        # Background initialization flags
+        self._audio_monitoring_started = False
+        self._hotkey_setup_completed = False
+
+        # Setup UI first for fast startup
         self.setup_ui()
         self.setup_connections()
         self.load_settings()
         self.center_window()
         self.install_drag_filters()
-        
-        # Start audio monitoring for microphone animation
-        try:
-            self.audio_manager.start_monitoring()
-        except Exception as e:
-            print(f"Warning: Could not start audio monitoring: {e}")
 
-        # Register global/app shortcut
+        # Setup tray and window manager (lightweight)
+        self.setup_tray_manager()
+        self.setup_window_manager()
+
+        # Schedule background initialization
+        QTimer.singleShot(100, self._initialize_background_components)
+
+    @property
+    def audio_manager(self):
+        """Lazy-loaded audio manager"""
+        if self._audio_manager is None:
+            self._audio_manager = AudioManager()
+        return self._audio_manager
+
+    @property
+    def whisper_manager(self):
+        """Lazy-loaded whisper manager"""
+        if self._whisper_manager is None:
+            self._whisper_manager = WhisperManager()
+        return self._whisper_manager
+
+    @property
+    def output_manager(self):
+        """Lazy-loaded output manager"""
+        if self._output_manager is None:
+            self._output_manager = OutputManager(self.config_manager)
+        return self._output_manager
+
+    @property
+    def sound_manager(self):
+        """Lazy-loaded sound manager"""
+        if self._sound_manager is None:
+            self._sound_manager = SoundManager()
+        return self._sound_manager
+
+    def _initialize_background_components(self):
+        """Initialize components in background for better startup performance"""
+        # Initialize audio manager and start monitoring
+        if not self._audio_monitoring_started:
+            try:
+                # This will trigger lazy loading of audio_manager
+                self.audio_manager.start_monitoring()
+                self._audio_monitoring_started = True
+            except Exception as e:
+                print(f"Warning: Could not start audio monitoring: {e}")
+
+        # Setup hotkeys
+        if not self._hotkey_setup_completed:
+            try:
+                self._ensure_hotkey_manager()
+                self.apply_hotkey_setting()
+                self._hotkey_setup_completed = True
+            except Exception as e:
+                print(f"Warning: Could not set up hotkey: {e}")
+
+        # Pre-initialize other managers for faster first use
+        QTimer.singleShot(500, self._preload_remaining_components)
+
+    def _preload_remaining_components(self):
+        """Preload remaining components after UI is fully loaded"""
         try:
-            self._ensure_hotkey_manager()
-            self.apply_hotkey_setting()
+            # Trigger lazy loading of remaining managers
+            _ = self.sound_manager  # Initialize sound manager
+            _ = self.output_manager  # Initialize output manager
+            # Note: whisper_manager is not preloaded as it's heavy and mode-dependent
         except Exception as e:
-            print(f"Warning: Could not set up hotkey: {e}")
+            print(f"Warning: Could not preload components: {e}")
 
     def _ensure_hotkey_manager(self):
         """Create platform-specific hotkey manager if not yet created."""
@@ -835,7 +921,7 @@ class QuillScribeMainWindow(QMainWindow):
                 background: #d0d0d0;
             }
         """)
-        self.minimize_btn.clicked.connect(self.showMinimized)
+        self.minimize_btn.clicked.connect(self.minimize_window)
         right_layout.addWidget(self.minimize_btn)
         
         # Close button
@@ -901,9 +987,12 @@ class QuillScribeMainWindow(QMainWindow):
         """Connect signals and slots"""
         self.microphone.clicked.connect(self.toggle_recording)
         self.settings_button.clicked.connect(self.show_settings)
-        
+
         # Audio manager connections
-        self.audio_manager.audio_level_changed.connect(self.microphone.update_audio_level)
+        try:
+            self.audio_manager.audio_level_changed.connect(self.microphone.update_audio_level)
+        except Exception as e:
+            print(f"Warning: Could not connect audio level signal: {e}")
         
         # Whisper manager connections  
         self.whisper_manager.transcription_ready.connect(self.handle_transcription)
@@ -912,16 +1001,93 @@ class QuillScribeMainWindow(QMainWindow):
         # Output manager connections
         self.output_manager.operation_complete.connect(self.update_status)
         self.output_manager.operation_failed.connect(self.handle_output_error)
-    
+
+    def setup_tray_manager(self):
+        """Setup system tray manager"""
+        try:
+            self.tray_manager = TrayManager(self)
+
+            # Connect tray manager signals
+            self.tray_manager.show_window_requested.connect(self.show_from_tray)
+            self.tray_manager.start_recording_requested.connect(self.start_recording)
+            self.tray_manager.stop_recording_requested.connect(self.stop_recording)
+            self.tray_manager.settings_requested.connect(self.show_settings)
+            self.tray_manager.exit_requested.connect(self.exit_application)
+
+        except Exception as e:
+            print(f"Warning: Could not setup tray manager: {e}")
+            self.tray_manager = None
+
+    def setup_window_manager(self):
+        """Setup window management system"""
+        try:
+            self.window_manager = WindowManager(self, self.config_manager, self)
+
+            # Connect window manager signals
+            self.window_manager.monitor_changed.connect(self._on_monitor_changed)
+            self.window_manager.snap_performed.connect(self._on_snap_performed)
+
+        except Exception as e:
+            print(f"Warning: Could not setup window manager: {e}")
+            self.window_manager = None
+
+    def _on_monitor_changed(self, monitor_id: str):
+        """Handle monitor change event"""
+        print(f"Window moved to monitor: {monitor_id}")
+
+    def _on_snap_performed(self, edge: str):
+        """Handle snap-to-edge event"""
+        print(f"Window snapped to: {edge}")
+
     def center_window(self):
         """Center the window on screen"""
-        screen = QApplication.primaryScreen().availableGeometry()
-        size = self.geometry()
-        self.move(
-            (screen.width() - size.width()) // 2,
-            (screen.height() - size.height()) // 2
-        )
-    
+        if self.window_manager:
+            # Try to restore saved position first
+            self.window_manager.restore_window_position()
+        else:
+            # Fallback to simple centering
+            screen = QApplication.primaryScreen().availableGeometry()
+            size = self.geometry()
+            self.move(
+                (screen.width() - size.width()) // 2,
+                (screen.height() - size.height()) // 2
+            )
+
+    def show_from_tray(self):
+        """Show window from system tray"""
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        # Keep tray icon visible for easy access
+
+    def hide_to_tray(self):
+        """Hide window to system tray"""
+        if self.tray_manager and self.tray_manager.is_available():
+            self.hide()
+            self.tray_manager.show_tray()
+        else:
+            # Fallback to regular minimize if tray not available
+            self.showMinimized()
+
+    def exit_application(self):
+        """Exit the application completely"""
+        # Set a flag to bypass minimize on close
+        self._force_exit = True
+        self.close()
+
+    def minimize_window(self):
+        """Handle minimize button click - minimize to tray or taskbar based on settings"""
+        try:
+            minimize_to_tray = bool(self.config_manager.get_setting("ui/minimize_to_tray", False))
+        except Exception:
+            minimize_to_tray = False
+
+        # If minimize to tray is enabled, use tray; otherwise use taskbar
+        if minimize_to_tray:
+            self.hide_to_tray()
+        else:
+            self.showMinimized()
+
     def toggle_recording(self):
         """Toggle between recording and stop states"""
         if not self.is_recording:
@@ -937,7 +1103,11 @@ class QuillScribeMainWindow(QMainWindow):
         self.is_recording = True
         self.status_label.setText("Recording... (Click microphone or press shortcut to stop)")
         self.microphone.start_recording_breathing()
-        
+
+        # Update tray manager
+        if self.tray_manager:
+            self.tray_manager.set_recording_state(True)
+
         # Start audio capture
         try:
             self.audio_manager.start_recording()
@@ -946,13 +1116,20 @@ class QuillScribeMainWindow(QMainWindow):
             self.is_recording = False
             self.status_label.setText("Click microphone or press shortcut to start recording")
             self.microphone.stop_recording()
+            # Update tray manager
+            if self.tray_manager:
+                self.tray_manager.set_recording_state(False)
     
     def stop_recording(self):
         """Stop voice recording"""
         self.is_recording = False
         self.status_label.setText("Processing...")
         self.microphone.stop_recording()
-        
+
+        # Update tray manager
+        if self.tray_manager:
+            self.tray_manager.set_recording_state(False)
+
         # Stop audio capture and process
         audio_data = self.audio_manager.stop_recording()
         if audio_data is not None and len(audio_data) > 0:
@@ -1013,7 +1190,40 @@ class QuillScribeMainWindow(QMainWindow):
                 if hasattr(self.settings_dialog, 'audio_tab'):
                     self.settings_dialog.audio_tab.refresh_devices()
             self.settings_dialog.exec()
-    
+
+            # Update window manager settings after dialog closes
+            if self.window_manager:
+                self.window_manager.load_window_settings()
+
+    def show_window_manager(self):
+        """Show window manager dialog"""
+        dialog = WindowManagerDialog(self, self.config_manager, self.window_manager)
+        dialog.settings_saved.connect(self.load_settings)
+        dialog.exec()
+
+    def contextMenuEvent(self, event):
+        """Show context menu with application options"""
+        context_menu = QMenu(self)
+
+        # Settings action
+        settings_action = context_menu.addAction("Settings")
+        settings_action.setIcon(get_icon('settings', 16))
+        settings_action.triggered.connect(self.show_settings)
+
+        # Window Manager action
+        window_manager_action = context_menu.addAction("Window Manager")
+        window_manager_action.setIcon(get_icon('monitor', 16))
+        window_manager_action.triggered.connect(self.show_window_manager)
+
+        context_menu.addSeparator()
+
+        # Exit action
+        exit_action = context_menu.addAction("Exit")
+        exit_action.setIcon(get_icon('x', 16))
+        exit_action.triggered.connect(self.close)
+
+        context_menu.exec(event.globalPos())
+
     def load_settings(self):
         """Load and apply saved settings"""
         try:
@@ -1163,27 +1373,36 @@ class QuillScribeMainWindow(QMainWindow):
 
     def apply_hotkey_setting(self):
         """Register the configured recording shortcut; fallback to app-level shortcut if global fails."""
-        # Clear existing app shortcut
-        if self._app_shortcut is not None:
-            try:
-                self._app_shortcut.activated.disconnect()
-            except Exception:
-                pass
-            self._app_shortcut.setParent(None)
-            self._app_shortcut = None
+        # Prevent multiple simultaneous registrations
+        if hasattr(self, '_applying_hotkey') and self._applying_hotkey:
+            return
 
-        shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Win+F")
-        if not isinstance(shortcut_text, str) or not shortcut_text:
-            shortcut_text = "Win+F"
-        
-        # Try global first on Windows
-        registered_globally = False
-        if getattr(self, "hotkey_manager", None) is not None:
-            try:
-                registered_globally = self.hotkey_manager.register_hotkey(shortcut_text, self.toggle_recording)
-            except Exception as e:
-                print(f"Hotkey registration error: {e}")
-                registered_globally = False
+        try:
+            self._applying_hotkey = True
+
+            # Clear existing app shortcut
+            if self._app_shortcut is not None:
+                try:
+                    self._app_shortcut.activated.disconnect()
+                except Exception:
+                    pass
+                self._app_shortcut.setParent(None)
+                self._app_shortcut = None
+
+            shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
+            if not isinstance(shortcut_text, str) or not shortcut_text:
+                shortcut_text = "Meta+`"
+
+            # Try global first on Windows
+            registered_globally = False
+            if getattr(self, "hotkey_manager", None) is not None:
+                try:
+                    registered_globally = self.hotkey_manager.register_hotkey(shortcut_text, self.toggle_recording)
+                except Exception as e:
+                    print(f"Hotkey registration error: {e}")
+                    registered_globally = False
+        finally:
+            self._applying_hotkey = False
 
         if not registered_globally:
             # Fallback: in-app shortcut (works when app is focused)
@@ -1459,33 +1678,82 @@ class QuillScribeMainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Handle application close event"""
+        # Check if we're forcing exit (from tray menu)
+        if hasattr(self, '_force_exit') and self._force_exit:
+            # Proceed with actual close
+            self._perform_exit(event)
+            return
+
         try:
             minimize_on_close = bool(self.config_manager.get_setting("ui/minimize_on_close", True))
+            minimize_to_tray = bool(self.config_manager.get_setting("ui/minimize_to_tray", False))
         except Exception:
             minimize_on_close = True
+            minimize_to_tray = False
 
-        if minimize_on_close:
+        # Priority: minimize to tray > minimize on close > exit
+        if minimize_to_tray:
+            event.ignore()
+            self.hide_to_tray()
+            return
+        elif minimize_on_close:
             event.ignore()
             self.showMinimized()
             return
 
         # Proceed with actual close
+        self._perform_exit(event)
+
+    def _perform_exit(self, event=None):
+        """Perform the actual application exit"""
         try:
             if self.is_recording:
                 self.stop_recording()
             self.audio_manager.stop_monitoring()
             self.sound_manager.cleanup()
+
+            # Cleanup hotkey manager first (this removes the native event filter)
             if hasattr(self, "hotkey_manager") and self.hotkey_manager is not None:
                 try:
                     self.hotkey_manager.cleanup()
-                except Exception:
-                    pass
-            pos = self.pos()
-            self.config_manager.set_setting("ui/window_x", pos.x())
-            self.config_manager.set_setting("ui/window_y", pos.y())
-            self.config_manager.save_settings()
+                    self.hotkey_manager = None
+                except Exception as e:
+                    print(f"Warning: Error cleaning up hotkey manager: {e}")
+
+            # Cleanup tray manager before exit
+            if self.tray_manager:
+                try:
+                    self.tray_manager.cleanup()
+                    self.tray_manager = None
+                except Exception as e:
+                    print(f"Warning: Error cleaning up tray manager: {e}")
+
+            # Cleanup window manager before exit
+            if self.window_manager:
+                try:
+                    self.window_manager.cleanup()
+                    self.window_manager = None
+                except Exception as e:
+                    print(f"Warning: Error cleaning up window manager: {e}")
+
+            # Save window position
+            try:
+                pos = self.pos()
+                self.config_manager.set_setting("ui/window_x", pos.x())
+                self.config_manager.set_setting("ui/window_y", pos.y())
+                self.config_manager.save_settings()
+            except Exception as e:
+                print(f"Warning: Error saving settings: {e}")
+
+        except Exception as e:
+            print(f"Error during exit cleanup: {e}")
         finally:
-            event.accept()
+            if event is not None:
+                event.accept()
+            # Force application quit
+            app = QApplication.instance()
+            if app:
+                app.quit()
 
     # Drag-anywhere support for compact mode
     def mousePressEvent(self, event):
@@ -1540,7 +1808,16 @@ class QuillScribeMainWindow(QMainWindow):
 def main():
     """Main application entry point"""
     app = QApplication(sys.argv)
-    
+
+    # Set up signal handling for graceful shutdown
+    import signal
+    def signal_handler(signum, frame):
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
+        app.quit()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     # Set application properties
     app.setApplicationName("QuillScribe")
     app.setApplicationVersion("1.0.0")
@@ -1572,8 +1849,12 @@ def main():
     
     # Create and show main window
     window = QuillScribeMainWindow()
+
+    # Connect app quit signal to window cleanup
+    app.aboutToQuit.connect(lambda: window._perform_exit())
+
     window.show()
-    
+
     return app.exec()
 
 

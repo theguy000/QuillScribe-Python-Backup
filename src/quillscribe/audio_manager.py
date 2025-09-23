@@ -24,25 +24,29 @@ class AudioManager(QObject):
         self.is_recording = False
         self.audio_buffer = []
         self.audio_queue = queue.Queue()
-        
-        # Level monitoring
+
+        # Initialize stream to None
+        self.stream = None
+
+        # Level monitoring (start paused for faster startup)
         self.level_timer = QTimer()
         self.level_timer.timeout.connect(self.update_audio_level)
-        self.level_timer.start(50)  # Update every 50ms
-        
+        # Don't start timer immediately - start when monitoring begins
+
         # Current audio level
         self.current_level = 0.0
         self.level_smoothing = 0.7  # Smoothing factor for level updates
-        
-        # Get available devices
-        self.update_available_devices()
+
+        # Defer device enumeration until needed
+        self.available_devices = []
+        self._devices_enumerated = False
         
     def update_available_devices(self):
         """Update list of available audio input devices"""
         try:
             devices = sd.query_devices()
             self.available_devices = []
-            
+
             for i, device in enumerate(devices):
                 if device['max_input_channels'] > 0:
                     self.available_devices.append({
@@ -51,12 +55,16 @@ class AudioManager(QObject):
                         'channels': device['max_input_channels'],
                         'sample_rate': device['default_samplerate']
                     })
+            self._devices_enumerated = True
         except Exception as e:
             print(f"Error querying audio devices: {e}")
             self.available_devices = []
-    
+            self._devices_enumerated = True  # Mark as attempted even if failed
+
     def get_available_devices(self) -> List[dict]:
-        """Get list of available audio input devices"""
+        """Get list of available audio input devices (lazy enumeration)"""
+        if not self._devices_enumerated:
+            self.update_available_devices()
         return self.available_devices
     
     def set_input_device(self, device_id: Optional[int] = None):
@@ -68,7 +76,7 @@ class AudioManager(QObject):
                 sd.default.device[0] = None  # Use system default
                 
             # If currently monitoring, restart with new device
-            if hasattr(self, 'stream') and self.stream.active:
+            if hasattr(self, 'stream') and self.stream is not None and hasattr(self.stream, 'active') and self.stream.active:
                 self.stop_monitoring()
                 self.start_monitoring()
         except Exception as e:
@@ -107,10 +115,14 @@ class AudioManager(QObject):
     
     def start_monitoring(self):
         """Start audio level monitoring (without recording)"""
-        if hasattr(self, 'stream') and self.stream.active:
+        if hasattr(self, 'stream') and self.stream is not None and hasattr(self.stream, 'active') and self.stream.active:
             return
-            
+
         try:
+            # Start level timer if not already running
+            if not self.level_timer.isActive():
+                self.level_timer.start(50)  # Update every 50ms
+
             # Start audio stream for monitoring only
             self.stream = sd.InputStream(
                 callback=self.audio_callback,
@@ -120,7 +132,7 @@ class AudioManager(QObject):
                 blocksize=1024
             )
             self.stream.start()
-            
+
         except Exception as e:
             print(f"Error starting audio monitoring: {e}")
             # Try to get device info for debugging
@@ -176,20 +188,36 @@ class AudioManager(QObject):
     
     def stop_monitoring(self):
         """Stop audio monitoring completely"""
+        if hasattr(self, '_stopping_monitoring') and self._stopping_monitoring:
+            return  # Prevent recursion
+
         try:
+            self._stopping_monitoring = True
             self.is_recording = False
-            
+
             # Stop and close stream
-            if hasattr(self, 'stream'):
-                self.stream.stop()
-                self.stream.close()
-            
+            if hasattr(self, 'stream') and self.stream is not None:
+                try:
+                    self.stream.stop()
+                except Exception as e:
+                    print(f"Warning: Error stopping stream: {e}")
+                try:
+                    self.stream.close()
+                except Exception as e:
+                    print(f"Warning: Error closing stream: {e}")
+                self.stream = None
+
             # Reset level
             self.current_level = 0.0
-            self.audio_level_changed.emit(0.0)
-            
+            try:
+                self.audio_level_changed.emit(0.0)
+            except Exception as e:
+                print(f"Warning: Error emitting audio level signal: {e}")
+
         except Exception as e:
             print(f"Error stopping monitoring: {e}")
+        finally:
+            self._stopping_monitoring = False
     
     def test_microphone(self, device_id: Optional[int] = None) -> bool:
         """Test if microphone is working"""

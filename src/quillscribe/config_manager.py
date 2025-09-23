@@ -56,10 +56,11 @@ class ConfigManager:
                 "theme": "light",
                 "show_waveform": True,
                 "compact_mode": False,
-                "minimize_on_close": True
+                "minimize_on_close": True,
+                "minimize_to_tray": False
             },
             "shortcuts": {
-                "record_toggle": "Win+F"
+                "record_toggle": "Meta+`"
             },
             "advanced": {
                 "buffer_size": 1024,
@@ -123,11 +124,64 @@ class ConfigManager:
     
     def save_settings(self):
         """Save settings to file"""
+        # Prevent recursion during save
+        if hasattr(self, '_saving_settings') and self._saving_settings:
+            return
+
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.settings, f, indent=2, ensure_ascii=False)
+            self._saving_settings = True
+            # Convert Path to string to avoid recursion issues
+            config_file_str = str(self.config_file)
+
+            # Create a clean copy of settings to avoid any circular references
+            clean_settings = self._clean_settings_for_save(self.settings)
+
+            with open(config_file_str, 'w', encoding='utf-8') as f:
+                json.dump(clean_settings, f, indent=2, ensure_ascii=False)
         except IOError as e:
             print(f"Error saving settings: {e}")
+        except RecursionError as e:
+            print(f"Recursion error saving settings: {e}")
+        except Exception as e:
+            print(f"Unexpected error saving settings: {e}")
+        finally:
+            self._saving_settings = False
+
+    def _clean_settings_for_save(self, obj, seen=None):
+        """Clean settings object to remove any circular references"""
+        if seen is None:
+            seen = set()
+
+        # Check for circular references
+        obj_id = id(obj)
+        if obj_id in seen:
+            return None  # Skip circular reference
+
+        if isinstance(obj, dict):
+            seen.add(obj_id)
+            result = {}
+            for key, value in obj.items():
+                # Only include JSON-serializable keys and values
+                if isinstance(key, (str, int, float, bool)) or key is None:
+                    cleaned_value = self._clean_settings_for_save(value, seen.copy())
+                    if cleaned_value is not None or value is None:
+                        result[key] = cleaned_value
+            seen.remove(obj_id)
+            return result
+        elif isinstance(obj, (list, tuple)):
+            seen.add(obj_id)
+            result = []
+            for item in obj:
+                cleaned_item = self._clean_settings_for_save(item, seen.copy())
+                if cleaned_item is not None or item is None:
+                    result.append(cleaned_item)
+            seen.remove(obj_id)
+            return result
+        elif isinstance(obj, (str, int, float, bool)) or obj is None:
+            return obj
+        else:
+            # Skip non-serializable objects
+            return None
     
     def reset_settings(self, category: Optional[str] = None):
         """Reset settings to defaults"""

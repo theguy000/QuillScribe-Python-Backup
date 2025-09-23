@@ -4,7 +4,7 @@ Beautiful settings panel with modern UI
 """
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QLineEdit, QRadioButton, QButtonGroup,
     QGroupBox, QProgressBar, QTextEdit, QCheckBox, QSlider,
     QTabWidget, QWidget, QFormLayout, QSpacerItem, QSizePolicy,
@@ -18,15 +18,16 @@ from .audio_manager import AudioManager
 from .whisper_manager import WhisperManager
 from .config_manager import ConfigManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon
+from .ui_components import ModernButton, ModernGroupBox as BaseModernGroupBox
 
 
-class ModernGroupBox(QGroupBox):
+class ModernGroupBox(BaseModernGroupBox):
     """Beautiful modern group box with theme support"""
-    
+
     def __init__(self, title: str, parent=None):
         super().__init__(title, parent)
         self.apply_default_theme()
-    
+
     def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
         """Apply theme colors to the group box"""
         # Determine if this is a dark theme
@@ -35,14 +36,14 @@ class ModernGroupBox(QGroupBox):
         b = int(primary_color.lstrip('#')[4:6], 16)
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
         is_dark = luminance < 0.5
-        
+
         if is_dark:
             text_color = "#ffffff"
             border_color = "#555555"
         else:
             text_color = "#2c3e50"
             border_color = "#dee2e6"
-        
+
         self.setStyleSheet(f"""
             QGroupBox {{
                 font-size: 14px;
@@ -62,7 +63,7 @@ class ModernGroupBox(QGroupBox):
                 color: {text_color};
             }}
         """)
-    
+
     def apply_default_theme(self):
         """Apply default white theme"""
         self.apply_theme("#ffffff", "#f8f9fa")
@@ -70,7 +71,7 @@ class ModernGroupBox(QGroupBox):
 
 class ModernComboBox(QComboBox):
     """Beautiful modern combo box"""
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         # Use a list view for better styling control and add subtle shadow
@@ -192,7 +193,7 @@ class ModernComboBox(QComboBox):
 
 class ModernLineEdit(QLineEdit):
     """Beautiful modern line edit"""
-    
+
     def __init__(self, placeholder: str = "", parent=None):
         super().__init__(parent)
         self.setPlaceholderText(placeholder)
@@ -254,17 +255,17 @@ class ModernLineEdit(QLineEdit):
 
 class ModernKeySequenceEdit(QKeySequenceEdit):
     """Beautiful modern key sequence edit for shortcuts"""
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.apply_theme(is_dark=False)
-        
+
         # Set maximum sequence length (usually 1 shortcut is enough)
         self.setMaximumSequenceLength(1)
-        
+
         # Connect to sequence changed signal for debugging
         self.keySequenceChanged.connect(self._on_sequence_changed)
-        
+
         # Set placeholder text to help users
         self.clear()
 
@@ -309,11 +310,11 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                     border-width: 3px;
                 }
             """)
-    
+
     def _on_sequence_changed(self, sequence):
         """Debug callback for when key sequence changes"""
         pass  # Remove debug output
-    
+
     def focusInEvent(self, event):
         """Override focus in event to show helper text"""
         super().focusInEvent(event)
@@ -329,7 +330,7 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 "border-color: #4A90E2;",
                 "border-color: #28a745; background-color: #f8fff9;"
             ))
-    
+
     def focusOutEvent(self, event):
         """Override focus out event to reset styling"""
         super().focusOutEvent(event)
@@ -337,37 +338,37 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
         current_stylesheet = self.styleSheet()
         is_dark = "background-color: #1a3c22" in current_stylesheet or "background-color: #2c2c2c" in current_stylesheet
         self.apply_theme(is_dark)
-    
+
     @staticmethod
     def qt_to_windows_shortcut(qt_sequence: str) -> str:
         """Convert Qt key sequence to Windows hotkey format"""
         if not qt_sequence:
             return ""
-        
+
         # Qt uses "Meta" for Windows key, convert to "Win"
         result = qt_sequence.replace("Meta+", "Win+")
         result = result.replace("Ctrl+", "Ctrl+")
         result = result.replace("Alt+", "Alt+")
         result = result.replace("Shift+", "Shift+")
-        
+
         return result
-    
+
     @staticmethod
     def windows_to_qt_shortcut(windows_sequence: str) -> str:
         """Convert Windows hotkey format to Qt key sequence"""
         if not windows_sequence:
             return ""
-        
+
         # Convert "Win" to "Meta" for Qt
         result = windows_sequence.replace("Win+", "Meta+")
         result = result.replace("Windows+", "Meta+")
-        
+
         return result
 
 
 class ModernRadioButton(QRadioButton):
     """Beautiful modern radio button"""
-    
+
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
         self.apply_theme(is_dark=False)
@@ -377,7 +378,7 @@ class ModernRadioButton(QRadioButton):
             stylesheet = """
                 QRadioButton {
                     font-size: 13px;
-                    color: #b0b0b0; 
+                    color: #b0b0b0;
                     spacing: 8px;
                     outline: none;
                 }
@@ -438,7 +439,7 @@ class ModernRadioButton(QRadioButton):
 
 class ModernCheckBox(QCheckBox):
     """Beautiful modern check box"""
-    
+
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
         self.apply_theme(is_dark=False)
@@ -504,7 +505,7 @@ class ModernCheckBox(QCheckBox):
 
 class AudioTab(QWidget):
     """Audio settings tab"""
-    
+
     def __init__(self, config_manager: ConfigManager, audio_manager: AudioManager = None, parent=None):
         super().__init__(parent)
         self.config_manager = config_manager
@@ -512,16 +513,16 @@ class AudioTab(QWidget):
         self.audio_manager = audio_manager if audio_manager is not None else AudioManager()
         self.setup_ui()
         self.load_settings()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(20)  # Reduced spacing for compact scroll layout
-        
+
         # Microphone selection
         mic_group = ModernGroupBox("Microphone Settings")
         mic_layout = QFormLayout(mic_group)
         mic_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        
+
         # Ensure form labels are visible
         mic_group.setStyleSheet("""
             QGroupBox {
@@ -548,13 +549,13 @@ class AudioTab(QWidget):
                 background-color: transparent;
             }
         """)
-        
+
         # Microphone selection row with refresh button
         mic_selection_layout = QHBoxLayout()
         self.mic_combo = ModernComboBox()
         self.refresh_devices()
         mic_selection_layout.addWidget(self.mic_combo)
-        
+
         # Add refresh button
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.setIcon(get_white_button_icon('refresh', 16))
@@ -574,12 +575,12 @@ class AudioTab(QWidget):
         """)
         self.refresh_button.clicked.connect(self.refresh_devices)
         mic_selection_layout.addWidget(self.refresh_button)
-        
+
         mic_layout.addRow("Select Microphone:", mic_selection_layout)
-        
+
         # Add device change connection
         self.mic_combo.currentIndexChanged.connect(self.on_device_changed)
-        
+
         # Auto-select active microphone section
         auto_select_layout = QHBoxLayout()
         self.auto_select_checkbox = ModernCheckBox("Auto-select active microphone")
@@ -588,7 +589,7 @@ class AudioTab(QWidget):
         self.auto_select_checkbox.setChecked(False)  # Default disabled
         self.auto_select_checkbox.toggled.connect(self.on_auto_select_toggled)
         auto_select_layout.addWidget(self.auto_select_checkbox)
-        
+
         # Add "Detect Now" button
         self.detect_now_button = QPushButton("Detect Now")
         self.detect_now_button.setIcon(get_white_button_icon('refresh', 14))
@@ -615,19 +616,19 @@ class AudioTab(QWidget):
         self.detect_now_button.setEnabled(False)  # Only enabled when auto-select is on
         auto_select_layout.addWidget(self.detect_now_button)
         auto_select_layout.addStretch()
-        
+
         mic_layout.addRow("", auto_select_layout)
-        
+
         # Help text for auto-select
         auto_select_help = QLabel("Detects microphone with audio activity. Use 'Detect Now' while speaking into your microphone.")
         auto_select_help.setStyleSheet("""
-            color: #6c757d; 
+            color: #6c757d;
             font-size: 11px;
             background-color: transparent;
         """)
         auto_select_help.setWordWrap(True)
         mic_layout.addRow("", auto_select_help)
-        
+
         # Test button
         test_layout = QHBoxLayout()
         self.test_button = QPushButton("Test")
@@ -650,7 +651,7 @@ class AudioTab(QWidget):
         test_layout.addWidget(self.test_button)
         test_layout.addStretch()
         mic_layout.addRow("", test_layout)
-        
+
         # Audio level meter
         self.level_label = QLabel("Audio Level:")
         self.level_bar = QProgressBar()
@@ -674,14 +675,14 @@ class AudioTab(QWidget):
             }
         """)
         mic_layout.addRow(self.level_label, self.level_bar)
-        
+
         layout.addWidget(mic_group)
-        
+
         # Sound settings
         sound_group = ModernGroupBox("Sound Settings")
         sound_layout = QFormLayout(sound_group)
         sound_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        
+
         # Ensure form labels are visible
         sound_group.setStyleSheet("""
             QGroupBox {
@@ -708,46 +709,46 @@ class AudioTab(QWidget):
                 background-color: transparent;
             }
         """)
-        
+
         self.sounds_enabled_checkbox = ModernCheckBox("Enable notification sounds")
         sound_layout.addRow(self.sounds_enabled_checkbox)
-        
+
         # Help text for sounds
         sound_help = QLabel("Play sounds when starting and stopping recording")
         sound_help.setStyleSheet("""
-            color: #6c757d; 
+            color: #6c757d;
             font-size: 11px;
             background-color: transparent;
         """)
         sound_help.setWordWrap(True)
         sound_layout.addRow("", sound_help)
-        
+
         layout.addWidget(sound_group)
 
         # Refresh timer for level meter
         self.level_timer = QTimer()
         self.level_timer.timeout.connect(self.update_level_meter)
-        
+
         # Microphone testing state
         self.is_testing = False
         self.test_audio_manager = None
-        
+
         # Real-time device monitoring
         self.device_monitor_timer = QTimer()
         self.device_monitor_timer.timeout.connect(self.monitor_device_changes)
         self.device_monitor_timer.start(2000)  # Check every 2 seconds
         self.last_device_list = []
-        
+
         # Add minimal space for scroll layout
         layout.addStretch()
-    
+
     def on_device_changed(self, index):
         """Handle microphone device selection change"""
         if index >= 0:
             device_id = self.mic_combo.currentData()
             # Apply the device change immediately to the audio manager
             self.audio_manager.set_input_device(device_id)
-            
+
             # Stop current monitoring and restart with new device
             try:
                 self.audio_manager.stop_monitoring()
@@ -755,36 +756,36 @@ class AudioTab(QWidget):
                     self.audio_manager.start_monitoring()
             except Exception as e:
                 print(f"Warning: Could not switch to new microphone: {e}")
-    
+
     def refresh_devices(self):
         """Refresh the list of available microphones"""
         # Store current selection
         current_device_id = self.mic_combo.currentData() if self.mic_combo.count() > 0 else None
-        
+
         # Update device list in audio manager
         self.audio_manager.update_available_devices()
-        
+
         # Clear and repopulate combo box
         self.mic_combo.clear()
         devices = self.audio_manager.get_available_devices()
-        
+
         for device in devices:
             self.mic_combo.addItem(f"{device['name']}", device['id'])
-        
+
         # Try to restore previous selection
         if current_device_id is not None:
             for i in range(self.mic_combo.count()):
                 if self.mic_combo.itemData(i) == current_device_id:
                     self.mic_combo.setCurrentIndex(i)
                     break
-        
+
         # If no devices found, show helpful message
         if len(devices) == 0:
             self.mic_combo.addItem("No microphones found", None)
-        
+
         # Store current device list for comparison
         self.last_device_list = [device['id'] for device in devices]
-    
+
     def test_microphone(self):
         """Test the selected microphone with continuous level monitoring"""
         if not self.is_testing:
@@ -804,11 +805,11 @@ class AudioTab(QWidget):
                     background: #c82333;
                 }
             """)
-            
+
             # Start audio level monitoring
             current_data = self.mic_combo.currentData()
             device_id = current_data if current_data is not None else None
-            
+
             try:
                 self.audio_manager.set_input_device(device_id)
                 # Start audio monitoring for the test
@@ -816,14 +817,14 @@ class AudioTab(QWidget):
                 # Connect to level updates
                 self.audio_manager.audio_level_changed.connect(self.update_test_level_meter)
                 self.level_timer.start(50)  # Update every 50ms
-                
+
             except Exception as e:
                 self.stop_testing()
                 self.show_test_error(f"Error starting test: {str(e)}")
         else:
             # Stop testing
             self.stop_testing()
-    
+
     def stop_testing(self):
         """Stop microphone testing"""
         self.is_testing = False
@@ -842,23 +843,23 @@ class AudioTab(QWidget):
                 background: #218838;
             }
         """)
-        
+
         # Stop level monitoring
         self.level_timer.stop()
         try:
             self.audio_manager.audio_level_changed.disconnect(self.update_test_level_meter)
         except:
             pass  # Ignore if not connected
-        
+
         # Reset level bar
         self.level_bar.setValue(0)
-    
+
     def update_test_level_meter(self, level: float):
         """Update the level meter during testing"""
         # Convert level to percentage (0-100)
         level_percent = min(100, int(level * 100))
         self.level_bar.setValue(level_percent)
-    
+
     def show_test_error(self, error_msg: str):
         """Show error message for testing"""
         self.test_button.setText("Error")
@@ -874,67 +875,67 @@ class AudioTab(QWidget):
         """)
         # Reset after 3 seconds
         QTimer.singleShot(3000, self.stop_testing)
-    
+
     def update_level_meter(self):
         """Update audio level meter (placeholder for general monitoring)"""
         if not self.is_testing:
             self.level_bar.setValue(0)
-    
+
     def on_auto_select_toggled(self, checked: bool):
         """Handle auto-select checkbox toggle"""
         # Enable/disable the detect now button
         self.detect_now_button.setEnabled(checked)
-        
+
         if checked:
             # Use a longer interval for automatic detection to be less intrusive
             self.device_monitor_timer.start(5000)  # Start monitoring every 5 seconds
             # Don't auto-detect immediately on toggle - let user use "Detect Now" button
         else:
             self.device_monitor_timer.stop()  # Stop monitoring
-    
+
     def monitor_device_changes(self):
         """Monitor for device changes and update dropdown"""
         if not self.auto_select_checkbox.isChecked():
             return
-            
+
         try:
             # Update device list
             self.audio_manager.update_available_devices()
             current_devices = self.audio_manager.get_available_devices()
             current_device_ids = [device['id'] for device in current_devices]
-            
+
             # Check if device list has changed
             if current_device_ids != self.last_device_list:
                 print("Device list changed, refreshing...")
                 self.refresh_devices()
-            
+
             # Only do intensive audio detection occasionally (every 3rd check ~ 15 seconds)
             if not hasattr(self, '_monitor_counter'):
                 self._monitor_counter = 0
             self._monitor_counter += 1
-            
+
             if self._monitor_counter >= 3:
                 self._monitor_counter = 0
                 # Try to auto-select the active microphone
                 self.auto_select_active_microphone()
-                
+
         except Exception as e:
             print(f"Error monitoring device changes: {e}")
-    
+
     def auto_select_active_microphone(self):
         """Automatically select the currently active microphone"""
         if not self.auto_select_checkbox.isChecked():
             return
-            
+
         try:
             # Get the active device ID using the audio manager
             active_device_id = self.audio_manager.get_active_device_id()
-            
+
             if active_device_id is not None:
                 # Find matching device in combo box
                 for i in range(self.mic_combo.count()):
                     device_id = self.mic_combo.itemData(i)
-                    
+
                     if device_id == active_device_id:
                         if self.mic_combo.currentIndex() != i:
                             device_name = self.mic_combo.itemText(i)
@@ -946,51 +947,51 @@ class AudioTab(QWidget):
                         break
         except Exception as e:
             print(f"Error auto-selecting microphone: {e}")
-    
+
     def detect_active_microphone_now(self):
         """Manually trigger active microphone detection"""
         try:
             # Change button text to indicate detection is in progress
             self.detect_now_button.setText("Detecting...")
             self.detect_now_button.setEnabled(False)
-            
+
             # Force a refresh of available devices first
             self.refresh_devices()
-            
+
             # Try to detect the active microphone
             active_device_id = self.audio_manager.get_active_device_id()
-            
+
             if active_device_id is not None:
                 # Find matching device in combo box
                 device_found = False
                 for i in range(self.mic_combo.count()):
                     device_id = self.mic_combo.itemData(i)
-                    
+
                     if device_id == active_device_id:
                         device_name = self.mic_combo.itemText(i)
                         print(f"Manually detected active microphone: {device_name}")
-                        
+
                         # Temporarily disconnect signal to avoid recursion
                         self.mic_combo.currentIndexChanged.disconnect()
                         self.mic_combo.setCurrentIndex(i)
                         self.mic_combo.currentIndexChanged.connect(self.on_device_changed)
                         device_found = True
                         break
-                
+
                 if not device_found:
                     print("Active microphone detected but not found in dropdown")
             else:
                 print("No active microphone detected - try speaking into your microphone and click 'Detect Now' again")
-            
+
         except Exception as e:
             print(f"Error during manual detection: {e}")
         finally:
             # Reset button state
             self.detect_now_button.setText("Detect Now")
             self.detect_now_button.setEnabled(True)
-    
+
     # Visualization controls moved to UI tab
-    
+
     def load_settings(self):
         """Load audio settings from config"""
         device_id = self.config_manager.get_setting("audio/device_id")
@@ -1000,35 +1001,35 @@ class AudioTab(QWidget):
                 if self.mic_combo.itemData(i) == device_id:
                     self.mic_combo.setCurrentIndex(i)
                     break
-        
+
         # Load sounds setting
         sounds_enabled = self.config_manager.get_setting("audio/sounds_enabled", True)
         self.sounds_enabled_checkbox.setChecked(bool(sounds_enabled))
-        
+
         # Load auto-select setting
         auto_select_enabled = self.config_manager.get_setting("audio/auto_select_mic", False)
         self.auto_select_checkbox.setChecked(bool(auto_select_enabled))
-        
+
         # Update button state based on auto-select setting
         self.detect_now_button.setEnabled(bool(auto_select_enabled))
-        
+
         # If auto-select is enabled, start monitoring
         if auto_select_enabled:
             self.device_monitor_timer.start(5000)
         # Visualization moved to UI tab
-    
+
     def save_settings(self):
         """Save audio settings to config"""
         device_id = self.mic_combo.currentData()
         self.config_manager.set_setting("audio/device_id", device_id)
-        
+
         # Save sounds setting
         self.config_manager.set_setting("audio/sounds_enabled", self.sounds_enabled_checkbox.isChecked())
-        
+
         # Save auto-select setting
         self.config_manager.set_setting("audio/auto_select_mic", self.auto_select_checkbox.isChecked())
         # Visualization moved to UI tab
-    
+
     def cleanup(self):
         """Clean up timers and resources"""
         try:
@@ -1043,7 +1044,7 @@ class AudioTab(QWidget):
 
 class WhisperTab(QWidget):
     """Whisper settings tab"""
-    
+
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
         self.config_manager = config_manager
@@ -1051,15 +1052,15 @@ class WhisperTab(QWidget):
         self.setup_ui()
         self.setup_model_connections()
         self.load_settings()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(20)  # Reduced spacing for compact scroll layout
-        
+
         # Mode selection
         mode_group = ModernGroupBox("Transcription Mode")
         mode_layout = QVBoxLayout(mode_group)
-        
+
         self.mode_group = QButtonGroup()
         self.api_radio = ModernRadioButton("OpenAI Whisper API (Fast, requires internet)")
         self.api_radio.setIcon(get_button_icon('api', 16))
@@ -1067,18 +1068,18 @@ class WhisperTab(QWidget):
         self.local_radio = ModernRadioButton("Local Whisper.cpp (Private, works offline)")
         self.local_radio.setIcon(get_button_icon('local', 16))
         self.local_radio.setIconSize(QSize(16, 16))
-        
+
         self.mode_group.addButton(self.api_radio, 0)
         self.mode_group.addButton(self.local_radio, 1)
-        
+
         mode_layout.addWidget(self.api_radio)
         mode_layout.addWidget(self.local_radio)
-        
+
         # Connect mode change
         self.mode_group.buttonToggled.connect(self.on_mode_changed)
-        
+
         layout.addWidget(mode_group)
-        
+
         # Group boxes will use the ModernGroupBox theming system instead of static styles
 
         # API settings
@@ -1087,7 +1088,7 @@ class WhisperTab(QWidget):
         api_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         api_layout.setFormAlignment(Qt.AlignmentFlag.AlignVCenter)
         # API group will use ModernGroupBox theming
-        
+
         # API key input with icon
         api_key_widget = QWidget()
         api_key_layout = QHBoxLayout(api_key_widget)
@@ -1109,7 +1110,7 @@ class WhisperTab(QWidget):
         api_key_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         api_key_label.setMinimumHeight(36)  # Match input box height
         api_key_label.setObjectName("form_label")
-        
+
         api_layout.addRow(api_key_label, api_key_widget)
 
         # Helper text for API key
@@ -1122,7 +1123,7 @@ class WhisperTab(QWidget):
         """)
         api_help.setWordWrap(True)
         api_layout.addRow("", api_help)
-        
+
         # API pricing information
         self.api_pricing_info = QLabel("Pricing: ~$0.006 per minute of audio (~$0.36/hour)")
         self.api_pricing_info.setStyleSheet("""
@@ -1161,7 +1162,7 @@ class WhisperTab(QWidget):
         api_model_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         api_model_label.setMinimumHeight(36)  # Match combo box height
         api_model_label.setObjectName("form_label")
-        
+
         api_layout.addRow(api_model_label, api_model_widget)
 
         # Helper text for API model
@@ -1174,9 +1175,9 @@ class WhisperTab(QWidget):
         """)
         api_model_help.setWordWrap(True)
         api_layout.addRow("", api_model_help)
-        
+
         layout.addWidget(self.api_group)
-        
+
         # Local model settings (only show if Faster-Whisper is available)
         from .whisper_manager import FASTER_WHISPER_AVAILABLE
 
@@ -1185,7 +1186,7 @@ class WhisperTab(QWidget):
         local_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         local_layout.setFormAlignment(Qt.AlignmentFlag.AlignVCenter)
         # Local group will use ModernGroupBox theming
-        
+
         if not FASTER_WHISPER_AVAILABLE:
             # Show message that local mode is not available
             not_available_label = QLabel("Local models not available.\nFaster-Whisper package not installed.\nPlease install it or use API mode.")
@@ -1198,7 +1199,7 @@ class WhisperTab(QWidget):
                 font-size: 13px;
             """)
             local_layout.addRow(not_available_label)
-        
+
         # Only show model selection UI if Faster-Whisper is available
         if FASTER_WHISPER_AVAILABLE:
             # Category dropdown for filtering models with icon
@@ -1223,7 +1224,7 @@ class WhisperTab(QWidget):
             category_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             category_label.setMinimumHeight(36)  # Match combo box height
             category_label.setObjectName("form_label")
-            
+
             local_layout.addRow(category_label, category_widget)
 
             # Helper text for category selection
@@ -1259,7 +1260,7 @@ class WhisperTab(QWidget):
             model_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             model_label.setMinimumHeight(36)  # Match combo box height
             model_label.setObjectName("form_label")
-            
+
             local_layout.addRow(model_label, model_widget)
 
             # Helper text for model selection
@@ -1274,21 +1275,21 @@ class WhisperTab(QWidget):
             local_layout.addRow("", model_help)
 
             # Removed download UI as per guidance
-        
+
         layout.addWidget(self.local_group)
-        
+
         # Add minimal space for scroll layout
         layout.addStretch()
-    
+
     def refresh_models_display(self):
         """Download UI removed; nothing to refresh here"""
         return
-    
-    
+
+
     def create_integrated_model_widget(self, model_info: dict):
         """Deprecated: download UI removed"""
         return QWidget()
-    
+
     def setup_model_connections(self):
         """Deprecated: download manager removed"""
         return
@@ -1299,9 +1300,9 @@ class WhisperTab(QWidget):
         self.category_combo.clear()
         for category in categories:
             self.category_combo.addItem(category)
-        # Set default to "All" 
+        # Set default to "All"
         self.category_combo.setCurrentText("All")
-    
+
     def populate_model_combo(self, category: str = "All"):
         """Fill the model dropdown with models from selected category"""
         current_model = self.model_combo.currentText() if hasattr(self, 'model_combo') else ""
@@ -1309,7 +1310,7 @@ class WhisperTab(QWidget):
         models = self.whisper_manager.get_models_by_category(category)
         # Filter out any API-only models
         local_models = [model for model in models if model != "whisper-1"]
-        
+
         self.model_combo.clear()
         for model in local_models:
             # Get model info to show size
@@ -1320,7 +1321,7 @@ class WhisperTab(QWidget):
             display_text = f"{model} ({size}, {memory})"
             # Store actual model name as item data
             self.model_combo.addItem(display_text, model)
-        
+
         # Try to restore previous selection if it's still available
         if current_model and current_model in local_models:
             # Find the item with matching data (actual model name)
@@ -1336,7 +1337,7 @@ class WhisperTab(QWidget):
         """Handle category dropdown selection change"""
         # Update the model dropdown to show models from selected category
         self.populate_model_combo(category)
-    
+
     def on_model_combo_changed(self, index: int):
         """Handle model dropdown selection change"""
         # Get actual model name from item data
@@ -1345,13 +1346,13 @@ class WhisperTab(QWidget):
             # Persist immediately and update whisper manager
             self.config_manager.set_setting("whisper/local_model", model_name)
             self.whisper_manager.set_local_model(model_name)
-    
+
     def populate_api_model_combo(self):
         """Fill the API model dropdown with available API models"""
         self.api_model_combo.clear()
         # Get available API models from whisper manager
         api_models = self.whisper_manager.available_api_models
-        
+
         for model in api_models:
             # Get model info to show additional details
             model_info = self.whisper_manager.get_model_info(model)
@@ -1361,7 +1362,7 @@ class WhisperTab(QWidget):
             display_text = f"{model} ({size}, {quality})"
             # Store actual model name as item data
             self.api_model_combo.addItem(display_text, model)
-    
+
     def on_api_model_changed(self, index: int):
         """Handle API model dropdown selection change"""
         # Get actual model name from item data
@@ -1373,16 +1374,16 @@ class WhisperTab(QWidget):
                 self.whisper_manager.set_api_model(model_name)
             except ValueError as e:
                 print(f"Error setting API model: {e}")
-            
+
             # Update pricing display based on selected model
             self.update_pricing_display(model_name)
-    
+
     def update_pricing_display(self, model_name: str):
         """Update pricing display based on selected model"""
         # Get model-specific pricing
         pricing_info = self.get_model_pricing(model_name)
         self.api_pricing_info.setText(pricing_info)
-    
+
     def get_model_pricing(self, model_name: str) -> str:
         """Get pricing information for a specific model"""
         if model_name == "gpt-4o-mini-transcribe":
@@ -1395,36 +1396,36 @@ class WhisperTab(QWidget):
         else:
             # Default pricing for unknown models
             return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
-    
+
     def process_ui_events(self):
         """Process UI events to keep interface responsive"""
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
-    
+
     def on_model_selected(self, model_info: dict):
         """Deprecated: selection via download list removed"""
         return
-    
+
     def download_model(self, model_file: str):
         """Deprecated: download removed"""
         return
-    
+
     def cancel_download(self, model_file: str):
         """Deprecated: download removed"""
         return
-    
+
     def delete_model(self, model_file: str):
         """Deprecated: download removed"""
         return
-    
+
     def on_model_status_changed(self, model_name: str, status: str):
         """Deprecated: download removed"""
         return
-    
+
     def on_download_progress(self, model_name: str, progress: int):
         """Deprecated: download removed"""
         return
-    
+
     def on_mode_changed(self, button, checked):
         """Handle mode selection change"""
         if checked:
@@ -1439,8 +1440,8 @@ class WhisperTab(QWidget):
                 self.api_group.setEnabled(False)
                 self.local_group.setEnabled(True)
                 self.whisper_manager.set_mode("local")
-    
-    
+
+
     def load_settings(self):
         """Load Whisper settings from config"""
         mode = self.config_manager.get_setting("whisper/mode", "api")
@@ -1448,10 +1449,10 @@ class WhisperTab(QWidget):
             self.api_radio.setChecked(True)
         else:
             self.local_radio.setChecked(True)
-        
+
         api_key = self.config_manager.get_setting("whisper/api_key", "")
         self.api_key_edit.setText(api_key)
-        
+
         # Load selected API model
         selected_api_model = self.config_manager.get_setting("whisper/api_model", "gpt-4o-transcribe")
         if hasattr(self, 'api_model_combo'):
@@ -1460,10 +1461,10 @@ class WhisperTab(QWidget):
                 if self.api_model_combo.itemData(i) == selected_api_model:
                     self.api_model_combo.setCurrentIndex(i)
                     break
-            
+
             # Update pricing display for the selected model
             self.update_pricing_display(selected_api_model)
-        
+
         # Load selected model for local mode
         selected_model = self.config_manager.get_setting("whisper/local_model", "base")
         # Sync dropdowns if present
@@ -1475,7 +1476,7 @@ class WhisperTab(QWidget):
                     if category != "All":  # Prefer specific category over "All"
                         found_category = category
                         break
-            
+
             # Set the category dropdown
             self.category_combo.setCurrentText(found_category)
             # Update model dropdown for that category
@@ -1485,13 +1486,13 @@ class WhisperTab(QWidget):
                 if self.model_combo.itemData(i) == selected_model:
                     self.model_combo.setCurrentIndex(i)
                     break
-    
+
     def save_settings(self):
         """Save Whisper settings to config"""
         mode = "api" if self.api_radio.isChecked() else "local"
         self.config_manager.set_setting("whisper/mode", mode)
         self.config_manager.set_setting("whisper/api_key", self.api_key_edit.text())
-        
+
         # Save selected API model from dropdown
         if hasattr(self, 'api_model_combo') and self.api_model_combo.currentIndex() >= 0:
             api_model_name = self.api_model_combo.currentData()  # Get actual model name from item data
@@ -1502,7 +1503,7 @@ class WhisperTab(QWidget):
                         self.whisper_manager.set_api_model(api_model_name)
                     except ValueError as e:
                         print(f"Error setting API model: {e}")
-        
+
         # Save selected local model from dropdown
         if hasattr(self, 'model_combo') and self.model_combo.currentIndex() >= 0:
             model_name = self.model_combo.currentData()  # Get actual model name from item data
@@ -1510,10 +1511,10 @@ class WhisperTab(QWidget):
                 self.config_manager.set_setting("whisper/local_model", model_name)
                 if mode == "local":
                     self.whisper_manager.set_local_model(model_name)
-    
-    
+
+
     # Removed fixed size constraints to allow better layout flexibility
-    
+
     def closeEvent(self, event):
         """Handle dialog close event"""
         # Stop UI refresh timer
@@ -1524,21 +1525,21 @@ class WhisperTab(QWidget):
 
 class OutputTab(QWidget):
     """Output settings tab"""
-    
+
     def __init__(self, config_manager: ConfigManager, parent=None):
         super().__init__(parent)
         self.config_manager = config_manager
         self.setup_ui()
         self.load_settings()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(20)  # Reduced spacing for compact scroll layout
-        
+
         # Output behavior
         output_group = ModernGroupBox("Output Behavior")
         output_layout = QVBoxLayout(output_group)
-        
+
         self.output_group = QButtonGroup()
         self.copy_only = ModernRadioButton("Copy to clipboard only")
         self.copy_only.setIcon(get_button_icon('clipboard', 16))
@@ -1552,39 +1553,39 @@ class OutputTab(QWidget):
         self.display_only = ModernRadioButton("Display only (no copy/paste)")
         self.display_only.setIcon(get_button_icon('eye', 16))
         self.display_only.setIconSize(QSize(16, 16))
-        
+
         self.output_group.addButton(self.copy_only, 0)
         self.output_group.addButton(self.paste_only, 1)
         self.output_group.addButton(self.copy_and_paste, 2)
         self.output_group.addButton(self.display_only, 3)
-        
+
         output_layout.addWidget(self.copy_only)
         output_layout.addWidget(self.paste_only)
         output_layout.addWidget(self.copy_and_paste)
         output_layout.addWidget(self.display_only)
-        
+
         layout.addWidget(output_group)
-        
+
         # Additional options
         options_group = ModernGroupBox("Additional Options")
         options_layout = QVBoxLayout(options_group)
-        
+
         self.silent_mode = ModernCheckBox("Silent mode (hide transcription text)")
         self.silent_mode.setIcon(get_button_icon('silent', 16))
         self.silent_mode.setIconSize(QSize(16, 16))
-        
+
         self.auto_clear = ModernCheckBox("Auto-clear after copying/pasting")
         self.auto_clear.setIcon(get_button_icon('trash', 16))
         self.auto_clear.setIconSize(QSize(16, 16))
-        
+
         # Auto-clear delay setting
         auto_clear_layout = QHBoxLayout()
         auto_clear_layout.addWidget(self.auto_clear)
-        
+
         # Add delay input next to auto-clear checkbox
         delay_label = QLabel("after")
         delay_label.setStyleSheet("color: #6c757d; font-size: 12px; margin-left: 10px;")
-        
+
         self.auto_clear_delay = QLineEdit()
         self.auto_clear_delay.setFixedWidth(40)
         self.auto_clear_delay.setText("5")
@@ -1605,21 +1606,21 @@ class OutputTab(QWidget):
                 border-color: #4A90E2;
             }
         """)
-        
+
         seconds_label = QLabel("seconds")
         seconds_label.setStyleSheet("color: #6c757d; font-size: 12px;")
-        
+
         auto_clear_layout.addWidget(delay_label)
         auto_clear_layout.addWidget(self.auto_clear_delay)
         auto_clear_layout.addWidget(seconds_label)
         auto_clear_layout.addStretch()
-        
+
         # Connect auto-clear checkbox to enable/disable delay input
         self.auto_clear.toggled.connect(self._update_auto_clear_delay_state)
-        
+
         options_layout.addWidget(self.silent_mode)
         options_layout.addLayout(auto_clear_layout)
-        
+
         # Help text for auto-clear
         auto_clear_help = QLabel("Note: 'Paste to active app only' always clears clipboard immediately regardless of this setting")
         auto_clear_help.setStyleSheet("""
@@ -1632,41 +1633,41 @@ class OutputTab(QWidget):
         """)
         auto_clear_help.setWordWrap(True)
         options_layout.addWidget(auto_clear_help)
-        
+
         layout.addWidget(options_group)
-        
+
         # Add minimal space for scroll layout
         layout.addStretch()
-    
+
     def _update_auto_clear_delay_state(self, checked: bool):
         """Enable/disable auto-clear delay input based on checkbox state"""
         self.auto_clear_delay.setEnabled(checked)
-    
+
     def load_settings(self):
         """Load output settings from config"""
         output_mode = self.config_manager.get_setting("output/mode", 0)
         buttons = [self.copy_only, self.paste_only, self.copy_and_paste, self.display_only]
         if 0 <= output_mode < len(buttons):
             buttons[output_mode].setChecked(True)
-        
+
         self.silent_mode.setChecked(self.config_manager.get_setting("output/silent_mode", False))
         auto_clear_enabled = self.config_manager.get_setting("output/auto_clear", False)
         self.auto_clear.setChecked(auto_clear_enabled)
-        
+
         # Load auto-clear delay
         auto_clear_delay = self.config_manager.get_setting("output/auto_clear_delay", 5)
         self.auto_clear_delay.setText(str(auto_clear_delay))
-        
+
         # Update delay input state based on checkbox
         self._update_auto_clear_delay_state(auto_clear_enabled)
-    
+
     def save_settings(self):
         """Save output settings to config"""
         checked_button = self.output_group.checkedId()
         self.config_manager.set_setting("output/mode", checked_button)
         self.config_manager.set_setting("output/silent_mode", self.silent_mode.isChecked())
         self.config_manager.set_setting("output/auto_clear", self.auto_clear.isChecked())
-        
+
         # Save auto-clear delay (validate input)
         try:
             delay_value = int(self.auto_clear_delay.text())
@@ -1680,10 +1681,10 @@ class OutputTab(QWidget):
 
 class SettingsDialog(QDialog):
     """Beautiful settings dialog with tabbed interface"""
-    
+
     # Signal emitted when settings are saved
     settings_saved = Signal()
-    
+
     # Theme color definitions
     THEMES = {
         "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
@@ -1699,7 +1700,7 @@ class SettingsDialog(QDialog):
         "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
         "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
     }
-    
+
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
         # Use shared config manager from parent if provided, otherwise create new one
@@ -1709,16 +1710,16 @@ class SettingsDialog(QDialog):
         # Apply initial theme
         initial_theme = self.config_manager.get_setting("ui/theme", "white")
         self.apply_theme(initial_theme)
-        
+
     def setup_ui(self):
         self.setWindowTitle("QuillScribe Settings")
-        self.setFixedSize(600, 500)  # Fixed compact size - much shorter vertically
+        self.setFixedSize(600, 650)  # Increased height for better content visibility
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
-        
+
         layout = QVBoxLayout(self)
         layout.setSpacing(15)  # Reduced spacing for compact layout
         layout.setContentsMargins(15, 15, 15, 15)  # Reduced margins for compact layout
-        
+
         # Title - smaller for compact layout
         title = QLabel("Settings")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1731,27 +1732,27 @@ class SettingsDialog(QDialog):
             }
         """)
         layout.addWidget(title)
-        
-        # Tab widget - compact size
+
+        # Tab widget - increased height for better usability
         self.tabs = QTabWidget()
         self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.tabs.setMaximumHeight(350)  # Reduced height for compact layout
+        self.tabs.setMaximumHeight(450)  # Increased height for better content visibility
         # Tab styling will be set by apply_tab_theme method
         self.apply_tab_theme("white")
-        
+
         # Create tabs - pass audio manager to audio tab for shared state
         audio_manager = getattr(self.parent(), 'audio_manager', None) if self.parent() else None
         self.audio_tab = AudioTab(self.config_manager, audio_manager)
         self.whisper_tab = WhisperTab(self.config_manager)
         self.output_tab = OutputTab(self.config_manager)
         self.ui_tab = UITab(self.config_manager)
-        
+
         # Wrap each tab in a scroll area for compact layout
         self.audio_scroll = self._create_scroll_area(self.audio_tab)
         self.whisper_scroll = self._create_scroll_area(self.whisper_tab)
         self.output_scroll = self._create_scroll_area(self.output_tab)
         self.ui_scroll = self._create_scroll_area(self.ui_tab)
-        
+
         self.tabs.addTab(self.audio_scroll, "Audio")
         self.tabs.setTabIcon(self.tabs.indexOf(self.audio_scroll), get_icon('audio', 16))
         self.tabs.addTab(self.whisper_scroll, "Whisper")
@@ -1760,14 +1761,14 @@ class SettingsDialog(QDialog):
         self.tabs.setTabIcon(self.tabs.indexOf(self.output_scroll), get_icon('clipboard', 16))
         self.tabs.addTab(self.ui_scroll, "UI Settings")
         self.tabs.setTabIcon(self.tabs.indexOf(self.ui_scroll), get_icon('settings', 16))
-        
+
         layout.addWidget(self.tabs)
-        
+
         # Buttons with compact spacing
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)  # Reduced button spacing for compact layout
         button_layout.addStretch()
-        
+
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setIcon(get_white_button_icon('cancel', 16))
         self.cancel_button.setIconSize(QSize(16, 16))
@@ -1786,7 +1787,7 @@ class SettingsDialog(QDialog):
                 background: #5a6268;
             }
         """)
-        
+
         self.save_button = QPushButton("Save Settings")
         self.save_button.setIcon(get_white_button_icon('save', 16))
         self.save_button.setIconSize(QSize(16, 16))
@@ -1805,16 +1806,16 @@ class SettingsDialog(QDialog):
                 background: #357ABD;
             }
         """)
-        
+
         button_layout.addWidget(self.cancel_button)
         button_layout.addWidget(self.save_button)
-        
+
         layout.addLayout(button_layout)
-        
+
         # Connect buttons
         self.cancel_button.clicked.connect(self.reject)
         self.save_button.clicked.connect(self.save_and_close)
-    
+
     def _create_scroll_area(self, widget):
         """Create a scroll area with custom themed scrollbars for the given widget"""
         scroll_area = QScrollArea()
@@ -1822,17 +1823,17 @@ class SettingsDialog(QDialog):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        
+
         # Apply custom scrollbar styling (will be updated by theme)
         self._apply_scrollbar_theme(scroll_area, "white")
-        
+
         return scroll_area
-    
+
     def _apply_scrollbar_theme(self, scroll_area, theme_name):
         """Apply themed styling to scrollbar"""
         colors = self._get_theme_colors(theme_name)
         is_dark = self._is_dark_color(colors["primary"])
-        
+
         if is_dark:
             # Dark theme scrollbar
             scrollbar_bg = "#3c3c3c"
@@ -1845,7 +1846,7 @@ class SettingsDialog(QDialog):
             scrollbar_handle = "#ced4da"
             scrollbar_handle_hover = "#adb5bd"
             scrollbar_handle_pressed = "#6c757d"
-        
+
         scroll_area.setStyleSheet(f"""
             /* Ensure the scroll area and its viewport use the theme background */
             QScrollArea {{
@@ -1886,7 +1887,7 @@ class SettingsDialog(QDialog):
                 background: none;
             }}
         """)
-    
+
     def save_and_close(self):
         """Save all settings and close dialog"""
         try:
@@ -1895,19 +1896,19 @@ class SettingsDialog(QDialog):
             self.output_tab.save_settings()
             self.ui_tab.save_settings()
             self.config_manager.save_settings()
-            
+
             # Emit signal to notify main window that settings were saved
             self.settings_saved.emit()
-            
+
             self.accept()
         except Exception as e:
             # Could show an error dialog here
             print(f"Error saving settings: {e}")
-    
+
     def apply_theme(self, theme_name):
         """Apply the selected theme to the dialog background and all group boxes"""
         colors = self._get_theme_colors(theme_name)
-        
+
         # Apply to dialog background
         self.setStyleSheet(f"""
             QDialog {{
@@ -1916,7 +1917,7 @@ class SettingsDialog(QDialog):
                 color: {colors["text_primary"]};
             }}
         """)
-        
+
         # Apply to all group boxes in all tabs
         self._apply_theme_to_group_boxes(colors)
 
@@ -1934,7 +1935,7 @@ class SettingsDialog(QDialog):
             widget.apply_theme(is_dark)
         for widget in self.findChildren(ModernCheckBox):
             widget.apply_theme(is_dark)
-        
+
         # Update important form labels for dark/light
         is_dark = self._is_dark_color(colors["primary"])
         label_primary = "#ffffff" if is_dark else "#495057"
@@ -1946,7 +1947,7 @@ class SettingsDialog(QDialog):
 
         # Apply theme to tabs
         self.apply_tab_theme(theme_name)
-        
+
         # Apply theme to scrollbars
         if hasattr(self, 'audio_scroll'):
             self._apply_scrollbar_theme(self.audio_scroll, theme_name)
@@ -1973,49 +1974,49 @@ class SettingsDialog(QDialog):
                 self.ui_tab.setStyleSheet(f"background-color: {colors['primary']};")
         except Exception:
             pass
-    
+
     def _apply_theme_to_group_boxes(self, colors):
         """Apply theme to all ModernGroupBox instances"""
         # Find all ModernGroupBox widgets in the dialog
         for widget in self.findChildren(ModernGroupBox):
             widget.apply_theme(colors["primary"], colors["secondary"])
-    
+
     def _darken_color(self, hex_color, factor=0.15):
         """Darken a hex color by the given factor (0.0 to 1.0)"""
         # Remove # if present
         hex_color = hex_color.lstrip('#')
-        
+
         # Convert to RGB
         r = int(hex_color[0:2], 16)
         g = int(hex_color[2:4], 16)
         b = int(hex_color[4:6], 16)
-        
+
         # Darken by reducing values
         r = int(r * (1 - factor))
         g = int(g * (1 - factor))
         b = int(b * (1 - factor))
-        
+
         # Convert back to hex
         return f"#{r:02x}{g:02x}{b:02x}"
-    
+
     def _lighten_color(self, hex_color, factor=0.15):
         """Lighten a hex color by the given factor (0.0 to 1.0)"""
         # Remove # if present
         hex_color = hex_color.lstrip('#')
-        
+
         # Convert to RGB
         r = int(hex_color[0:2], 16)
         g = int(hex_color[2:4], 16)
         b = int(hex_color[4:6], 16)
-        
+
         # Lighten by increasing values towards 255
         r = int(r + (255 - r) * factor)
         g = int(g + (255 - g) * factor)
         b = int(b + (255 - b) * factor)
-        
+
         # Convert back to hex
         return f"#{r:02x}{g:02x}{b:02x}"
-    
+
     def _apply_icon_theme(self, is_dark: bool):
         """Apply appropriate icon colors based on dark/light theme"""
         # Update tab icons
@@ -2031,7 +2032,7 @@ class SettingsDialog(QDialog):
                     self.tabs.setTabIcon(audio_index, get_icon('audio', 16, QColor(255, 255, 255)))
                 else:
                     self.tabs.setTabIcon(audio_index, get_icon('audio', 16))
-            
+
             # Whisper tab
             whisper_index = None
             for i in range(self.tabs.count()):
@@ -2043,7 +2044,7 @@ class SettingsDialog(QDialog):
                     self.tabs.setTabIcon(whisper_index, get_icon('brain', 16, QColor(255, 255, 255)))
                 else:
                     self.tabs.setTabIcon(whisper_index, get_icon('brain', 16))
-            
+
             # Output tab
             output_index = None
             for i in range(self.tabs.count()):
@@ -2055,7 +2056,7 @@ class SettingsDialog(QDialog):
                     self.tabs.setTabIcon(output_index, get_icon('clipboard', 16, QColor(255, 255, 255)))
                 else:
                     self.tabs.setTabIcon(output_index, get_icon('clipboard', 16))
-            
+
             # UI Settings tab
             ui_index = None
             for i in range(self.tabs.count()):
@@ -2067,10 +2068,10 @@ class SettingsDialog(QDialog):
                     self.tabs.setTabIcon(ui_index, get_icon('settings', 16, QColor(255, 255, 255)))
                 else:
                     self.tabs.setTabIcon(ui_index, get_icon('settings', 16))
-        
+
         # Update button icons (these are already using get_white_button_icon for dark backgrounds)
         # The cancel and save buttons already use white icons on their dark backgrounds, so no change needed
-        
+
         # Update icons in tab content - these need to be updated based on theme
         try:
             # Audio tab icons
@@ -2087,7 +2088,7 @@ class SettingsDialog(QDialog):
                             button.setIcon(get_white_button_icon('refresh', 14))
                         else:
                             button.setIcon(get_button_icon('refresh', 14))
-                
+
                 # Find and update checkbox icons
                 for checkbox in self.audio_tab.findChildren(ModernCheckBox):
                     if 'auto' in checkbox.text().lower():
@@ -2095,7 +2096,7 @@ class SettingsDialog(QDialog):
                             checkbox.setIcon(get_white_button_icon('sound', 16))
                         else:
                             checkbox.setIcon(get_button_icon('sound', 16))
-            
+
             # Whisper tab icons
             if hasattr(self, 'whisper_tab'):
                 # Find and update test buttons
@@ -2105,7 +2106,7 @@ class SettingsDialog(QDialog):
                             button.setIcon(get_white_button_icon('test', 16))
                         else:
                             button.setIcon(get_button_icon('test', 16))
-                
+
                 # Find and update radio button icons
                 for radio in self.whisper_tab.findChildren(ModernRadioButton):
                     if 'api' in radio.text().lower():
@@ -2130,7 +2131,7 @@ class SettingsDialog(QDialog):
                         lbl.setPixmap((get_icon('category', 16, QColor(255, 255, 255)) if is_dark else get_icon('category', 16)).pixmap(16, 16))
                     elif name == 'icon_model':
                         lbl.setPixmap((get_icon('brain', 16, QColor(255, 255, 255)) if is_dark else get_icon('brain', 16)).pixmap(16, 16))
-            
+
             # Output tab icons
             if hasattr(self, 'output_tab'):
                 # Find and update radio button icons
@@ -2156,7 +2157,7 @@ class SettingsDialog(QDialog):
                             radio.setIcon(get_white_button_icon('eye', 16))
                         else:
                             radio.setIcon(get_button_icon('eye', 16))
-                
+
                 # Find and update checkbox icons
                 for checkbox in self.output_tab.findChildren(ModernCheckBox):
                     text = checkbox.text().lower()
@@ -2170,7 +2171,7 @@ class SettingsDialog(QDialog):
                             checkbox.setIcon(get_white_button_icon('trash', 16))
                         else:
                             checkbox.setIcon(get_button_icon('trash', 16))
-            
+
             # UI tab icons
             if hasattr(self, 'ui_tab'):
                 # Find and update checkbox icons
@@ -2196,7 +2197,7 @@ class SettingsDialog(QDialog):
                             checkbox.setIcon(get_white_button_icon('window', 16))
                         else:
                             checkbox.setIcon(get_button_icon('window', 16))
-                
+
                 # Update theme icon and shortcut icon in the UI tab
                 if hasattr(self.ui_tab, 'findChildren'):
                     for label in self.ui_tab.findChildren(QLabel):
@@ -2210,28 +2211,28 @@ class SettingsDialog(QDialog):
                                 label.setPixmap((get_icon('keyboard', 16, QColor(255, 255, 255)) if is_dark else get_icon('keyboard', 16)).pixmap(16, 16))
         except Exception as e:
             print(f"Error updating icon theme: {e}")
-    
+
     def _is_dark_color(self, hex_color):
         """Determine if a color is dark based on its luminance"""
         # Remove # if present
         hex_color = hex_color.lstrip('#')
-        
+
         # Convert to RGB
         r = int(hex_color[0:2], 16)
         g = int(hex_color[2:4], 16)
         b = int(hex_color[4:6], 16)
-        
+
         # Calculate luminance using standard formula
         luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
         return luminance < 0.5
-    
+
     def _get_theme_colors(self, theme_name):
         """Get comprehensive color scheme for a theme"""
         theme = self.THEMES.get(theme_name, self.THEMES["white"])
         primary_color = theme["primary"]
         secondary_color = theme["secondary"]
         is_dark = self._is_dark_color(primary_color)
-        
+
         if is_dark:
             return {
                 "primary": primary_color,
@@ -2256,12 +2257,12 @@ class SettingsDialog(QDialog):
                 "accent": "#4A90E2",
                 "accent_hover": "#357ABD"
             }
-    
+
     def apply_tab_theme(self, theme_name):
         """Apply theme-aware styling to tabs"""
         colors = self._get_theme_colors(theme_name)
         is_dark = self._is_dark_color(colors["primary"])
-        
+
         # Create appropriate accent colors for tabs
         if is_dark:
             active_bg = self._lighten_color(colors["primary"], 0.15)
@@ -2271,7 +2272,7 @@ class SettingsDialog(QDialog):
             active_bg = self._darken_color(colors["primary"], 0.08)
             active_border = self._darken_color(colors["primary"], 0.2)
             hover_bg = self._darken_color(colors["primary"], 0.04)
-        
+
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
                 border: 2px solid {colors["border"]};
@@ -2279,7 +2280,7 @@ class SettingsDialog(QDialog):
                 background-color: {colors["primary"]};
             }}
             QTabWidget::tab-bar {{
-                
+
             }}
             QTabBar::tab {{
                 background: {colors["secondary"]};
@@ -2315,7 +2316,7 @@ class SettingsDialog(QDialog):
                 outline: none;
             }}
         """)
-    
+
     def closeEvent(self, event):
         """Handle dialog close event"""
         try:
@@ -2355,7 +2356,7 @@ class UITab(QWidget):
         tip.setWordWrap(True)
         tip.setStyleSheet("color: #6c757d; font-size: 11px;")
         form.addWidget(tip)
-        
+
         # Add custom title bar setting
         self.custom_titlebar_checkbox = ModernCheckBox("Enable custom title bar")
         self.custom_titlebar_checkbox.setIcon(get_button_icon('window', 16))
@@ -2366,28 +2367,28 @@ class UITab(QWidget):
         titlebar_tip.setWordWrap(True)
         titlebar_tip.setStyleSheet("color: #6c757d; font-size: 11px;")
         form.addWidget(titlebar_tip)
-        
+
         # Add theme selection to the same group box
         theme_form_layout = QFormLayout()
         theme_form_layout.setContentsMargins(0, 10, 0, 0)  # Add some spacing from compact mode
         theme_form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        
+
         # Create theme dropdown widget with icon
         theme_widget = QWidget()
         theme_widget_layout = QHBoxLayout(theme_widget)
         theme_widget_layout.setContentsMargins(0, 0, 0, 0)
         theme_widget_layout.setSpacing(6)
-        
+
         theme_icon = QLabel()
         theme_icon.setPixmap(get_icon('settings', 16).pixmap(16, 16))
         theme_icon.setObjectName("icon_theme")
         theme_widget_layout.addWidget(theme_icon)
-        
+
         self.theme_label = QLabel("Background theme:")
         self.theme_label.setObjectName("theme_label")
         theme_widget_layout.addWidget(self.theme_label)
         theme_widget_layout.addStretch()
-        
+
         self.theme_dropdown = ModernComboBox()
         self.theme_dropdown.setMaximumWidth(200)
         self.theme_dropdown.addItem("Classic White", "white")
@@ -2402,14 +2403,14 @@ class UITab(QWidget):
         self.theme_dropdown.addItem("Dark Purple", "dark_purple")
         self.theme_dropdown.addItem("Dark Forest", "dark_forest")
         self.theme_dropdown.addItem("Dark Burgundy", "dark_burgundy")
-        
+
         theme_form_layout.addRow(theme_widget, self.theme_dropdown)
-        
+
         theme_help = QLabel("Choose a background color theme for the application. Changes apply immediately.")
         theme_help.setWordWrap(True)
         theme_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent;")
         theme_form_layout.addRow("", theme_help)
-        
+
         form.addLayout(theme_form_layout)
 
         layout.addWidget(box)
@@ -2452,34 +2453,64 @@ class UITab(QWidget):
         viz_layout.addRow("", strength_help)
 
         layout.addWidget(viz_group)
-        
+
         # Shortcuts & Window behavior
         shortcuts_group = ModernGroupBox("Shortcuts & Window")
         shortcuts_layout = QFormLayout(shortcuts_group)
         shortcuts_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        
+
         self.minimize_on_close_checkbox = ModernCheckBox("Minimize on close (instead of exiting)")
         self.minimize_on_close_checkbox.setIcon(get_button_icon('window', 16))
         self.minimize_on_close_checkbox.setIconSize(QSize(16, 16))
         self.minimize_on_close_checkbox.setChecked(True)
+        self.minimize_on_close_checkbox.setToolTip("When enabled, closing the window will minimize it instead of exiting the application.")
         shortcuts_layout.addRow(self.minimize_on_close_checkbox)
+
+        self.minimize_to_tray_checkbox = ModernCheckBox("Minimize to system tray")
+        self.minimize_to_tray_checkbox.setIcon(get_button_icon('compact', 16))
+        self.minimize_to_tray_checkbox.setIconSize(QSize(16, 16))
+        self.minimize_to_tray_checkbox.setChecked(False)
+        self.minimize_to_tray_checkbox.setToolTip("When enabled, minimizing or closing the window will hide it to the system notification area (system tray). Click the tray icon to restore the window. Takes priority over 'Minimize on close'.")
+
+        # Check if system tray is available
+        from PySide6.QtWidgets import QSystemTrayIcon
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.minimize_to_tray_checkbox.setEnabled(False)
+            self.minimize_to_tray_checkbox.setToolTip("System tray is not available on this system")
+
+        shortcuts_layout.addRow(self.minimize_to_tray_checkbox)
+
+        # Window Management Settings
+        self.always_on_top_checkbox = ModernCheckBox("Always on top")
+        self.always_on_top_checkbox.setIcon(get_button_icon('zap', 16))  # Use zap icon instead of pin
+        self.always_on_top_checkbox.setIconSize(QSize(16, 16))
+        self.always_on_top_checkbox.setChecked(False)
+        self.always_on_top_checkbox.setToolTip("Keep the QuillScribe window always on top of other windows")
+        shortcuts_layout.addRow(self.always_on_top_checkbox)
+
+        self.snap_to_edges_checkbox = ModernCheckBox("Snap to screen edges")
+        self.snap_to_edges_checkbox.setIcon(get_button_icon('dashboard', 16))  # Use dashboard instead of grid
+        self.snap_to_edges_checkbox.setIconSize(QSize(16, 16))
+        self.snap_to_edges_checkbox.setChecked(True)
+        self.snap_to_edges_checkbox.setToolTip("Automatically snap window to screen edges when dragged close to them")
+        shortcuts_layout.addRow(self.snap_to_edges_checkbox)
 
         # Create label with icon for shortcut
         shortcut_widget = QWidget()
         shortcut_layout = QHBoxLayout(shortcut_widget)
         shortcut_layout.setContentsMargins(0, 0, 0, 0)
         shortcut_layout.setSpacing(6)
-        
+
         shortcut_icon = QLabel()
         shortcut_icon.setPixmap(get_icon('keyboard', 16).pixmap(16, 16))
         shortcut_icon.setObjectName("icon_shortcut")
         shortcut_layout.addWidget(shortcut_icon)
-        
+
         self.shortcut_label = QLabel("Recording shortcut:")
         self.shortcut_label.setObjectName("shortcut_label")
         shortcut_layout.addWidget(self.shortcut_label)
         shortcut_layout.addStretch()
-        
+
         self.shortcut_edit = ModernKeySequenceEdit()
         shortcuts_layout.addRow(shortcut_widget, self.shortcut_edit)
 
@@ -2502,22 +2533,30 @@ class UITab(QWidget):
         # New settings
         minimize_on_close = bool(self.config_manager.get_setting("ui/minimize_on_close", True))
         self.minimize_on_close_checkbox.setChecked(minimize_on_close)
-        shortcut = self.config_manager.get_setting("shortcuts/record_toggle", "Win+F")
+        minimize_to_tray = bool(self.config_manager.get_setting("ui/minimize_to_tray", False))
+        self.minimize_to_tray_checkbox.setChecked(minimize_to_tray)
+
+        # Window management settings
+        always_on_top = bool(self.config_manager.get_setting("ui/always_on_top", False))
+        self.always_on_top_checkbox.setChecked(always_on_top)
+        snap_to_edges = bool(self.config_manager.get_setting("ui/snap_to_edges", True))
+        self.snap_to_edges_checkbox.setChecked(snap_to_edges)
+        shortcut = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
         if isinstance(shortcut, str):
             # Convert Windows format to Qt format for display
             qt_shortcut = ModernKeySequenceEdit.windows_to_qt_shortcut(shortcut)
             self.shortcut_edit.setKeySequence(QKeySequence.fromString(qt_shortcut))
-        
+
         # Load custom title bar setting
         custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
         self.custom_titlebar_checkbox.setChecked(custom_titlebar)
-        
+
         # Load theme setting
         theme = self.config_manager.get_setting("ui/theme", "white")
         index = self.theme_dropdown.findData(theme)
         if index >= 0:
             self.theme_dropdown.setCurrentIndex(index)
-        
+
         # Connect theme change signal
         self.theme_dropdown.currentIndexChanged.connect(self.on_theme_changed)
 
@@ -2527,14 +2566,19 @@ class UITab(QWidget):
         self.config_manager.set_setting("ui/animation_strength", self.animation_strength_slider.value())
         # Save new settings
         self.config_manager.set_setting("ui/minimize_on_close", self.minimize_on_close_checkbox.isChecked())
+        self.config_manager.set_setting("ui/minimize_to_tray", self.minimize_to_tray_checkbox.isChecked())
+
+        # Save window management settings
+        self.config_manager.set_setting("ui/always_on_top", self.always_on_top_checkbox.isChecked())
+        self.config_manager.set_setting("ui/snap_to_edges", self.snap_to_edges_checkbox.isChecked())
         qt_shortcut_sequence = self.shortcut_edit.keySequence().toString()
         # Convert Qt format to Windows format for storage
-        windows_shortcut = ModernKeySequenceEdit.qt_to_windows_shortcut(qt_shortcut_sequence) or "Win+F"
+        windows_shortcut = ModernKeySequenceEdit.qt_to_windows_shortcut(qt_shortcut_sequence) or "Meta+`"
         self.config_manager.set_setting("shortcuts/record_toggle", windows_shortcut)
-        
+
         # Save custom title bar setting
         self.config_manager.set_setting("ui/custom_titlebar", self.custom_titlebar_checkbox.isChecked())
-        
+
         # Save theme
         theme_data = self.theme_dropdown.currentData()
         if theme_data:
@@ -2542,25 +2586,221 @@ class UITab(QWidget):
 
     def update_animation_strength_label(self, value):
         self.animation_strength_value_label.setText(f"{value}x")
-    
+
     def on_theme_changed(self):
         """Apply theme immediately when changed"""
         theme_data = self.theme_dropdown.currentData()
         if theme_data:
             self.config_manager.set_setting("ui/theme", theme_data)
             self.config_manager.save_settings()  # Save immediately
-            
+
             # Apply theme to the parent dialog immediately
             dialog = self.parent()
             while dialog and not isinstance(dialog, SettingsDialog):
                 dialog = dialog.parent()
             if dialog:
                 dialog.apply_theme(theme_data)
-                
+
                 # Also apply to main window if it exists
                 main_window = dialog.parent()
                 if main_window and hasattr(main_window, 'apply_theme'):
                     main_window.apply_theme(theme_data)
+
+
+class WindowManagerDialog(QDialog):
+    """Dedicated window for Window Manager features and controls."""
+    settings_saved = Signal()
+
+    def __init__(self, parent=None, config_manager=None, window_manager=None):
+        super().__init__(parent)
+        self.config_manager = config_manager if config_manager is not None else ConfigManager()
+        self.window_manager = window_manager
+        self._drag_active = False
+        self._drag_offset = None
+        self.setup_ui()
+        self.load_settings()
+
+    def setup_ui(self):
+        self.setWindowTitle("Window Manager")
+        self.setFixedSize(400, 350)
+        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title
+        title = QLabel("Window Management")
+        title.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #2c3e50;
+                margin-bottom: 10px;
+            }
+        """)
+        layout.addWidget(title)
+
+        # Window Behavior Group
+        behavior_group = ModernGroupBox("Window Behavior")
+        behavior_layout = QVBoxLayout(behavior_group)
+
+        # Always on top
+        self.always_on_top_checkbox = ModernCheckBox("Always on Top")
+        self.always_on_top_checkbox.setIcon(get_button_icon('zap', 16))  # Use zap icon instead of pin
+        self.always_on_top_checkbox.setIconSize(QSize(16, 16))
+        behavior_layout.addWidget(self.always_on_top_checkbox)
+
+        # Snap to edges
+        self.snap_to_edges_checkbox = ModernCheckBox("Snap to Screen Edges")
+        self.snap_to_edges_checkbox.setIcon(get_button_icon('dashboard', 16))  # Use dashboard icon instead of grid
+        self.snap_to_edges_checkbox.setIconSize(QSize(16, 16))
+        behavior_layout.addWidget(self.snap_to_edges_checkbox)
+
+        layout.addWidget(behavior_group)
+
+        # Window Positioning Group
+        positioning_group = ModernGroupBox("Window Positioning")
+        positioning_layout = QVBoxLayout(positioning_group)
+
+        # Quick position buttons
+        position_buttons_layout = QHBoxLayout()
+
+        self.snap_left_btn = ModernButton("Left")
+        self.snap_left_btn.setIcon(get_button_icon('arrow-left', 16))
+        self.snap_left_btn.clicked.connect(lambda: self._snap_to_edge("left"))
+        position_buttons_layout.addWidget(self.snap_left_btn)
+
+        self.snap_center_btn = ModernButton("Center")
+        self.snap_center_btn.setIcon(get_button_icon('target', 16))
+        self.snap_center_btn.clicked.connect(lambda: self._snap_to_edge("center"))
+        position_buttons_layout.addWidget(self.snap_center_btn)
+
+        self.snap_right_btn = ModernButton("Right")
+        self.snap_right_btn.setIcon(get_button_icon('arrow-right', 16))
+        self.snap_right_btn.clicked.connect(lambda: self._snap_to_edge("right"))
+        position_buttons_layout.addWidget(self.snap_right_btn)
+
+        positioning_layout.addLayout(position_buttons_layout)
+
+        # Monitor info
+        self.monitor_info_label = QLabel("Current Monitor: Detecting...")
+        self.monitor_info_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        positioning_layout.addWidget(self.monitor_info_label)
+
+        layout.addWidget(positioning_group)
+
+        # Status Group
+        status_group = ModernGroupBox("Status")
+        status_layout = QVBoxLayout(status_group)
+
+        self.status_label = QLabel("Always-on-top status: Checking...")
+        self.status_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        status_layout.addWidget(self.status_label)
+
+        # Test button
+        self.test_btn = ModernButton("Test Always-on-Top")
+        self.test_btn.setIcon(get_button_icon('eye', 16))
+        self.test_btn.clicked.connect(self._test_always_on_top)
+        status_layout.addWidget(self.test_btn)
+
+        layout.addWidget(status_group)
+
+        # Buttons
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+
+        self.save_btn = ModernButton("Save")
+        self.save_btn.setIcon(get_button_icon('check', 16))
+        self.save_btn.clicked.connect(self.save_settings)
+        button_layout.addWidget(self.save_btn)
+
+        self.cancel_btn = ModernButton("Cancel")
+        self.cancel_btn.setIcon(get_button_icon('x', 16))
+        self.cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(self.cancel_btn)
+
+        layout.addLayout(button_layout)
+
+        # Connect window manager signals if available
+        if self.window_manager:
+            self.window_manager.monitor_changed.connect(self._update_monitor_info)
+            self._update_monitor_info()
+
+    def _snap_to_edge(self, edge: str):
+        """Snap main window to specified edge"""
+        if self.window_manager:
+            self.window_manager.snap_to_edge(edge)
+
+    def _update_monitor_info(self):
+        """Update monitor information display"""
+        if self.window_manager:
+            current_monitor = self.window_manager.get_current_monitor()
+            if current_monitor and current_monitor in self.window_manager.monitors:
+                monitor_info = self.window_manager.monitors[current_monitor]
+                monitor_name = monitor_info.get('name', 'Unknown')
+                self.monitor_info_label.setText(f"Current Monitor: {monitor_name}")
+            else:
+                self.monitor_info_label.setText("Current Monitor: Unknown")
+
+        # Update always-on-top status
+        self._update_status()
+
+    def _update_status(self):
+        """Update always-on-top status display"""
+        if self.window_manager:
+            is_topmost = self.window_manager.is_always_on_top()
+            status_text = "Active" if is_topmost else "Inactive"
+            self.status_label.setText(f"Always-on-top status: {status_text}")
+        else:
+            self.status_label.setText("Always-on-top status: Window manager not available")
+
+    def _test_always_on_top(self):
+        """Test always-on-top functionality"""
+        if self.window_manager:
+            # Toggle always-on-top temporarily for testing
+            current_state = self.always_on_top_checkbox.isChecked()
+            self.window_manager.set_always_on_top(not current_state)
+
+            # Update status
+            self._update_status()
+
+            # Show message
+            from PySide6.QtWidgets import QMessageBox
+            is_topmost = self.window_manager.is_always_on_top()
+            status = "enabled" if is_topmost else "disabled"
+            QMessageBox.information(self, "Always-on-Top Test",
+                                  f"Always-on-top is now {status}.\n"
+                                  f"Try switching to another window to test.\n"
+                                  f"Click Save to keep this setting.")
+        else:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Test Failed", "Window manager is not available.")
+
+    def load_settings(self):
+        """Load window management settings"""
+        always_on_top = bool(self.config_manager.get_setting("ui/always_on_top", False))
+        self.always_on_top_checkbox.setChecked(always_on_top)
+
+        snap_to_edges = bool(self.config_manager.get_setting("ui/snap_to_edges", True))
+        self.snap_to_edges_checkbox.setChecked(snap_to_edges)
+
+        # Update status display
+        self._update_status()
+
+    def save_settings(self):
+        """Save window management settings"""
+        # Save settings
+        self.config_manager.set_setting("ui/always_on_top", self.always_on_top_checkbox.isChecked())
+        self.config_manager.set_setting("ui/snap_to_edges", self.snap_to_edges_checkbox.isChecked())
+
+        # Apply settings to window manager
+        if self.window_manager:
+            self.window_manager.set_always_on_top(self.always_on_top_checkbox.isChecked())
+            self.window_manager.set_snap_enabled(self.snap_to_edges_checkbox.isChecked())
+
+        self.settings_saved.emit()
+        self.accept()
 
 
 class UISettingsDialog(QDialog):
@@ -2716,4 +2956,4 @@ class UISettingsDialog(QDialog):
         self.config_manager.set_setting("ui/compact_mode", self.compact_checkbox.isChecked())
         self.config_manager.save_settings()
         self.settings_saved.emit()
-        self.accept() 
+        self.accept()

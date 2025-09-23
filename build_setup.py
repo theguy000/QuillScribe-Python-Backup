@@ -23,13 +23,15 @@ build_options = {
     'includes': [
         'quillscribe.main',
         'quillscribe.audio_manager',
-        'quillscribe.whisper_manager', 
+        'quillscribe.whisper_manager',
         'quillscribe.settings_dialog',
         'quillscribe.config_manager',
         'quillscribe.output_manager',
         'quillscribe.sound_manager',
         'quillscribe.icon_manager',
-        'quillscribe.model_manager'
+        'quillscribe.model_manager',
+        'quillscribe.tray_manager',
+        'quillscribe.window_manager'
     ],
     'excludes': [
         'tkinter',
@@ -51,6 +53,8 @@ build_options = {
         # Include sounds
         ('src/sounds/', 'sounds/'),
         ('src/quillscribe/app_logo.ico', 'app_logo.ico'),
+        ('src/quillscribe/app_logo_tray.ico', 'app_logo_tray.ico'),
+        ('src/quillscribe/app_logo_tray_recording.ico', 'app_logo_tray_recording.ico'),
         ('src/quillscribe/logo.png', 'logo.png'),
         # Include any additional assets
     ],

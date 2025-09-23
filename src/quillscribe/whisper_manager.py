@@ -146,36 +146,45 @@ class WhisperManager(QObject):
     
     
     def load_local_model(self):
-        """Load local whisper model"""
+        """Load local whisper model (deferred until first transcription)"""
+        # Just validate and store - actual loading happens on first use
         if not FASTER_WHISPER_AVAILABLE:
             raise RuntimeError("No local Whisper available")
-        
-        if self.is_loading:
-            return
-            
+
         if not self.local_model_name:
             raise ValueError("No model name specified")
-        
+
+        # Reset model to trigger reload on next use
+        self.local_model = None
+
+    def _ensure_local_model_loaded(self):
+        """Ensure local model is loaded (lazy loading)"""
+        if self.local_model is not None or not self.local_model_name:
+            return  # Already loaded or no model specified
+
+        if self.is_loading:
+            return  # Already loading
+
         try:
             self.is_loading = True
             self.model_loading.emit(f"Loading model: {self.local_model_name}")
-            
+
             # Load the model using faster-whisper
             if WHISPER_TYPE == "faster":
                 # Choose device (CPU for compatibility, GPU if available)
                 device = "cpu"  # Can be changed to "cuda" if GPU available
                 compute_type = "int8"  # Good balance of speed and quality
-                
+
                 self.local_model = WhisperModel(
-                    self.local_model_name, 
+                    self.local_model_name,
                     device=device,
                     compute_type=compute_type
                 )
             else:
                 raise RuntimeError("No supported local Whisper implementation available")
-            
+
             self.model_loading.emit("Model loaded successfully")
-            
+
         except Exception as e:
             self.model_loading.emit(f"Error loading model: {str(e)}")
             raise
@@ -273,11 +282,10 @@ class WhisperManager(QObject):
         """Transcribe using local faster-whisper"""
         if not FASTER_WHISPER_AVAILABLE:
             raise RuntimeError("No local Whisper available")
-        
-        # Load model if not already loaded
-        if self.local_model is None and self.local_model_name:
-            self.load_local_model()
-        
+
+        # Ensure model is loaded (lazy loading)
+        self._ensure_local_model_loaded()
+
         if self.local_model is None:
             raise RuntimeError("No local model loaded")
         
