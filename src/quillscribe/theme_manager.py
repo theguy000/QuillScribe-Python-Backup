@@ -351,10 +351,10 @@ class ThemeManager(QObject):
         else:
             # Standard desktop sizing
             return {
-                "vertical_width": "8px",
-                "horizontal_height": "8px",
-                "handle_border_radius": "4px",
-                "track_border_radius": "4px",
+                "vertical_width": "10px",
+                "horizontal_height": "10px",
+                "handle_border_radius": "5px",
+                "track_border_radius": "5px",
                 "min_handle_size": "30px",
                 "margin": "2px"
             }

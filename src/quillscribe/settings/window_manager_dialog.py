@@ -153,12 +153,12 @@ class WindowManagerDialog(QDialog):
             self.config_manager.save_settings()
         
         # Apply to window manager
-        if self.window_manager and self.parent_window:
+        if self.window_manager:
             try:
                 if self.always_on_top_checkbox.isChecked():
-                    self.window_manager.set_always_on_top(self.parent_window, True)
+                    self.window_manager.set_always_on_top(True)
                 else:
-                    self.window_manager.set_always_on_top(self.parent_window, False)
+                    self.window_manager.set_always_on_top(False)
                 
                 self.status_label.setText("Settings applied successfully")
                 self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
@@ -208,9 +208,9 @@ class WindowManagerDialog(QDialog):
     
     def update_status(self):
         """Update the status display"""
-        if self.window_manager and self.parent_window:
+        if self.window_manager:
             try:
-                is_on_top = self.window_manager.is_always_on_top(self.parent_window)
+                is_on_top = self.window_manager.is_always_on_top()
                 if is_on_top:
                     self.status_label.setText("Always on top: Enabled")
                 else:

@@ -60,18 +60,19 @@ class SettingsDialog(QDialog):
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(8)  # Reduced spacing from 15 to 8
-        layout.setContentsMargins(15, 10, 15, 15)  # Reduced top margin from 15 to 10
+        layout.setSpacing(6)  # Further reduced spacing from 8 to 6
+        layout.setContentsMargins(15, 8, 15, 15)  # Further reduced top margin from 10 to 8
 
-        # Title with reduced spacing
+        # Title with reduced spacing and smaller font
         title = QLabel("Settings")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
             QLabel {
                 color: #2c3e50;
-                font-size: 18px;
+                font-size: 16px;
                 font-weight: 400;
-                margin-bottom: 2px;
+                margin-bottom: 0px;
+                padding-bottom: 0px;
             }
         """)
         layout.addWidget(title)

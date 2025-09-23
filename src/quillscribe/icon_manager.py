@@ -47,8 +47,7 @@ class IconManager:
         'zap': 'zap.svg',
         'category': 'category.svg',
         
-        # App icons
-        'app': 'app-icon.svg',
+
         
         # Action icons
         'save': 'settings.svg',  # Use settings icon for save actions
@@ -129,7 +128,7 @@ class IconManager:
             # Read SVG content
             with open(icon_path, 'r', encoding='utf-8') as f:
                 svg_content = f.read()
-            
+
             # Replace stroke color if a color is provided
             if color:
                 color_hex = color.name()
@@ -138,6 +137,13 @@ class IconManager:
                 elif 'stroke="' in svg_content:
                     import re
                     svg_content = re.sub(r'stroke="[^"]*"', f'stroke="{color_hex}"', svg_content)
+
+                # Also handle fill color for icons that use fill instead of stroke
+                if 'fill="currentColor"' in svg_content:
+                    svg_content = svg_content.replace('fill="currentColor"', f'fill="{color_hex}"')
+                elif 'fill="' in svg_content and 'fill="none"' not in svg_content:
+                    import re
+                    svg_content = re.sub(r'fill="[^"]*"(?<!fill="none")', f'fill="{color_hex}"', svg_content)
             
             # Create QPixmap from SVG content
             renderer = QSvgRenderer()

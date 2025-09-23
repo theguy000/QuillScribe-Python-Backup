@@ -57,7 +57,10 @@ class ConfigManager:
                 "show_waveform": True,
                 "compact_mode": False,
                 "minimize_on_close": True,
-                "minimize_to_tray": False
+                "minimize_to_tray": False,
+                "always_on_top": False,
+                "snap_to_edges": True,
+                "custom_titlebar": True
             },
             "shortcuts": {
                 "record_toggle": "Meta+`"

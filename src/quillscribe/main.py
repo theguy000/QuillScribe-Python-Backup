@@ -710,12 +710,22 @@ class QuillScribeMainWindow(QMainWindow):
 
         # Check if custom titlebar is enabled (default to True for backward compatibility)
         custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
+
+        # Get always-on-top setting to preserve it
+        always_on_top = bool(self.config_manager.get_setting("ui/always_on_top", False))
+
         if custom_titlebar:
             # Use frameless window for custom titlebar
-            self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+            base_flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window
         else:
             # Use standard window with system titlebar
-            self.setWindowFlags(Qt.WindowType.Window)
+            base_flags = Qt.WindowType.Window
+
+        # Add always-on-top flag if needed
+        if always_on_top:
+            base_flags |= Qt.WindowType.WindowStaysOnTopHint
+
+        self.setWindowFlags(base_flags)
 
         # Set window icon (ICO format only - guaranteed to be present)
         try:
@@ -924,13 +934,13 @@ class QuillScribeMainWindow(QMainWindow):
         # Minimize button
         self.minimize_btn = QPushButton()
         self.minimize_btn.setObjectName("minimize_btn")  # For theme manager identification
+        self.minimize_btn.setIcon(get_button_icon('minimize', 16))  # Set initial icon
         self.minimize_btn.setIconSize(QSize(16, 16))
         self.minimize_btn.setFixedSize(46, 32)  # Match titlebar height exactly
         self.minimize_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
                 border: none;
-                color: #2c3e50;
                 text-align: center;
                 margin: 0px;
                 padding: 0px;
@@ -946,26 +956,24 @@ class QuillScribeMainWindow(QMainWindow):
         right_layout.addWidget(self.minimize_btn)
 
         # Close button
-        self.titlebar_close_btn = QPushButton("×")
+        self.titlebar_close_btn = QPushButton()
+        self.titlebar_close_btn.setObjectName("titlebar_close_btn")  # For theme manager identification
+        self.titlebar_close_btn.setIcon(get_button_icon('close', 16))  # Set initial icon
+        self.titlebar_close_btn.setIconSize(QSize(16, 16))
         self.titlebar_close_btn.setFixedSize(46, 32)  # Match titlebar height exactly
         self.titlebar_close_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
                 border: none;
-                color: #2c3e50;
-                font-size: 16px;
-                font-weight: bold;
                 text-align: center;
                 margin: 0px;
                 padding: 0px;
             }
             QPushButton:hover {
                 background: #e81123;
-                color: white;
             }
             QPushButton:pressed {
                 background: #c50e1f;
-                color: white;
             }
         """)
         self.titlebar_close_btn.clicked.connect(self.close)
@@ -1672,24 +1680,21 @@ class QuillScribeMainWindow(QMainWindow):
                 """)
 
             if hasattr(self, 'titlebar_close_btn'):
+                # Update icon color for theme
+                self.titlebar_close_btn.setIcon(get_themed_button_icon('close', 16, self.is_dark))
                 self.titlebar_close_btn.setStyleSheet(f"""
                     QPushButton {{
                         background: transparent;
                         border: none;
-                        color: {titlebar_btn_color};
-                        font-size: 16px;
-                        font-weight: bold;
                         text-align: center;
                         margin: 0px;
                         padding: 0px;
                     }}
                     QPushButton:hover {{
                         background: #e81123;
-                        color: white;
                     }}
                     QPushButton:pressed {{
                         background: #c50e1f;
-                        color: white;
                     }}
                 """)
 
@@ -1731,6 +1736,9 @@ class QuillScribeMainWindow(QMainWindow):
             self.apply_close_button_theme(self.is_dark)
             # Re-show to apply window flag changes
             self.show()
+            # Reapply always-on-top if needed
+            if hasattr(self, 'window_manager') and self.window_manager:
+                self.window_manager.reapply_always_on_top()
         else:
             # Show custom titlebar in normal mode
             if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
@@ -1748,6 +1756,9 @@ class QuillScribeMainWindow(QMainWindow):
             self.close_button.setVisible(False)
             # Re-show to apply window flag changes
             self.show()
+            # Reapply always-on-top if needed
+            if hasattr(self, 'window_manager') and self.window_manager:
+                self.window_manager.reapply_always_on_top()
 
     def install_drag_filters(self):
         """Install event filters to enable drag-anywhere in compact mode."""

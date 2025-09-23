@@ -225,6 +225,21 @@ class WindowManager(QObject):
         """Set always-on-top behavior"""
         self.always_on_top = enabled
 
+        # Save setting first
+        self.config_manager.set_setting("ui/always_on_top", enabled)
+
+        # Apply the setting
+        self._apply_always_on_top()
+
+        # Debug output
+        print(f"Always-on-top set to: {enabled}")
+        from PySide6.QtCore import Qt
+        current_flags = self.window.windowFlags()
+        has_topmost = bool(current_flags & Qt.WindowType.WindowStaysOnTopHint)
+        print(f"Window flags after change - has WindowStaysOnTopHint: {has_topmost}")
+
+    def _apply_always_on_top(self):
+        """Apply the always-on-top setting to the window"""
         if sys.platform == "win32" and user32 is not None:
             try:
                 hwnd = int(self.window.winId())
@@ -234,49 +249,39 @@ class WindowManager(QObject):
                 SWP_NOMOVE = 0x0002
                 SWP_NOSIZE = 0x0001
 
-                if enabled:
+                if self.always_on_top:
                     user32.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
                 else:
                     user32.SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE)
+                return  # Windows API succeeded, no need for Qt approach
             except Exception as e:
                 print(f"Warning: Could not set always-on-top via Windows API: {e}")
-                # Fallback to Qt approach
-                from PySide6.QtCore import Qt
-                flags = self.window.windowFlags()
-                if enabled:
-                    flags |= Qt.WindowType.WindowStaysOnTopHint
-                else:
-                    flags &= ~Qt.WindowType.WindowStaysOnTopHint
-                self.window.setWindowFlags(flags)
-                self.window.show()
-        else:
-            # Qt-based approach for other platforms
-            from PySide6.QtCore import Qt
-            flags = self.window.windowFlags()
-            if enabled:
-                flags |= Qt.WindowType.WindowStaysOnTopHint
-            else:
-                flags &= ~Qt.WindowType.WindowStaysOnTopHint
+                # Fall through to Qt approach
 
+        # Qt-based approach for all platforms (including Windows fallback)
+        from PySide6.QtCore import Qt
+        current_flags = self.window.windowFlags()
+
+        if self.always_on_top:
+            new_flags = current_flags | Qt.WindowType.WindowStaysOnTopHint
+        else:
+            new_flags = current_flags & ~Qt.WindowType.WindowStaysOnTopHint
+
+        # Only update flags if they actually changed
+        if new_flags != current_flags:
             # Store current visibility state
             was_visible = self.window.isVisible()
 
-            self.window.setWindowFlags(flags)
+            self.window.setWindowFlags(new_flags)
 
             # Restore visibility state
             if was_visible:
                 self.window.show()
 
-        # Save setting
-        self.config_manager.set_setting("ui/always_on_top", enabled)
-
-        # Debug output
-        print(f"Always-on-top set to: {enabled}")
-        if sys.platform != "win32" or user32 is None:
-            from PySide6.QtCore import Qt
-            current_flags = self.window.windowFlags()
-            has_topmost = bool(current_flags & Qt.WindowType.WindowStaysOnTopHint)
-            print(f"Window flags after change - has WindowStaysOnTopHint: {has_topmost}")
+    def reapply_always_on_top(self):
+        """Reapply always-on-top setting (useful after window flag changes)"""
+        if self.always_on_top:
+            self._apply_always_on_top()
 
     def set_snap_enabled(self, enabled: bool):
         """Enable or disable snap-to-edges functionality"""
