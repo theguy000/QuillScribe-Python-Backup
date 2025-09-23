@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QWidget, QScrollArea, QSizePolicy
 from PySide6.QtCore import Qt
 
 from ..config_manager import ConfigManager
+from ..theme_manager import get_theme_manager
 
 
 class BaseSettingsTab(QWidget):
@@ -37,60 +38,51 @@ class BaseSettingsTab(QWidget):
 
 
 def create_scroll_area(widget):
-    """Create a scroll area for a settings tab widget"""
+    """Create a scroll area for a settings tab widget with modern themed scrollbars"""
     scroll = QScrollArea()
     scroll.setWidget(widget)
     scroll.setWidgetResizable(True)
     scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     scroll.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-    
-    # Styling for scroll area
-    scroll.setStyleSheet("""
-        QScrollArea {
-            border: none;
-            background-color: transparent;
-        }
-        QScrollArea > QWidget > QWidget {
-            background-color: transparent;
-        }
-        QScrollArea QWidget {
-            background-color: transparent;
-        }
-        QScrollBar:vertical {
-            background: #f1f1f1;
-            width: 12px;
-            border-radius: 6px;
-        }
-        QScrollBar::handle:vertical {
-            background: #c1c1c1;
-            border-radius: 6px;
-            min-height: 20px;
-        }
-        QScrollBar::handle:vertical:hover {
-            background: #a8a8a8;
-        }
-        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-            border: none;
-            background: none;
-        }
-        QScrollBar:horizontal {
-            background: #f1f1f1;
-            height: 12px;
-            border-radius: 6px;
-        }
-        QScrollBar::handle:horizontal {
-            background: #c1c1c1;
-            border-radius: 6px;
-            min-width: 20px;
-        }
-        QScrollBar::handle:horizontal:hover {
-            background: #a8a8a8;
-        }
-        QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-            border: none;
-            background: none;
-        }
-    """)
-    
+
+    # Apply modern scrollbar styling using centralized theme manager
+    theme_manager = get_theme_manager()
+    theme_manager.apply_modern_scrollbar_to_widget(
+        scroll,
+        theme_name=None,  # Use current theme
+        responsive=True   # Enable responsive sizing
+    )
+
+    # Apply background colors for dynamic theming
+    apply_scroll_area_background(scroll)
+
     return scroll
+
+
+def apply_scroll_area_background(scroll_area, theme_name=None):
+    """Apply background colors to a scroll area for dynamic theming"""
+    theme_manager = get_theme_manager()
+
+    if theme_name is None:
+        theme_name = theme_manager.get_current_theme()
+
+    colors = theme_manager.get_theme_colors(theme_name)
+
+    # Apply background colors that work with dynamic theming
+    background_style = f"""
+        QScrollArea {{
+            border: none;
+            background-color: {colors["primary"]};
+        }}
+        QScrollArea > QWidget#qt_scrollarea_viewport {{
+            background-color: {colors["primary"]};
+        }}
+        QWidget#qt_scrollarea_viewport {{
+            background-color: {colors["primary"]};
+        }}
+    """
+
+    # Combine with existing scrollbar styles
+    existing_style = scroll_area.styleSheet()
+    scroll_area.setStyleSheet(existing_style + background_style)

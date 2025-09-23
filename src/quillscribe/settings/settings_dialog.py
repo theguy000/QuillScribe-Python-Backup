@@ -5,7 +5,7 @@ Modular settings management with tabbed interface
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel, QPushButton,
-    QSizePolicy
+    QSizePolicy, QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIcon
@@ -167,6 +167,15 @@ class SettingsDialog(QDialog):
 
         # Apply icon theming for SVG icons (legacy method for any missed icons)
         self._apply_icon_theming(is_dark)
+
+        # Update scroll area backgrounds for dynamic theming
+        self._update_scroll_area_backgrounds(theme_name)
+
+        # Apply button theming (icons and colors)
+        self._apply_button_theming(is_dark)
+
+        # Apply text theming to all labels
+        theme_manager.apply_text_theming_to_widget(self, theme_name)
 
         # Explicitly set background and text colors for tab content widgets to match theme
         # Use darker text for light themes to ensure better legibility
@@ -404,6 +413,24 @@ class SettingsDialog(QDialog):
                     main_window.apply_theme(theme_data)
         except Exception as e:
             print(f"Warning: Could not handle theme change: {e}")
+
+    def _update_scroll_area_backgrounds(self, theme_name: str):
+        """Update scroll area backgrounds for dynamic theming"""
+        from .base_tab import apply_scroll_area_background
+
+        # Find all scroll areas in the dialog and update their backgrounds
+        for scroll_area in self.findChildren(QScrollArea):
+            apply_scroll_area_background(scroll_area, theme_name)
+
+    def _apply_button_theming(self, is_dark: bool):
+        """Apply themed icons to buttons"""
+        from ..icon_manager import get_themed_button_icon
+
+        # Update cancel and save button icons
+        if hasattr(self, 'cancel_button'):
+            self.cancel_button.setIcon(get_themed_button_icon('cancel', 16, is_dark))
+        if hasattr(self, 'save_button'):
+            self.save_button.setIcon(get_themed_button_icon('save', 16, is_dark))
 
     def _apply_icon_theming(self, is_dark: bool):
         """Apply appropriate icon colors based on dark/light theme"""

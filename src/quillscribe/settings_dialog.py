@@ -1908,95 +1908,15 @@ class SettingsDialog(QDialog):
         return scroll_area
 
     def _apply_scrollbar_theme(self, scroll_area, theme_name):
-        """Apply themed styling to scrollbar with rounded design"""
-        colors = self._get_theme_colors(theme_name)
-        is_dark = self._is_dark_color(colors["primary"])
+        """Apply modern themed styling to scrollbar using centralized theme manager"""
+        theme_manager = get_theme_manager()
 
-        if is_dark:
-            # Dark theme scrollbar - more subtle and rounded
-            scrollbar_bg = "transparent"  # Invisible background
-            scrollbar_handle = "#555555"  # Subtle gray handle
-            scrollbar_handle_hover = "#666666"  # Slightly lighter on hover
-            scrollbar_handle_pressed = "#444444"  # Darker when pressed
-        else:
-            # Light theme scrollbar - more subtle and rounded
-            scrollbar_bg = "transparent"  # Invisible background
-            scrollbar_handle = "#d0d0d0"  # Light gray handle
-            scrollbar_handle_hover = "#b0b0b0"  # Darker on hover
-            scrollbar_handle_pressed = "#a0a0a0"  # Even darker when pressed
-
-        scroll_area.setStyleSheet(f"""
-            /* Ensure the scroll area and its viewport use the theme background */
-            QScrollArea {{
-                border: none;
-                background-color: {colors["primary"]};
-            }}
-            QScrollArea > QWidget#qt_scrollarea_viewport {{
-                background-color: {colors["primary"]};
-            }}
-            QWidget#qt_scrollarea_viewport {{
-                background-color: {colors["primary"]};
-            }}
-            /* Modern rounded scrollbar */
-            QScrollBar:vertical {{
-                background: {scrollbar_bg};
-                width: 8px;
-                border: none;
-                border-radius: 4px;
-                margin: 4px;
-            }}
-            QScrollBar::handle:vertical {{
-                background: {scrollbar_handle};
-                min-height: 30px;
-                border-radius: 4px;
-                margin: 0px;
-            }}
-            QScrollBar::handle:vertical:hover {{
-                background: {scrollbar_handle_hover};
-            }}
-            QScrollBar::handle:vertical:pressed {{
-                background: {scrollbar_handle_pressed};
-            }}
-            /* Hide scrollbar arrows and page areas */
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-                border: none;
-                background: none;
-                height: 0px;
-                width: 0px;
-            }}
-            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
-                background: none;
-            }}
-            /* Horizontal scrollbar (if needed) */
-            QScrollBar:horizontal {{
-                background: {scrollbar_bg};
-                height: 8px;
-                border: none;
-                border-radius: 4px;
-                margin: 4px;
-            }}
-            QScrollBar::handle:horizontal {{
-                background: {scrollbar_handle};
-                min-width: 30px;
-                border-radius: 4px;
-                margin: 0px;
-            }}
-            QScrollBar::handle:horizontal:hover {{
-                background: {scrollbar_handle_hover};
-            }}
-            QScrollBar::handle:horizontal:pressed {{
-                background: {scrollbar_handle_pressed};
-            }}
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
-                border: none;
-                background: none;
-                height: 0px;
-                width: 0px;
-            }}
-            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
-                background: none;
-            }}
-        """)
+        # Use the new centralized scrollbar styling system with responsive design
+        theme_manager.apply_modern_scrollbar_to_widget(
+            scroll_area,
+            theme_name=theme_name,
+            responsive=True  # Enable responsive sizing for better UX
+        )
 
     def save_and_close(self):
         """Save all settings and close dialog"""
@@ -2053,11 +1973,14 @@ class SettingsDialog(QDialog):
         # Apply unified icon theming to all components
         theme_manager.apply_icons_to_widget(self, is_dark)
 
+        # Apply comprehensive text theming to all labels
+        theme_manager.apply_text_theming_to_widget(self, theme_name)
+
         # Update API key toggle icon for current theme
         if hasattr(self, 'api_key_toggle_btn'):
             self._update_api_key_toggle_icon()
 
-        # Update important form labels for dark/light
+        # Update important form labels for dark/light (specific styling for form labels)
         is_dark = self._is_dark_color(colors["primary"])
         label_primary = "#ffffff" if is_dark else "#495057"
         muted = "#e0e0e0" if is_dark else "#6c757d"
@@ -2069,15 +1992,36 @@ class SettingsDialog(QDialog):
         # Apply theme to tabs
         self.apply_tab_theme(theme_name)
 
-        # Apply theme to scrollbars
+        # Apply theme to scrollbars and their backgrounds
+        scroll_areas = []
         if hasattr(self, 'audio_scroll'):
-            self._apply_scrollbar_theme(self.audio_scroll, theme_name)
+            scroll_areas.append(self.audio_scroll)
         if hasattr(self, 'whisper_scroll'):
-            self._apply_scrollbar_theme(self.whisper_scroll, theme_name)
+            scroll_areas.append(self.whisper_scroll)
         if hasattr(self, 'output_scroll'):
-            self._apply_scrollbar_theme(self.output_scroll, theme_name)
+            scroll_areas.append(self.output_scroll)
         if hasattr(self, 'ui_scroll'):
-            self._apply_scrollbar_theme(self.ui_scroll, theme_name)
+            scroll_areas.append(self.ui_scroll)
+        if hasattr(self, 'statistics_scroll'):
+            scroll_areas.append(self.statistics_scroll)
+
+        for scroll_area in scroll_areas:
+            # Apply modern scrollbar styling
+            self._apply_scrollbar_theme(scroll_area, theme_name)
+
+            # Apply background colors for dynamic theming
+            scroll_area.setStyleSheet(scroll_area.styleSheet() + f"""
+                QScrollArea {{
+                    border: none;
+                    background-color: {colors["primary"]};
+                }}
+                QScrollArea > QWidget#qt_scrollarea_viewport {{
+                    background-color: {colors["primary"]};
+                }}
+                QWidget#qt_scrollarea_viewport {{
+                    background-color: {colors["primary"]};
+                }}
+            """)
 
         # Apply theme to icons
         self._apply_icon_theme(is_dark)
