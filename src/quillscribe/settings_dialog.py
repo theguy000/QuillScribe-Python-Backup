@@ -2208,6 +2208,10 @@ class SettingsDialog(QDialog):
         # Apply comprehensive text theming to all labels
         theme_manager.apply_text_theming_to_widget(self, theme_name)
 
+        # Allow UI tab to refresh its custom slider styling for this theme
+        if hasattr(self, 'ui_tab') and hasattr(self.ui_tab, 'apply_animation_theme'):
+            self.ui_tab.apply_animation_theme(theme_name)
+
         # Update API key toggle icon for current theme
         if hasattr(self, 'api_key_toggle_btn'):
             self._update_api_key_toggle_icon()
@@ -2674,30 +2678,36 @@ class UITab(QWidget):
         viz_layout.addRow(self.show_waveform_checkbox)
 
         self.animation_strength_label = QLabel("Animation Amplification:")
+        self.animation_strength_label.setObjectName("animation_strength_label")
         self.animation_strength_slider = QSlider(Qt.Orientation.Horizontal)
         self.animation_strength_slider.setRange(1, 10)
         self.animation_strength_slider.setValue(3)
         self.animation_strength_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.animation_strength_slider.setTickInterval(1)
-        self.animation_strength_slider.setStyleSheet("""
-            QSlider::groove:horizontal { border: 2px solid #dee2e6; height: 8px; background: #f8f9fa; border-radius: 4px; }
-            QSlider::handle:horizontal { background: #4A90E2; border: 2px solid #357ABD; width: 16px; margin: -4px 0; border-radius: 8px; }
-            QSlider::handle:horizontal:hover { background: #5BA0F2; }
-        """)
+        self.animation_strength_slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        # Accessibility improvements
+        self.animation_strength_slider.setPageStep(2)  # Page Up/Down steps
+        self.animation_strength_slider.setSingleStep(1)  # Arrow key steps
+        self.animation_strength_slider.setToolTip("Adjust amplification (Use arrow keys for precise control)")
 
         self.animation_strength_value_label = QLabel("3x")
-        self.animation_strength_value_label.setStyleSheet("QLabel { color: #495057; font-size: 12px; font-weight: bold; min-width: 30px; }")
+        self.animation_strength_value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.animation_strength_value_label.setMinimumWidth(40)
+        self.animation_strength_value_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.animation_strength_slider.valueChanged.connect(self.update_animation_strength_label)
 
         strength_layout = QHBoxLayout()
+        strength_layout.setSpacing(12)
+        strength_layout.setContentsMargins(0, 4, 0, 4)
         strength_layout.addWidget(self.animation_strength_slider)
         strength_layout.addWidget(self.animation_strength_value_label)
         viz_layout.addRow(self.animation_strength_label, strength_layout)
+        self._style_animation_controls()
 
-        strength_help = QLabel("Higher values make waveform more visible with quiet voice")
-        strength_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent;")
-        strength_help.setWordWrap(True)
-        viz_layout.addRow("", strength_help)
+        self.strength_help = QLabel("Higher values make waveform more visible with quiet voice")
+        self.strength_help.setObjectName("strength_help_label")
+        self.strength_help.setWordWrap(True)
+        viz_layout.addRow("", self.strength_help)
 
         layout.addWidget(viz_group)
 
@@ -2830,7 +2840,213 @@ class UITab(QWidget):
             self.config_manager.set_setting("ui/theme", theme_data)
 
     def update_animation_strength_label(self, value):
+        """Update the value label and apply visual feedback for extreme values."""
         self.animation_strength_value_label.setText(f"{value}x")
+        # Update tooltip with current value
+        self.animation_strength_slider.setToolTip(f"Amplification: {value}x (Use arrow keys for precise control)")
+        # Apply visual feedback styling for extreme values
+        self._update_value_badge_style(value)
+        # Update slider stylesheet to hide/show sub-page at minimum
+        self._update_slider_fill_visibility(value)
+
+    def apply_animation_theme(self, theme_name: str | None = None):
+        """Public hook so parent dialog can restyle animation controls on theme changes."""
+        self._style_animation_controls(theme_name)
+        # Re-apply value badge styling for current slider value
+        if hasattr(self, 'animation_strength_slider'):
+            self._update_value_badge_style(self.animation_strength_slider.value())
+
+    def _style_animation_controls(self, theme_name: str | None = None):
+        """Apply cohesive styling to the animation amplification slider and badges."""
+        if not hasattr(self, "animation_strength_slider"):
+            return
+
+        theme_manager = get_theme_manager()
+        if theme_name is None:
+            theme_name = theme_manager.get_current_theme()
+
+        colors = theme_manager.get_theme_colors(theme_name)
+        primary = colors.get("primary", "#ffffff")
+        secondary = colors.get("secondary", "#f8f9fa")
+        accent = colors.get("accent", "#4A90E2")
+        accent_hover = colors.get("accent_hover", "#357ABD")
+
+        is_dark = self._is_dark_theme(primary)
+        
+        # Store current theme info for value badge updates
+        self._current_theme_name = theme_name
+        self._current_accent = accent
+        self._current_primary = primary
+        
+        groove_start = self._blend_hex_colors(primary, secondary, 0.6 if is_dark else 0.25)
+        groove_end = self._blend_hex_colors(primary, "#000000", 0.15 if is_dark else 0.05)
+        groove_border = self._blend_hex_colors(primary, "#000000" if is_dark else "#4A90E2", 0.18 if is_dark else 0.08)
+
+        accent_fill = self._blend_hex_colors(accent, "#ffffff", 0.2 if is_dark else 0.05)
+        handle_color = self._blend_hex_colors(accent, "#ffffff", 0.35 if is_dark else 0.15)
+        handle_hover = self._blend_hex_colors(accent_hover, "#ffffff", 0.3 if is_dark else 0.1)
+        handle_pressed = self._blend_hex_colors(accent, "#000000", 0.25)
+        # Improved tick marks - taller and more visible
+        tick_color = self._blend_hex_colors(secondary if not is_dark else primary, "#4a4d55" if is_dark else "#adb5bd", 0.7)
+
+        # Get current slider value to determine sub-page visibility
+        current_value = self.animation_strength_slider.value() if hasattr(self, 'animation_strength_slider') else 3
+        
+        # Hide sub-page (blue fill) when at minimum value (1)
+        if current_value == 1:
+            sub_page_bg = "transparent"
+        else:
+            sub_page_bg = f"qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {accent}, stop:1 {accent_fill})"
+        
+        slider_stylesheet = f"""
+            QSlider::groove:horizontal {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 {groove_start}, stop:1 {groove_end});
+                height: 10px;
+                border-radius: 5px;
+                border: 1px solid {groove_border};
+                margin: 8px 14px;
+            }}
+            QSlider::sub-page:horizontal {{
+                background: {sub_page_bg};
+                border-radius: 5px;
+                border: none;
+                margin: 8px 14px;
+            }}
+            QSlider::add-page:horizontal {{
+                background: transparent;
+                border-radius: 5px;
+                margin: 8px 14px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {handle_color};
+                border: 2px solid {accent};
+                width: 20px;
+                height: 20px;
+                margin: -7px -13px;
+                border-radius: 10px;
+            }}
+            QSlider::handle:horizontal:hover {{
+                background: {handle_hover};
+                border-color: {accent_hover};
+                width: 22px;
+                height: 22px;
+                margin: -8px -14px;
+            }}
+            QSlider::handle:horizontal:pressed {{
+                background: {handle_pressed};
+                border-color: {accent_hover};
+                width: 20px;
+                height: 20px;
+                margin: -7px -13px;
+            }}
+            QSlider::handle:horizontal:disabled {{
+                background: {self._blend_hex_colors(handle_color, primary, 0.6)};
+                border-color: {self._blend_hex_colors(accent, primary, 0.6)};
+            }}
+            QSlider::tick-mark:horizontal {{
+                background: {tick_color};
+                width: 1px;
+                height: 8px;
+            }}
+        """
+
+        self.animation_strength_slider.setStyleSheet(slider_stylesheet)
+
+        heading_color = "#e5e5eb" if is_dark else "#2c3e50"
+        self.animation_strength_label.setStyleSheet(
+            f"QLabel {{ color: {heading_color}; font-size: 13px; font-weight: 600; }}"
+        )
+        
+        # Style help text with theme awareness
+        if hasattr(self, 'strength_help'):
+            help_color = "#8a8e98" if is_dark else "#6c757d"
+            self.strength_help.setStyleSheet(
+                f"color: {help_color}; font-size: 11px; font-style: italic; "
+                f"padding-left: 4px; background-color: transparent;"
+            )
+
+    @staticmethod
+    def _blend_hex_colors(base_hex: str, blend_hex: str, factor: float) -> str:
+        """Blend two hex colors by a given factor (0.0 -> base, 1.0 -> blend)."""
+        factor = max(0.0, min(1.0, factor))
+        try:
+            base_hex = base_hex.lstrip('#')
+            blend_hex = blend_hex.lstrip('#')
+            br, bg, bb = int(base_hex[0:2], 16), int(base_hex[2:4], 16), int(base_hex[4:6], 16)
+            rr, rg, rb = int(blend_hex[0:2], 16), int(blend_hex[2:4], 16), int(blend_hex[4:6], 16)
+            r = int(br + (rr - br) * factor)
+            g = int(bg + (rg - bg) * factor)
+            b = int(bb + (rb - bb) * factor)
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, TypeError):
+            return base_hex if base_hex.startswith('#') else f"#{base_hex}"
+
+    def _update_slider_fill_visibility(self, value: int):
+        """Update slider stylesheet to hide sub-page fill when at minimum value."""
+        if not hasattr(self, 'animation_strength_slider'):
+            return
+        # Trigger a re-style to update sub-page visibility
+        self._style_animation_controls()
+    
+    def _update_value_badge_style(self, value: int):
+        """Apply visual feedback styling based on the current slider value."""
+        if not hasattr(self, 'animation_strength_value_label'):
+            return
+            
+        theme_manager = get_theme_manager()
+        theme_name = getattr(self, '_current_theme_name', theme_manager.get_current_theme())
+        colors = theme_manager.get_theme_colors(theme_name)
+        primary = colors.get("primary", "#ffffff")
+        accent = colors.get("accent", "#4A90E2")
+        
+        is_dark = self._is_dark_theme(primary)
+        
+        # Apply different colors for extreme values
+        if value == 1:
+            # Minimum value - subtle gray
+            label_text = "#d1d5db" if is_dark else "#6c757d"
+            label_bg = self._blend_hex_colors(primary, "#6c757d", 0.25 if is_dark else 0.1)
+            label_border = self._blend_hex_colors("#9ca3af", primary, 0.5)
+        elif value >= 9:
+            # High values - warning/attention color
+            warning_color = "#f59e0b"
+            label_text = "#fef3c7" if is_dark else "#c2410c"
+            label_bg = self._blend_hex_colors(primary, warning_color, 0.4 if is_dark else 0.15)
+            label_border = self._blend_hex_colors(warning_color, primary, 0.5)
+        else:
+            # Normal range - use accent color with improved light mode
+            label_text = "#e9edf8" if is_dark else "#2563eb"
+            label_bg = self._blend_hex_colors(primary, accent, 0.35 if is_dark else 0.15)
+            label_border = self._blend_hex_colors(accent, primary, 0.5)
+        
+        self.animation_strength_value_label.setStyleSheet(
+            f"""
+            QLabel {{
+                color: {label_text};
+                font-size: 12px;
+                font-weight: 600;
+                padding: 2px 8px;
+                border-radius: 10px;
+                background: {label_bg};
+                border: 1px solid {label_border};
+                min-width: 40px;
+            }}
+            """
+        )
+    
+    @staticmethod
+    def _is_dark_theme(color_hex: str) -> bool:
+        """Determine if a given color should be treated as dark."""
+        try:
+            color_hex = color_hex.lstrip('#')
+            r = int(color_hex[0:2], 16)
+            g = int(color_hex[2:4], 16)
+            b = int(color_hex[4:6], 16)
+            brightness = (r * 299 + g * 587 + b * 114) / 1000
+            return brightness < 128
+        except (ValueError, TypeError):
+            return False
 
     def on_theme_changed(self):
         """Apply theme immediately when changed"""
@@ -2838,6 +3054,9 @@ class UITab(QWidget):
         if theme_data:
             self.config_manager.set_setting("ui/theme", theme_data)
             self.config_manager.save_settings()  # Save immediately
+
+            # Refresh slider styling instantly for better feedback
+            self._style_animation_controls(theme_data)
 
             # Apply theme to the parent dialog immediately
             dialog = self.parent()
