@@ -51,21 +51,20 @@ class TrayManager(QObject):
     def setup_tray(self):
         """Setup system tray icon and menu"""
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            print("Warning: System tray is not available on this system")
             return
-        
+
         # Create tray icon
         self.tray_icon = QSystemTrayIcon(self)
-        
+
         # Set initial icon
         self._update_tray_icon()
-        
+
         # Create context menu
         self._create_tray_menu()
-        
+
         # Connect signals
         self.tray_icon.activated.connect(self._on_tray_activated)
-        
+
         # Set tooltip
         self._update_tooltip()
     
@@ -203,16 +202,16 @@ class TrayManager(QObject):
         """Update the tray icon based on recording state"""
         if not self.tray_icon:
             return
-        
+
         try:
             if self.is_recording and self.recording_icon_path.exists():
                 icon = QIcon(str(self.recording_icon_path))
             else:
                 icon = QIcon(str(self.normal_icon_path))
-            
+
             self.tray_icon.setIcon(icon)
-        except Exception as e:
-            print(f"Error updating tray icon: {e}")
+        except Exception:
+            pass
     
     def _update_tooltip(self):
         """Update the tray icon tooltip"""

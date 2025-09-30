@@ -728,6 +728,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.setWindowFlags(base_flags)
 
         # Set window icon (ICO format only - guaranteed to be present)
+        # This reinforces the application-level icon for this specific window
         try:
             from pathlib import Path
             # Handle both development and frozen executable environments
@@ -738,9 +739,12 @@ class QuillScribeMainWindow(QMainWindow):
                 # Running from source
                 ico_path = Path(__file__).parent / "app_logo.ico"
 
-            self.setWindowIcon(QIcon(str(ico_path)))
-        except Exception as e:
-            print(f"Error: Could not load window icon: {e}")
+            if ico_path.exists():
+                icon = QIcon(str(ico_path))
+                if not icon.isNull():
+                    self.setWindowIcon(icon)
+        except Exception:
+            pass
 
         # Central widget
         central_widget = QWidget()
@@ -882,11 +886,20 @@ class QuillScribeMainWindow(QMainWindow):
         icon_label = QLabel()
         try:
             from pathlib import Path
-            ico_path = Path(__file__).parent / "app_logo.ico"
-            pixmap = QPixmap(str(ico_path)).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            icon_label.setPixmap(pixmap)
-        except Exception as e:
-            print(f"Error: Could not load titlebar icon: {e}")
+            # Handle both development and frozen executable environments
+            if getattr(sys, 'frozen', False):
+                # Running as frozen executable - use PyInstaller's temporary directory
+                ico_path = Path(sys._MEIPASS) / "app_logo.ico"
+            else:
+                # Running from source
+                ico_path = Path(__file__).parent / "app_logo.ico"
+
+            if ico_path.exists():
+                pixmap = QPixmap(str(ico_path)).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                if not pixmap.isNull():
+                    icon_label.setPixmap(pixmap)
+        except Exception:
+            pass
 
         icon_label.setFixedSize(16, 16)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -1087,7 +1100,20 @@ class QuillScribeMainWindow(QMainWindow):
         self.show()
         self.raise_()
         self.activateWindow()
+        self._refresh_taskbar_icon()
         # Keep tray icon visible for easy access
+
+    def _refresh_taskbar_icon(self):
+        """Force refresh of taskbar icon on Windows"""
+        if sys.platform == "win32":
+            try:
+                # Get the window icon and re-set it to force Windows to update
+                icon = self.windowIcon()
+                if not icon.isNull():
+                    self.setWindowIcon(QIcon())  # Clear
+                    self.setWindowIcon(icon)  # Re-set
+            except Exception:
+                pass
 
     def hide_to_tray(self):
         """Hide window to system tray"""
@@ -1991,21 +2017,21 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    # Windows-specific taskbar configuration FIRST (before anything else)
+    if sys.platform == "win32" and ctypes is not None:
+        try:
+            # Set Windows App Model ID BEFORE setting icon for proper taskbar grouping
+            from ctypes import windll
+            windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuillScribe.VoiceTranscription.1.0")
+        except Exception:
+            pass
+
     # Set application properties
     app.setApplicationName("QuillScribe")
     app.setApplicationVersion("1.0.0")
     app.setOrganizationName("QuillScribe")
 
-    # Windows-specific taskbar configuration
-    if sys.platform == "win32" and ctypes is not None:
-        try:
-            # Set Windows App Model ID for proper taskbar grouping and icon display
-            from ctypes import windll
-            windll.shell32.SetCurrentProcessExplicitAppUserModelID("QuillScribe.VoiceTranscription.1.0")
-        except Exception as e:
-            print(f"Warning: Could not set Windows App Model ID: {e}")
-
-    # Set application icon (ICO format only - guaranteed to be present)
+    # Set application icon BEFORE creating windows (critical for Windows taskbar)
     try:
         from pathlib import Path
         # Handle both development and frozen executable environments
@@ -2016,9 +2042,12 @@ def main():
             # Running from source
             ico_path = Path(__file__).parent / "app_logo.ico"
 
-        app.setWindowIcon(QIcon(str(ico_path)))
-    except Exception as e:
-        print(f"Error: Could not load application icon: {e}")
+        if ico_path.exists():
+            icon = QIcon(str(ico_path))
+            if not icon.isNull():
+                app.setWindowIcon(icon)
+    except Exception:
+        pass
 
     # Create and show main window
     window = QuillScribeMainWindow()
@@ -2027,6 +2056,9 @@ def main():
     app.aboutToQuit.connect(lambda: window._perform_exit())
 
     window.show()
+
+    # Force taskbar icon refresh on Windows after window is shown
+    window._refresh_taskbar_icon()
 
     return app.exec()
 
