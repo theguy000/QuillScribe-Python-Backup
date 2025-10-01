@@ -65,16 +65,125 @@ class WhisperManager(QObject):
         self.mode = "api"  # "api" or "local"
         self.api_key = ""
         self.api_model = "gpt-4o-transcribe"  # Selected API model (default to latest/best)
+        self.api_language = "en"  # Default language for API transcription (ISO 639-1 code)
         self.local_model = None
         self.local_model_path = ""
         self.is_loading = False
         
         # Available models for API mode
         self.available_api_models = [
-            "whisper-1",  # Original Whisper model (2022)
             "gpt-4o-transcribe",  # Latest model with improved accuracy (March 2025)
             "gpt-4o-mini-transcribe"  # Efficient version of gpt-4o-transcribe (March 2025)
         ]
+        
+        # Available languages for API mode (ISO 639-1/639-3 codes)
+        # Complete list of all 100 languages supported by OpenAI Whisper API
+        # Sorted alphabetically by language name (not ISO code) for easy user navigation
+        self.available_languages = [
+            ("af", "Afrikaans"),
+            ("sq", "Albanian"),
+            ("am", "Amharic"),
+            ("ar", "Arabic"),
+            ("hy", "Armenian"),
+            ("as", "Assamese"),
+            ("az", "Azerbaijani"),
+            ("ba", "Bashkir"),
+            ("eu", "Basque"),
+            ("be", "Belarusian"),
+            ("bn", "Bengali"),
+            ("bs", "Bosnian"),
+            ("br", "Breton"),
+            ("bg", "Bulgarian"),
+            ("my", "Burmese"),
+            ("yue", "Cantonese"),
+            ("ca", "Catalan"),
+            ("zh", "Chinese"),
+            ("hr", "Croatian"),
+            ("cs", "Czech"),
+            ("da", "Danish"),
+            ("nl", "Dutch"),
+            ("en", "English"),
+            ("et", "Estonian"),
+            ("fo", "Faroese"),
+            ("fi", "Finnish"),
+            ("fr", "French"),
+            ("gl", "Galician"),
+            ("ka", "Georgian"),
+            ("de", "German"),
+            ("el", "Greek"),
+            ("gu", "Gujarati"),
+            ("ht", "Haitian Creole"),
+            ("ha", "Hausa"),
+            ("haw", "Hawaiian"),
+            ("he", "Hebrew"),
+            ("hi", "Hindi"),
+            ("hu", "Hungarian"),
+            ("is", "Icelandic"),
+            ("id", "Indonesian"),
+            ("it", "Italian"),
+            ("ja", "Japanese"),
+            ("jw", "Javanese"),
+            ("kn", "Kannada"),
+            ("kk", "Kazakh"),
+            ("km", "Khmer"),
+            ("ko", "Korean"),
+            ("lo", "Lao"),
+            ("la", "Latin"),
+            ("lv", "Latvian"),
+            ("ln", "Lingala"),
+            ("lt", "Lithuanian"),
+            ("lb", "Luxembourgish"),
+            ("mk", "Macedonian"),
+            ("mg", "Malagasy"),
+            ("ms", "Malay"),
+            ("ml", "Malayalam"),
+            ("mt", "Maltese"),
+            ("mi", "Maori"),
+            ("mr", "Marathi"),
+            ("mn", "Mongolian"),
+            ("ne", "Nepali"),
+            ("no", "Norwegian"),
+            ("nn", "Norwegian Nynorsk"),
+            ("oc", "Occitan"),
+            ("ps", "Pashto"),
+            ("fa", "Persian"),
+            ("pl", "Polish"),
+            ("pt", "Portuguese"),
+            ("pa", "Punjabi"),
+            ("ro", "Romanian"),
+            ("ru", "Russian"),
+            ("sa", "Sanskrit"),
+            ("sr", "Serbian"),
+            ("sn", "Shona"),
+            ("sd", "Sindhi"),
+            ("si", "Sinhala"),
+            ("sk", "Slovak"),
+            ("sl", "Slovenian"),
+            ("so", "Somali"),
+            ("es", "Spanish"),
+            ("su", "Sundanese"),
+            ("sw", "Swahili"),
+            ("sv", "Swedish"),
+            ("tl", "Tagalog"),
+            ("tg", "Tajik"),
+            ("ta", "Tamil"),
+            ("tt", "Tatar"),
+            ("te", "Telugu"),
+            ("th", "Thai"),
+            ("bo", "Tibetan"),
+            ("tr", "Turkish"),
+            ("tk", "Turkmen"),
+            ("uk", "Ukrainian"),
+            ("ur", "Urdu"),
+            ("uz", "Uzbek"),
+            ("vi", "Vietnamese"),
+            ("cy", "Welsh"),
+            ("yi", "Yiddish"),
+            ("yo", "Yoruba"),
+        ]
+        
+        # Create dictionary for O(1) language code validation
+        self.available_languages_dict = {code: name for code, name in self.available_languages}
         
         # Available models for local mode (faster-whisper format)
         self.available_local_models = [
@@ -120,6 +229,14 @@ class WhisperManager(QObject):
             self.api_model = model_name
         else:
             raise ValueError(f"Model {model_name} is not available for API mode")
+    
+    def set_api_language(self, language_code: str):
+        """Set language for API transcription (ISO 639-1 code)"""
+        # Validate language code using O(1) dictionary lookup
+        if language_code in self.available_languages_dict:
+            self.api_language = language_code
+        else:
+            raise ValueError(f"Language code {language_code} is not in the available languages list")
     
     def set_local_model(self, model_name: str):
         """Set local faster-whisper model name"""
@@ -264,6 +381,7 @@ class WhisperManager(QObject):
                 transcript = client.audio.transcriptions.create(
                     model=self.api_model,
                     file=audio_file,
+                    language=self.api_language,  # ISO 639-1 language code for improved accuracy
                     response_format="text"
                 )
             
@@ -329,7 +447,7 @@ class WhisperManager(QObject):
         return ["All", "Tiny", "Base", "Small", "Medium", "Large", "Distilled"]
     
     def get_models_by_category(self, category: str):
-        """Get LOCAL models filtered by category (never returns API models like whisper-1)"""
+        """Get LOCAL models filtered by category (never returns API models)"""
         # Always use local models list, never include API models
         local_models = self.available_local_models.copy()
         
@@ -353,7 +471,6 @@ class WhisperManager(QObject):
     def get_model_info(self, model_name: str) -> dict:
         """Get information about a specific model"""
         model_info = {
-            "whisper-1": {"size": "API", "memory": "Cloud-based", "speed": "Fast", "quality": "High"},
             "gpt-4o-transcribe": {"size": "API", "memory": "Cloud-based", "speed": "Fast", "quality": "Very High"},
             "gpt-4o-mini-transcribe": {"size": "API", "memory": "Cloud-based", "speed": "Very Fast", "quality": "High"},
             "tiny": {"size": "37 MB", "memory": "~200 MB RAM", "speed": "Very Fast", "quality": "Low"},

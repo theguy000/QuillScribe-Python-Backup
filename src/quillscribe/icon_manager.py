@@ -19,7 +19,9 @@ class IconManager:
         # Main UI icons
         'microphone': 'mic.svg',
         'sound': 'volume-2.svg',
+        'volume-2': 'volume-2.svg',  # Direct mapping for volume icon
         'audio': 'mic.svg',  # Use microphone icon for audio settings
+        'language': 'language.svg',  # Language selection icon
         'settings': 'settings.svg',
         'close': 'x.svg',  # Simple X icon for close buttons
         'minimize': 'minimize.svg',  # Simple horizontal line for minimize buttons

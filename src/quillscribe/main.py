@@ -1418,15 +1418,15 @@ class QuillScribeMainWindow(QMainWindow):
                             "Invalid API Model",
                             f"The configured API model '{api_model}' is not available.\n\n"
                             f"Error: {e}\n\n"
-                            f"Falling back to default model 'whisper-1'.\n"
+                            f"Falling back to default model 'gpt-4o-mini-transcribe'.\n"
                             f"Please check your settings to select a valid model.",
                             QMessageBox.StandardButton.Ok
                         )
 
                         # Fallback to default model and clear invalid config
                         try:
-                            self.whisper_manager.set_api_model("whisper-1")
-                            self.config_manager.set_setting("whisper/api_model", "whisper-1")
+                            self.whisper_manager.set_api_model("gpt-4o-mini-transcribe")
+                            self.config_manager.set_setting("whisper/api_model", "gpt-4o-mini-transcribe")
                         except Exception as fallback_error:
                             QMessageBox.critical(
                                 self,
@@ -1435,6 +1435,16 @@ class QuillScribeMainWindow(QMainWindow):
                                 f"Please check your OpenAI API configuration.",
                                 QMessageBox.StandardButton.Ok
                             )
+                
+                # Load API language setting
+                api_language = self.config_manager.get_setting("whisper/language", "en")
+                if api_language:
+                    try:
+                        self.whisper_manager.set_api_language(api_language)
+                    except ValueError as e:
+                        # Invalid language code, fallback to English
+                        self.whisper_manager.set_api_language("en")
+                        self.config_manager.set_setting("whisper/language", "en")
             else:
                 # Local model will be set below in the local model section
                 pass

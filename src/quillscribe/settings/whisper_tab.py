@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QFormLayout, QButtonGroup
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QKeySequence
 
 from ..config_manager import ConfigManager
@@ -23,6 +23,14 @@ class WhisperTab(QWidget):
         super().__init__(parent)
         self.config_manager = config_manager
         self.whisper_manager = WhisperManager()
+        
+        # Debounce timer for language changes (prevents excessive config writes)
+        self.language_change_timer = QTimer()
+        self.language_change_timer.setSingleShot(True)
+        self.language_change_timer.setInterval(300)  # 300ms debounce delay
+        self.language_change_timer.timeout.connect(self._apply_language_change)
+        self.pending_language_code = None
+        
         self.setup_ui()
         self.setup_model_connections()
         self.load_settings()
@@ -163,6 +171,42 @@ class WhisperTab(QWidget):
         api_model_help.setWordWrap(True)
         api_layout.addRow("", api_model_help)
 
+        # API language selection with icon
+        api_language_widget = QWidget()
+        api_language_layout = QHBoxLayout(api_language_widget)
+        api_language_layout.setContentsMargins(0, 0, 0, 0)
+        api_language_layout.setSpacing(6)
+
+        api_language_icon = QLabel()
+        api_language_icon.setPixmap(get_button_icon('language', 16).pixmap(16, 16))
+        api_language_icon.setObjectName("icon_api_language")
+        api_language_layout.addWidget(api_language_icon)
+
+        self.api_language_combo = ModernComboBox()
+        self.populate_api_language_combo()
+        self.api_language_combo.currentIndexChanged.connect(self.on_api_language_changed)
+        api_language_layout.addWidget(self.api_language_combo)
+        api_language_layout.addStretch()
+
+        # Create properly aligned label for API language
+        api_language_label = QLabel("Language:")
+        api_language_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        api_language_label.setMinimumHeight(36)  # Match combo box height
+        api_language_label.setObjectName("form_label")
+
+        api_layout.addRow(api_language_label, api_language_widget)
+
+        # Helper text for API language
+        api_language_help = QLabel("Select the language for better transcription accuracy (100 languages supported)")
+        api_language_help.setStyleSheet("""
+            color: #6c757d;
+            font-size: 11px;
+            background-color: transparent;
+            margin-left: 22px;
+        """)
+        api_language_help.setWordWrap(True)
+        api_layout.addRow("", api_language_help)
+
         layout.addWidget(self.api_group)
 
         # Local model settings (only show if Faster-Whisper is available)
@@ -293,10 +337,10 @@ class WhisperTab(QWidget):
     def populate_model_combo(self, category: str = "All"):
         """Fill the model dropdown with models from selected category"""
         current_model = self.model_combo.currentText() if hasattr(self, 'model_combo') else ""
-        # Only get LOCAL models, not API models like whisper-1
+        # Only get LOCAL models, not API models
         models = self.whisper_manager.get_models_by_category(category)
-        # Filter out any API-only models
-        local_models = [model for model in models if model != "whisper-1"]
+        # Use local models list (API models are not included)
+        local_models = models
 
         self.model_combo.clear()
         for model in local_models:
@@ -349,6 +393,18 @@ class WhisperTab(QWidget):
             display_text = f"{model} ({size}, {quality})"
             # Store actual model name as item data
             self.api_model_combo.addItem(display_text, model)
+    
+    def populate_api_language_combo(self):
+        """Fill the API language dropdown with available languages"""
+        self.api_language_combo.clear()
+        # Get available languages from whisper manager
+        available_languages = self.whisper_manager.available_languages
+
+        for code, name in available_languages:
+            # Display format: "English (en)"
+            display_text = f"{name} ({code})"
+            # Store language code as item data
+            self.api_language_combo.addItem(display_text, code)
 
     def on_api_model_changed(self, index: int):
         """Handle API model dropdown selection change"""
@@ -364,6 +420,26 @@ class WhisperTab(QWidget):
 
             # Update pricing display based on selected model
             self.update_pricing_display(model_name)
+    
+    def on_api_language_changed(self, index: int):
+        """Handle API language dropdown selection change with debounce"""
+        # Get actual language code from item data
+        language_code = self.api_language_combo.itemData(index)
+        if language_code:
+            # Store pending change and restart debounce timer
+            self.pending_language_code = language_code
+            self.language_change_timer.start()  # Restart timer on each change
+    
+    def _apply_language_change(self):
+        """Apply the pending language change (called after debounce delay)"""
+        if self.pending_language_code:
+            # Persist to config and update whisper manager
+            self.config_manager.set_setting("whisper/language", self.pending_language_code)
+            try:
+                self.whisper_manager.set_api_language(self.pending_language_code)
+            except ValueError as e:
+                print(f"Error setting API language: {e}")
+            self.pending_language_code = None
 
     def _update_api_key_toggle_icon(self):
         """Update the API key toggle button icon based on current state and theme"""
@@ -433,8 +509,6 @@ class WhisperTab(QWidget):
             # GPT-4o Transcribe Mini is half the price of regular GPT-4o Transcribe
             return "Pricing: ~$0.003 per minute of audio (~$0.18/hour)"
         elif model_name == "gpt-4o-transcribe":
-            return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
-        elif model_name == "whisper-1":
             return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
         else:
             # Default pricing for unknown models
@@ -507,6 +581,15 @@ class WhisperTab(QWidget):
 
             # Update pricing display for the selected model
             self.update_pricing_display(selected_api_model)
+        
+        # Load selected API language
+        selected_api_language = self.config_manager.get_setting("whisper/language", "en")
+        if hasattr(self, 'api_language_combo'):
+            # Find the matching language in the combo box
+            for i in range(self.api_language_combo.count()):
+                if self.api_language_combo.itemData(i) == selected_api_language:
+                    self.api_language_combo.setCurrentIndex(i)
+                    break
 
         # Load selected model for local mode
         selected_model = self.config_manager.get_setting("whisper/local_model", "base")
@@ -546,6 +629,17 @@ class WhisperTab(QWidget):
                         self.whisper_manager.set_api_model(api_model_name)
                     except ValueError as e:
                         print(f"Error setting API model: {e}")
+        
+        # Save selected API language from dropdown
+        if hasattr(self, 'api_language_combo') and self.api_language_combo.currentIndex() >= 0:
+            api_language_code = self.api_language_combo.currentData()  # Get actual language code from item data
+            if api_language_code:
+                self.config_manager.set_setting("whisper/language", api_language_code)
+                if mode == "api":
+                    try:
+                        self.whisper_manager.set_api_language(api_language_code)
+                    except ValueError as e:
+                        print(f"Error setting API language: {e}")
 
         # Save selected local model from dropdown
         if hasattr(self, 'model_combo') and self.model_combo.currentIndex() >= 0:

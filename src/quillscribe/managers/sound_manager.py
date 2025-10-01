@@ -25,8 +25,8 @@ class SoundManager(QObject):
             base_path = Path(sys._MEIPASS)
             self.sounds_path = base_path / "sounds"
         else:
-            # Running from source
-            self.sounds_path = Path(__file__).parent.parent / "sounds"
+            # Running from source - go up to src/ directory, then into sounds/
+            self.sounds_path = Path(__file__).parent.parent.parent / "sounds"
         
         # Load sounds using Qt's QSoundEffect
         self.start_sound: Optional[QSoundEffect] = None

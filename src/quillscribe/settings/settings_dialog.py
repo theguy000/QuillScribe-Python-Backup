@@ -13,7 +13,7 @@ from PySide6.QtGui import QColor
 
 from ..config_manager import ConfigManager
 from ..managers import StatisticsManager, get_theme_manager
-from ..icon_manager import get_icon, get_white_button_icon
+from ..icon_manager import get_icon, get_white_button_icon, get_button_icon
 from .audio_tab import AudioTab
 from .whisper_tab import WhisperTab
 from .output_tab import OutputTab
@@ -414,8 +414,48 @@ class SettingsDialog(QDialog):
                 else:
                     self.tabs.setTabIcon(ui_index, get_icon('settings', 16))
 
-        # Update button icons (these are already using get_white_button_icon for dark backgrounds)
-        # The cancel and save buttons already use white icons on their dark backgrounds, so no change needed
+        # Update save and cancel button icons and styles based on theme
+        if hasattr(self, 'cancel_button'):
+            # Cancel button - colored background with white icon (both themes)
+            self.cancel_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #6c757d;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 20px 10px 36px;
+                    font-size: 14px;
+                    min-width: 80px;
+                    text-align: left;
+                }
+                QPushButton:hover {
+                    background-color: #5a6268;
+                }
+            """)
+            # Always use white icon on grey background for maximum contrast
+            self.cancel_button.setIcon(get_icon('cancel', 16, QColor(255, 255, 255)))
+            self.cancel_button.setIconSize(QSize(16, 16))
+        
+        if hasattr(self, 'save_button'):
+            # Save button - colored background with white icon (both themes)
+            self.save_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #4A90E2;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    min-width: 80px;
+                    text-align: center;
+                }
+                QPushButton:hover {
+                    background-color: #357ABD;
+                }
+            """)
+            # Always use white icon on blue background for maximum contrast
+            self.save_button.setIcon(get_icon('save', 16, QColor(255, 255, 255)))
+            self.save_button.setIconSize(QSize(16, 16))
 
         # Update icons in tab content - these need to be updated based on theme
         try:
@@ -472,6 +512,8 @@ class SettingsDialog(QDialog):
                         lbl.setPixmap((get_icon('key', 16, QColor(255, 255, 255)) if is_dark else get_icon('key', 16)).pixmap(16, 16))
                     elif name == 'icon_api_model':
                         lbl.setPixmap((get_icon('brain', 16, QColor(255, 255, 255)) if is_dark else get_icon('brain', 16)).pixmap(16, 16))
+                    elif name == 'icon_api_language':
+                        lbl.setPixmap((get_icon('language', 16, QColor(255, 255, 255)) if is_dark else get_icon('language', 16)).pixmap(16, 16))
                     elif name == 'icon_category':
                         lbl.setPixmap((get_icon('category', 16, QColor(255, 255, 255)) if is_dark else get_icon('category', 16)).pixmap(16, 16))
                     elif name == 'icon_model':
