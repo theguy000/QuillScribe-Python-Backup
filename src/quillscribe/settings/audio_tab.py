@@ -145,7 +145,7 @@ class AudioTab(QWidget):
             }
         """)
         self.detect_now_button.clicked.connect(self.detect_active_microphone_now)
-        self.detect_now_button.setEnabled(False)  # Only enabled when auto-select is on
+        self.detect_now_button.setEnabled(True)  # Always enabled
         auto_select_layout.addWidget(self.detect_now_button)
         auto_select_layout.addStretch()
 
@@ -440,8 +440,7 @@ class AudioTab(QWidget):
 
     def on_auto_select_toggled(self, checked: bool):
         """Handle auto-select checkbox toggle"""
-        # Enable/disable the detect now button
-        self.detect_now_button.setEnabled(checked)
+        # Detect now button is always enabled, no need to toggle it
 
         if checked:
             # Use a longer interval for automatic detection to be less intrusive
@@ -750,8 +749,7 @@ class AudioTab(QWidget):
         auto_select_enabled = self.config_manager.get_setting("audio/auto_select_mic", False)
         self.auto_select_checkbox.setChecked(bool(auto_select_enabled))
 
-        # Update button state based on auto-select setting
-        self.detect_now_button.setEnabled(bool(auto_select_enabled))
+        # Detect now button is always enabled, no need to update state
 
         # If auto-select is enabled, start monitoring
         if auto_select_enabled:
