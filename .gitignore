@@ -24,7 +24,6 @@ MANIFEST
 .augment/
 # PyInstaller
 *.manifest
-*.spec
 
 # Unit test / coverage reports
 htmlcov/
