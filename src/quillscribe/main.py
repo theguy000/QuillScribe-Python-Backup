@@ -243,17 +243,13 @@ class WindowsGlobalHotkeyManager:
         self.id_to_callback.clear()
         self.registered_ids.clear()
 
-from .audio_manager import AudioManager
-from .whisper_manager import WhisperManager
+from .managers import (
+    AudioManager, WhisperManager, OutputManager, StatisticsManager,
+    ThemeManager, get_theme_manager, WindowManager, SoundManager, TrayManager
+)
 from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
-from .output_manager import OutputManager
 from .config_manager import ConfigManager
-from .sound_manager import SoundManager
-from .tray_manager import TrayManager
-from .window_manager import WindowManager
-from .statistics_manager import StatisticsManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
-from .theme_manager import get_theme_manager
 
 
 class BreathingMicrophone(QWidget):
@@ -734,10 +730,10 @@ class QuillScribeMainWindow(QMainWindow):
             # Handle both development and frozen executable environments
             if getattr(sys, 'frozen', False):
                 # Running as frozen executable - use PyInstaller's temporary directory
-                ico_path = Path(sys._MEIPASS) / "app_logo.ico"
+                ico_path = Path(sys._MEIPASS) / "icons" / "app_logo.ico"
             else:
                 # Running from source
-                ico_path = Path(__file__).parent / "app_logo.ico"
+                ico_path = Path(__file__).parent / "icons" / "app_logo.ico"
 
             if ico_path.exists():
                 icon = QIcon(str(ico_path))
@@ -889,10 +885,10 @@ class QuillScribeMainWindow(QMainWindow):
             # Handle both development and frozen executable environments
             if getattr(sys, 'frozen', False):
                 # Running as frozen executable - use PyInstaller's temporary directory
-                ico_path = Path(sys._MEIPASS) / "app_logo.ico"
+                ico_path = Path(sys._MEIPASS) / "icons" / "app_logo.ico"
             else:
                 # Running from source
-                ico_path = Path(__file__).parent / "app_logo.ico"
+                ico_path = Path(__file__).parent / "icons" / "app_logo.ico"
 
             if ico_path.exists():
                 pixmap = QPixmap(str(ico_path)).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)

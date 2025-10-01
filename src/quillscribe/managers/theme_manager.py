@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any
 from PySide6.QtWidgets import QWidget, QCheckBox, QRadioButton, QTabWidget, QLabel, QPushButton, QLineEdit, QScrollArea
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QColor
-from .icon_manager import get_themed_button_icon, get_themed_icon
+from ..icon_manager import get_themed_button_icon, get_themed_icon
 
 
 class ThemeManager(QObject):

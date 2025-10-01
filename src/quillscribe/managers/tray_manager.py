@@ -40,10 +40,10 @@ class TrayManager(QObject):
         """Get the path to an icon file"""
         if getattr(sys, 'frozen', False):
             # Running as frozen executable
-            base_path = Path(sys._MEIPASS)
+            base_path = Path(sys._MEIPASS) / "icons"
         else:
-            # Running from source
-            base_path = Path(__file__).parent
+            # Running from source - go up two levels to quillscribe root, then into icons
+            base_path = Path(__file__).parent.parent / "icons"
         
         return base_path / filename
     

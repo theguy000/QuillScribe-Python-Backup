@@ -1,23 +1,49 @@
 """
-Settings module for QuillScribe
-Modular settings management with separate components
+Settings Module
+Modular settings dialogs and tabs for QuillScribe
 """
 
-from .settings_dialog import SettingsDialog
-from .statistics_tab import StatisticsTab
-from .window_manager_dialog import WindowManagerDialog
+from .ui_components import ModernButton, ModernGroupBox as BaseModernGroupBox
+from .modern_widgets import (
+    ModernGroupBox,
+    ModernComboBox,
+    ModernLineEdit,
+    ModernKeySequenceEdit,
+    ModernRadioButton,
+    ModernCheckBox
+)
 
-# Import from original settings_dialog.py for now
-# TODO: Move these to separate files
-from ..settings_dialog import UISettingsDialog, AudioTab, WhisperTab, OutputTab, UITab
+from .audio_tab import AudioTab
+from .whisper_tab import WhisperTab
+from .output_tab import OutputTab
+from .ui_tab import UITab
+from .statistics_tab import StatisticsTab
+from .settings_dialog import SettingsDialog
+from .window_manager_dialog import WindowManagerDialog
+from .ui_settings_dialog import UISettingsDialog
 
 __all__ = [
-    'SettingsDialog',
-    'UISettingsDialog', 
+    # UI Components
+    'ModernButton',
+    'BaseModernGroupBox',
+    
+    # Modern widgets
+    'ModernGroupBox',
+    'ModernComboBox',
+    'ModernLineEdit',
+    'ModernKeySequenceEdit',
+    'ModernRadioButton',
+    'ModernCheckBox',
+    
+    # Tabs
     'AudioTab',
     'WhisperTab',
     'OutputTab',
     'UITab',
     'StatisticsTab',
-    'WindowManagerDialog'
+    
+    # Dialogs
+    'SettingsDialog',
+    'WindowManagerDialog',
+    'UISettingsDialog',
 ]

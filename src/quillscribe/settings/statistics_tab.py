@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ..statistics_manager import StatisticsManager
-from ..ui_components import ModernButton, ModernGroupBox
+from ..managers import StatisticsManager
+from .ui_components import ModernButton, ModernGroupBox
 from .base_tab import BaseSettingsTab
 
 
@@ -71,7 +71,7 @@ class StatisticsTab(QWidget):
                 button.apply_theme(primary_color, secondary_color)
 
         # Apply theme to all ModernGroupBox components
-        from ..ui_components import ModernGroupBox
+        from .ui_components import ModernGroupBox
         for group_box in self.findChildren(ModernGroupBox):
             if hasattr(group_box, 'apply_theme'):
                 group_box.apply_theme(primary_color, secondary_color)

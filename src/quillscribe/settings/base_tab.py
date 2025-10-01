@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QWidget, QScrollArea, QSizePolicy
 from PySide6.QtCore import Qt
 
 from ..config_manager import ConfigManager
-from ..theme_manager import get_theme_manager
+from ..managers import get_theme_manager
 
 
 class BaseSettingsTab(QWidget):
