@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QSize, QTimer
 from ..managers import AudioManager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
-from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox
+from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox, AnimatedToggleSwitch
 
 
 class AudioTab(QWidget):
@@ -115,12 +115,14 @@ class AudioTab(QWidget):
 
         # Auto-select active microphone section
         auto_select_layout = QHBoxLayout()
-        self.auto_select_checkbox = ModernCheckBox("Auto-select active microphone")
-        self.auto_select_checkbox.setIcon(get_button_icon('sound', 16))
-        self.auto_select_checkbox.setIconSize(QSize(16, 16))
+        auto_select_layout.setSpacing(10)
+        self.auto_select_checkbox = AnimatedToggleSwitch()
         self.auto_select_checkbox.setChecked(False)  # Default disabled
         self.auto_select_checkbox.toggled.connect(self.on_auto_select_toggled)
         auto_select_layout.addWidget(self.auto_select_checkbox)
+        auto_select_label = QLabel("Auto-select active microphone")
+        auto_select_label.setStyleSheet("color: #495057; font-size: 13px;")
+        auto_select_layout.addWidget(auto_select_label, 1)
 
         # Add "Detect Now" button
         self.detect_now_button = QPushButton("Detect Now")
@@ -242,8 +244,15 @@ class AudioTab(QWidget):
             }
         """)
 
-        self.sounds_enabled_checkbox = ModernCheckBox("Enable notification sounds")
-        sound_layout.addRow(self.sounds_enabled_checkbox)
+        # Enable notification sounds toggle
+        sounds_toggle_layout = QHBoxLayout()
+        sounds_toggle_layout.setSpacing(10)
+        self.sounds_enabled_checkbox = AnimatedToggleSwitch()
+        sounds_toggle_layout.addWidget(self.sounds_enabled_checkbox)
+        sounds_label = QLabel("Enable notification sounds")
+        sounds_label.setStyleSheet("color: #495057; font-size: 13px;")
+        sounds_toggle_layout.addWidget(sounds_label, 1)
+        sound_layout.addRow(sounds_toggle_layout)
 
         # Help text for sounds
         sound_help = QLabel("Play sounds when starting and stopping recording")

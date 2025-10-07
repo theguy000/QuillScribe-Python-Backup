@@ -7,8 +7,8 @@ from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QRadioButton, QCheckBox,
     QKeySequenceEdit, QListView, QGraphicsDropShadowEffect
 )
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QColor, QKeySequence
+from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush
 
 from .ui_components import ModernGroupBox as BaseModernGroupBox
 
@@ -495,3 +495,211 @@ class ModernCheckBox(QCheckBox):
         self.setStyleSheet(stylesheet)
 
 
+class AnimatedToggleSwitch(QCheckBox):
+    """
+    iOS-style animated toggle switch widget.
+
+    A modern, animated toggle switch that provides a familiar iOS-like experience
+    with smooth sliding animations and theme support.
+
+    Features:
+    - Pill-shaped track (50x26px) with rounded ends
+    - Sliding circular thumb (20px diameter) with smooth animation
+    - 200ms InOutCubic easing for natural motion
+    - Theme-aware colors (light/dark mode support)
+    - Disabled state with grayed-out appearance
+    - Maintains QCheckBox API compatibility
+
+    Usage:
+        toggle = AnimatedToggleSwitch()
+        toggle.setChecked(True)
+        toggle.toggled.connect(lambda checked: print(f"Toggled: {checked}"))
+        toggle.apply_theme(is_dark=False)
+    """
+
+    # Class constants for dimensions and timing
+    TOGGLE_WIDTH = 50
+    TOGGLE_HEIGHT = 26
+    TOGGLE_RADIUS = 13  # Half of height for perfect pill shape
+    CIRCLE_SIZE = 20
+    CIRCLE_Y_OFFSET = 3  # Vertical centering offset
+    CIRCLE_POS_LEFT = 3  # Left position when unchecked
+    CIRCLE_POS_RIGHT = 27  # Right position when checked (50 - 20 - 3)
+    ANIMATION_DURATION_MS = 200
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # Animation state
+        self._circle_position = self.CIRCLE_POS_LEFT
+        self._is_dark = False
+
+        # Pre-create QColor objects for performance (avoid creating in paintEvent)
+        self._colors = {
+            'checked_track': QColor("#4A90E2"),
+            'checked_circle': QColor("#ffffff"),
+            'unchecked_track_light': QColor("#dee2e6"),
+            'unchecked_track_dark': QColor("#555555"),
+            'unchecked_circle_light': QColor("#ffffff"),
+            'unchecked_circle_dark': QColor("#cccccc"),
+            'disabled_track_light': QColor("#e9ecef"),
+            'disabled_track_dark': QColor("#3a3a3a"),
+            'disabled_circle_light': QColor("#adb5bd"),
+            'disabled_circle_dark': QColor("#666666"),
+        }
+
+        # Setup animation
+        self.animation = QPropertyAnimation(self, b"circle_position")
+        self.animation.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.animation.setDuration(self.ANIMATION_DURATION_MS)
+
+        # Connect state changes to animation
+        self.toggled.connect(self._animate_toggle)
+
+        # Set initial position based on checked state
+        self._circle_position = self.CIRCLE_POS_RIGHT if self.isChecked() else self.CIRCLE_POS_LEFT
+
+    def _animate_toggle(self, checked: bool):
+        """
+        Animate the toggle switch when state changes.
+
+        Args:
+            checked: New checked state
+        """
+        # Stop any running animation to prevent race conditions
+        if self.animation.state() == QPropertyAnimation.State.Running:
+            self.animation.stop()
+
+        # Animate from current position to target position
+        target_pos = self.CIRCLE_POS_RIGHT if checked else self.CIRCLE_POS_LEFT
+        self.animation.setStartValue(self._circle_position)
+        self.animation.setEndValue(target_pos)
+        self.animation.start()
+
+    def _get_circle_position(self) -> int:
+        """
+        Get the current circle position for animation.
+
+        Returns:
+            Current X position of the circle
+        """
+        return self._circle_position
+
+    def _set_circle_position(self, pos: int):
+        """
+        Set the circle position and trigger repaint.
+
+        Args:
+            pos: New X position for the circle
+        """
+        # Only update if position actually changed (optimization)
+        if self._circle_position != pos:
+            self._circle_position = pos
+            self.update()
+
+    # Qt Property for animation system
+    circle_position = Property(int, _get_circle_position, _set_circle_position)
+
+    def apply_theme(self, is_dark: bool):
+        """
+        Apply theme colors to the toggle switch.
+
+        Args:
+            is_dark: True for dark theme, False for light theme
+        """
+        # Only update if theme actually changed (optimization)
+        if self._is_dark != is_dark:
+            self._is_dark = is_dark
+            self.update()
+
+    def sizeHint(self) -> QSize:
+        """Return the recommended size for the widget."""
+        return QSize(self.TOGGLE_WIDTH, self.TOGGLE_HEIGHT)
+
+    def hitButton(self, pos) -> bool:
+        """
+        Override to make the entire widget clickable.
+
+        By default, QCheckBox only responds to clicks on the indicator.
+        We want the entire toggle to be clickable for better UX.
+
+        Args:
+            pos: Mouse position
+
+        Returns:
+            True if position is within widget bounds
+        """
+        return self.contentsRect().contains(pos)
+
+    def paintEvent(self, event):
+        """
+        Custom paint event to draw the iOS-style toggle switch.
+
+        Draws:
+        1. Rounded rectangle track (pill-shaped background)
+        2. Circular thumb that slides left/right
+
+        Colors change based on:
+        - Checked state (blue when checked, gray when unchecked)
+        - Theme (light/dark mode)
+        - Enabled state (grayed out when disabled)
+
+        Args:
+            event: Paint event (unused, required by Qt)
+        """
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Determine colors based on state
+        if not self.isEnabled():
+            # Disabled state - grayed out
+            if self._is_dark:
+                track_color = self._colors['disabled_track_dark']
+                circle_color = self._colors['disabled_circle_dark']
+            else:
+                track_color = self._colors['disabled_track_light']
+                circle_color = self._colors['disabled_circle_light']
+        elif self.isChecked():
+            # Checked state - blue track, white circle
+            track_color = self._colors['checked_track']
+            circle_color = self._colors['checked_circle']
+        else:
+            # Unchecked state - gray track, white/gray circle
+            if self._is_dark:
+                track_color = self._colors['unchecked_track_dark']
+                circle_color = self._colors['unchecked_circle_dark']
+            else:
+                track_color = self._colors['unchecked_track_light']
+                circle_color = self._colors['unchecked_circle_light']
+
+        # Draw track (rounded rectangle / pill shape)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(track_color))
+        painter.drawRoundedRect(
+            0, 0,
+            self.TOGGLE_WIDTH, self.TOGGLE_HEIGHT,
+            self.TOGGLE_RADIUS, self.TOGGLE_RADIUS
+        )
+
+        # Draw circle (sliding thumb)
+        painter.setBrush(QBrush(circle_color))
+        painter.drawEllipse(
+            self._circle_position,
+            self.CIRCLE_Y_OFFSET,
+            self.CIRCLE_SIZE,
+            self.CIRCLE_SIZE
+        )
+
+    def cleanup(self) -> None:
+        """
+        Clean up animation resources.
+
+        Should be called when the widget is being destroyed to prevent
+        memory leaks. Stops any running animation and deletes the
+        animation object.
+        """
+        if hasattr(self, 'animation') and self.animation:
+            self.animation.stop()
+            self.animation.deleteLater()
+            self.animation = None

@@ -1,0 +1,21 @@
+# Development dependencies for QuillScribe
+# Install with: pip install -r requirements-dev.txt
+
+# Include production dependencies
+-r requirements.txt
+
+# Testing framework
+pytest>=7.4.0
+pytest-qt>=4.2.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+
+# Code quality
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.5.0
+pylint>=2.17.0
+
+# Type stubs for PySide6
+PySide6-stubs>=6.5.0
+

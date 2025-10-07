@@ -12,7 +12,7 @@ from PySide6.QtGui import QIntValidator
 
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon
-from .modern_widgets import ModernGroupBox, ModernRadioButton, ModernCheckBox
+from .modern_widgets import ModernGroupBox, ModernRadioButton, ModernCheckBox, AnimatedToggleSwitch
 
 
 class OutputTab(QWidget):
@@ -62,15 +62,14 @@ class OutputTab(QWidget):
         options_group = ModernGroupBox("Additional Options")
         options_layout = QVBoxLayout(options_group)
 
-        self.silent_mode = ModernCheckBox("Silent mode (hide transcription text)")
-        self.silent_mode.setIconSize(QSize(16, 16))
-
-        self.auto_clear = ModernCheckBox("Auto-clear after copying/pasting")
-        self.auto_clear.setIconSize(QSize(16, 16))
-
-        # Auto-clear delay setting
+        # Auto-clear toggle with delay setting
         auto_clear_layout = QHBoxLayout()
+        auto_clear_layout.setSpacing(10)
+        self.auto_clear = AnimatedToggleSwitch()
         auto_clear_layout.addWidget(self.auto_clear)
+        auto_clear_label = QLabel("Auto-clear after copying/pasting")
+        auto_clear_label.setStyleSheet("color: #495057; font-size: 13px;")
+        auto_clear_layout.addWidget(auto_clear_label, 1)
 
         # Add delay input next to auto-clear checkbox
         delay_label = QLabel("after")
@@ -108,7 +107,6 @@ class OutputTab(QWidget):
         # Connect auto-clear checkbox to enable/disable delay input
         self.auto_clear.toggled.connect(self._update_auto_clear_delay_state)
 
-        options_layout.addWidget(self.silent_mode)
         options_layout.addLayout(auto_clear_layout)
 
         # Help text for auto-clear
@@ -140,7 +138,6 @@ class OutputTab(QWidget):
         if 0 <= output_mode < len(buttons):
             buttons[output_mode].setChecked(True)
 
-        self.silent_mode.setChecked(self.config_manager.get_setting("output/silent_mode", False))
         auto_clear_enabled = self.config_manager.get_setting("output/auto_clear", False)
         self.auto_clear.setChecked(auto_clear_enabled)
 
@@ -155,7 +152,6 @@ class OutputTab(QWidget):
         """Save output settings to config"""
         checked_button = self.output_group.checkedId()
         self.config_manager.set_setting("output/mode", checked_button)
-        self.config_manager.set_setting("output/silent_mode", self.silent_mode.isChecked())
         self.config_manager.set_setting("output/auto_clear", self.auto_clear.isChecked())
 
         # Save auto-clear delay (validate input)

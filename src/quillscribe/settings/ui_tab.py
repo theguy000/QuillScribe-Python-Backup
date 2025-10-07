@@ -13,7 +13,7 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_icon
 from ..managers import get_theme_manager
-from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox, ModernKeySequenceEdit
+from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox, ModernKeySequenceEdit, AnimatedToggleSwitch
 
 
 class UITab(QWidget):
@@ -35,9 +35,16 @@ class UITab(QWidget):
 
         box = ModernGroupBox("UI Settings")
         form = QVBoxLayout(box)
-        self.compact_checkbox = ModernCheckBox("Enable Super Compact UI")
-        self.compact_checkbox.setIconSize(QSize(16, 16))
-        form.addWidget(self.compact_checkbox)
+
+        # Compact mode toggle
+        compact_layout = QHBoxLayout()
+        compact_layout.setSpacing(10)
+        self.compact_checkbox = AnimatedToggleSwitch()
+        compact_layout.addWidget(self.compact_checkbox)
+        compact_label = QLabel("Enable Super Compact UI")
+        compact_label.setStyleSheet("color: #495057; font-size: 13px;")
+        compact_layout.addWidget(compact_label, 1)
+        form.addLayout(compact_layout)
 
         tip = QLabel("In compact mode, the window is frameless with a right-aligned close button, and you can drag anywhere to move.")
         tip.setWordWrap(True)
@@ -45,9 +52,14 @@ class UITab(QWidget):
         form.addWidget(tip)
 
         # Add custom title bar setting
-        self.custom_titlebar_checkbox = ModernCheckBox("Enable custom title bar")
-        self.custom_titlebar_checkbox.setIconSize(QSize(16, 16))
-        form.addWidget(self.custom_titlebar_checkbox)
+        titlebar_layout = QHBoxLayout()
+        titlebar_layout.setSpacing(10)
+        self.custom_titlebar_checkbox = AnimatedToggleSwitch()
+        titlebar_layout.addWidget(self.custom_titlebar_checkbox)
+        titlebar_label = QLabel("Enable custom title bar")
+        titlebar_label.setStyleSheet("color: #495057; font-size: 13px;")
+        titlebar_layout.addWidget(titlebar_label, 1)
+        form.addLayout(titlebar_layout)
 
         titlebar_tip = QLabel("When enabled, uses a custom title bar instead of the system default. Disable for standard OS title bar.")
         titlebar_tip.setWordWrap(True)
@@ -103,17 +115,25 @@ class UITab(QWidget):
 
         # Visualization options moved here
         viz_group = ModernGroupBox("Visualization")
-        viz_layout = QFormLayout(viz_group)
-        viz_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        viz_layout = QVBoxLayout(viz_group)
 
-        self.show_waveform_checkbox = ModernCheckBox("Show circular waveform during recording")
-        self.show_waveform_checkbox.setIcon(get_button_icon('zap', 16))
-        self.show_waveform_checkbox.setIconSize(QSize(16, 16))
+        # Show waveform toggle
+        waveform_layout = QHBoxLayout()
+        waveform_layout.setSpacing(10)
+        self.show_waveform_checkbox = AnimatedToggleSwitch()
         self.show_waveform_checkbox.setChecked(True)
-        viz_layout.addRow(self.show_waveform_checkbox)
+        waveform_layout.addWidget(self.show_waveform_checkbox)
+        waveform_label = QLabel("Show circular waveform during recording")
+        waveform_label.setStyleSheet("color: #495057; font-size: 13px;")
+        waveform_layout.addWidget(waveform_label, 1)
+        viz_layout.addLayout(waveform_layout)
 
+        # Animation strength slider
         self.animation_strength_label = QLabel("Animation Amplification:")
         self.animation_strength_label.setObjectName("animation_strength_label")
+        self.animation_strength_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px;")
+        viz_layout.addWidget(self.animation_strength_label)
+
         self.animation_strength_slider = QSlider(Qt.Orientation.Horizontal)
         self.animation_strength_slider.setRange(1, 10)
         self.animation_strength_slider.setValue(3)
@@ -136,31 +156,37 @@ class UITab(QWidget):
         strength_layout.setContentsMargins(0, 4, 0, 4)
         strength_layout.addWidget(self.animation_strength_slider)
         strength_layout.addWidget(self.animation_strength_value_label)
-        viz_layout.addRow(self.animation_strength_label, strength_layout)
+        viz_layout.addLayout(strength_layout)
         self._style_animation_controls()
 
         self.strength_help = QLabel("Higher values make waveform more visible with quiet voice")
         self.strength_help.setObjectName("strength_help_label")
         self.strength_help.setWordWrap(True)
-        viz_layout.addRow("", self.strength_help)
+        self.strength_help.setStyleSheet("color: #6c757d; font-size: 11px;")
+        viz_layout.addWidget(self.strength_help)
 
         layout.addWidget(viz_group)
 
         # Shortcuts & Window behavior
         shortcuts_group = ModernGroupBox("Shortcuts & Window")
-        shortcuts_layout = QFormLayout(shortcuts_group)
-        shortcuts_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        shortcuts_layout = QVBoxLayout(shortcuts_group)
 
-        self.minimize_on_close_checkbox = ModernCheckBox("Minimize on close (instead of exiting)")
-        self.minimize_on_close_checkbox.setIcon(get_button_icon('window', 16))
-        self.minimize_on_close_checkbox.setIconSize(QSize(16, 16))
+        # Minimize on close toggle
+        minimize_close_layout = QHBoxLayout()
+        minimize_close_layout.setSpacing(10)
+        self.minimize_on_close_checkbox = AnimatedToggleSwitch()
         self.minimize_on_close_checkbox.setChecked(True)
         self.minimize_on_close_checkbox.setToolTip("When enabled, closing the window will minimize it instead of exiting the application.")
-        shortcuts_layout.addRow(self.minimize_on_close_checkbox)
+        minimize_close_layout.addWidget(self.minimize_on_close_checkbox)
+        minimize_close_label = QLabel("Minimize on close (instead of exiting)")
+        minimize_close_label.setStyleSheet("color: #495057; font-size: 13px;")
+        minimize_close_layout.addWidget(minimize_close_label, 1)
+        shortcuts_layout.addLayout(minimize_close_layout)
 
-        self.minimize_to_tray_checkbox = ModernCheckBox("Minimize to system tray")
-        self.minimize_to_tray_checkbox.setIcon(get_button_icon('compact', 16))
-        self.minimize_to_tray_checkbox.setIconSize(QSize(16, 16))
+        # Minimize to tray toggle
+        minimize_tray_layout = QHBoxLayout()
+        minimize_tray_layout.setSpacing(10)
+        self.minimize_to_tray_checkbox = AnimatedToggleSwitch()
         self.minimize_to_tray_checkbox.setChecked(False)
         self.minimize_to_tray_checkbox.setToolTip("When enabled, minimizing or closing the window will hide it to the system notification area (system tray). Click the tray icon to restore the window. Takes priority over 'Minimize on close'.")
 
@@ -170,44 +196,49 @@ class UITab(QWidget):
             self.minimize_to_tray_checkbox.setEnabled(False)
             self.minimize_to_tray_checkbox.setToolTip("System tray is not available on this system")
 
-        shortcuts_layout.addRow(self.minimize_to_tray_checkbox)
+        minimize_tray_layout.addWidget(self.minimize_to_tray_checkbox)
+        minimize_tray_label = QLabel("Minimize to system tray")
+        minimize_tray_label.setStyleSheet("color: #495057; font-size: 13px;")
+        minimize_tray_layout.addWidget(minimize_tray_label, 1)
+        shortcuts_layout.addLayout(minimize_tray_layout)
 
-        # Window Management Settings
-        self.always_on_top_checkbox = ModernCheckBox("Always on top")
-        self.always_on_top_checkbox.setIconSize(QSize(16, 16))
+        # Always on top toggle
+        always_top_layout = QHBoxLayout()
+        always_top_layout.setSpacing(10)
+        self.always_on_top_checkbox = AnimatedToggleSwitch()
         self.always_on_top_checkbox.setChecked(False)
         self.always_on_top_checkbox.setToolTip("Keep the QuillScribe window always on top of other windows")
-        shortcuts_layout.addRow(self.always_on_top_checkbox)
+        always_top_layout.addWidget(self.always_on_top_checkbox)
+        always_top_label = QLabel("Always on top")
+        always_top_label.setStyleSheet("color: #495057; font-size: 13px;")
+        always_top_layout.addWidget(always_top_label, 1)
+        shortcuts_layout.addLayout(always_top_layout)
 
-        self.snap_to_edges_checkbox = ModernCheckBox("Snap to screen edges")
-        self.snap_to_edges_checkbox.setIconSize(QSize(16, 16))
+        # Snap to edges toggle
+        snap_edges_layout = QHBoxLayout()
+        snap_edges_layout.setSpacing(10)
+        self.snap_to_edges_checkbox = AnimatedToggleSwitch()
         self.snap_to_edges_checkbox.setChecked(True)
         self.snap_to_edges_checkbox.setToolTip("Automatically snap window to screen edges when dragged close to them")
-        shortcuts_layout.addRow(self.snap_to_edges_checkbox)
+        snap_edges_layout.addWidget(self.snap_to_edges_checkbox)
+        snap_edges_label = QLabel("Snap to screen edges")
+        snap_edges_label.setStyleSheet("color: #495057; font-size: 13px;")
+        snap_edges_layout.addWidget(snap_edges_label, 1)
+        shortcuts_layout.addLayout(snap_edges_layout)
 
-        # Create label with icon for shortcut
-        shortcut_widget = QWidget()
-        shortcut_layout = QHBoxLayout(shortcut_widget)
-        shortcut_layout.setContentsMargins(0, 0, 0, 0)
-        shortcut_layout.setSpacing(6)
-
-        shortcut_icon = QLabel()
-        shortcut_icon.setPixmap(get_icon('keyboard', 16).pixmap(16, 16))
-        shortcut_icon.setObjectName("icon_shortcut")
-        shortcut_layout.addWidget(shortcut_icon)
-
+        # Recording shortcut
         self.shortcut_label = QLabel("Recording shortcut:")
         self.shortcut_label.setObjectName("shortcut_label")
-        shortcut_layout.addWidget(self.shortcut_label)
-        shortcut_layout.addStretch()
+        self.shortcut_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px;")
+        shortcuts_layout.addWidget(self.shortcut_label)
 
         self.shortcut_edit = ModernKeySequenceEdit()
-        shortcuts_layout.addRow(shortcut_widget, self.shortcut_edit)
+        shortcuts_layout.addWidget(self.shortcut_edit)
 
         shortcut_help = QLabel("Click in the field above and press your desired key combination to record a shortcut. This shortcut toggles recording. On Windows, 'Win' refers to the Windows key.")
         shortcut_help.setWordWrap(True)
         shortcut_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent;")
-        shortcuts_layout.addRow("", shortcut_help)
+        shortcuts_layout.addWidget(shortcut_help)
 
         layout.addWidget(shortcuts_group)
         layout.addStretch()

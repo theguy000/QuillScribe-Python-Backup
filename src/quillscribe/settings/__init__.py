@@ -10,7 +10,8 @@ from .modern_widgets import (
     ModernLineEdit,
     ModernKeySequenceEdit,
     ModernRadioButton,
-    ModernCheckBox
+    ModernCheckBox,
+    AnimatedToggleSwitch
 )
 
 from .audio_tab import AudioTab
@@ -26,7 +27,7 @@ __all__ = [
     # UI Components
     'ModernButton',
     'BaseModernGroupBox',
-    
+
     # Modern widgets
     'ModernGroupBox',
     'ModernComboBox',
@@ -34,14 +35,15 @@ __all__ = [
     'ModernKeySequenceEdit',
     'ModernRadioButton',
     'ModernCheckBox',
-    
+    'AnimatedToggleSwitch',
+
     # Tabs
     'AudioTab',
     'WhisperTab',
     'OutputTab',
     'UITab',
     'StatisticsTab',
-    
+
     # Dialogs
     'SettingsDialog',
     'WindowManagerDialog',

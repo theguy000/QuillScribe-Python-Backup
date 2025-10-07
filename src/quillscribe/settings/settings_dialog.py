@@ -21,7 +21,8 @@ from .ui_tab import UITab
 from .statistics_tab import StatisticsTab
 from .modern_widgets import (
     ModernGroupBox, ModernComboBox, ModernLineEdit,
-    ModernKeySequenceEdit, ModernRadioButton, ModernCheckBox
+    ModernKeySequenceEdit, ModernRadioButton, ModernCheckBox,
+    AnimatedToggleSwitch
 )
 
 
@@ -244,6 +245,8 @@ class SettingsDialog(QDialog):
         for widget in self.findChildren(ModernRadioButton):
             widget.apply_theme(is_dark)
         for widget in self.findChildren(ModernCheckBox):
+            widget.apply_theme(is_dark)
+        for widget in self.findChildren(AnimatedToggleSwitch):
             widget.apply_theme(is_dark)
 
         # Apply unified icon theming to all components
