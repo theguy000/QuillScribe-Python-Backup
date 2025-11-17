@@ -247,7 +247,7 @@ def main():
     parser.add_argument("--skip-install", dest="skip_install", action="store_true", help="Skip pip installs for requirements and Nuitka")
     parser.add_argument("--skip-nsis", dest="skip_nsis", action="store_true", help="Skip creating NSIS installer even if makensis is found")
     parser.add_argument("--onefile", dest="onefile", action="store_true", default=True, help="Build as onefile executable (default True)")
-    parser.add_argument("--onefile=false", dest="onefile", action="store_false", help=argparse.SUPPRESS)
+    parser.add_argument("--no-onefile", dest="onefile", action="store_false", help="Build in folder mode (disable onefile)")
     parser.add_argument("--disable-console", dest="disable_console", action="store_true", help="Disable Windows console mode")
     parser.add_argument("--no-pyside6", dest="pyside6", action="store_false", help="Do not enable the pyside6 plugin (enabled by default)")
     parser.add_argument("--pyside6", dest="pyside6", action="store_true", default=True, help="Enable the pyside6 plugin (default True)")
