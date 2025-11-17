@@ -585,6 +585,10 @@ class QuillScribeMainWindow(QMainWindow):
         self.tray_manager = None
         self.window_manager = None
         self._force_exit = False
+        
+        # Exit state flags to prevent recursion
+        self._exit_in_progress = False
+        self._exit_completed = False
 
         # Lazy-loaded managers (initialized when first needed)
         self._audio_manager = None
@@ -1910,10 +1914,17 @@ class QuillScribeMainWindow(QMainWindow):
 
     def _perform_exit(self, event=None):
         """Perform the actual application exit"""
+        if self._exit_in_progress or self._exit_completed:
+            return
+        
+        self._exit_in_progress = True
         try:
             # Record session end
-            if hasattr(self, '_statistics_manager') and self._statistics_manager is not None:
-                self.statistics_manager.record_session_end()
+            try:
+                if hasattr(self, '_statistics_manager') and self._statistics_manager is not None:
+                    self.statistics_manager.record_session_end()
+            except Exception as e:
+                print(f"Warning: Failed to record session end: {e}")
 
             if self.is_recording:
                 self.stop_recording()
@@ -1956,6 +1967,8 @@ class QuillScribeMainWindow(QMainWindow):
         except Exception as e:
             print(f"Error during exit cleanup: {e}")
         finally:
+            self._exit_completed = True
+            self._exit_in_progress = False
             if event is not None:
                 event.accept()
             # Force application quit

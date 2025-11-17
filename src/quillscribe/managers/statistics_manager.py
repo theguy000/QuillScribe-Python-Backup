@@ -40,6 +40,11 @@ class StatisticsManager(QObject):
             'average_confidence': 0.0
         }
         
+        # State flags to prevent recursion
+        self._saving_stats = False
+        self._session_end_recorded = False
+        self._consecutive_save_failures = 0
+        
         # Load existing statistics
         self.stats = self.load_statistics()
         self.history = self.load_history()
@@ -106,11 +111,23 @@ class StatisticsManager(QObject):
     
     def save_statistics(self):
         """Save statistics to file"""
+        if self._saving_stats:
+            print("Skipping statistics save: already in progress")
+            return
+        
+        self._saving_stats = True
         try:
             with open(self.stats_file, 'w', encoding='utf-8') as f:
                 json.dump(self.stats, f, indent=2, ensure_ascii=False)
+            self._consecutive_save_failures = 0  # Reset on success
         except Exception as e:
-            print(f"Error saving statistics: {e}")
+            self._consecutive_save_failures += 1
+            if self._consecutive_save_failures == 1:
+                print(f"Error saving statistics: {e}")
+            else:
+                print(f"Error saving statistics (repeated failure #{self._consecutive_save_failures}): {e}")
+        finally:
+            self._saving_stats = False
     
     def save_history(self):
         """Save transcription history to file"""
@@ -240,6 +257,11 @@ class StatisticsManager(QObject):
     
     def record_session_end(self):
         """Record the end of a session"""
+        if self._session_end_recorded:
+            print("Session end already recorded; skipping")
+            return
+        
+        self._session_end_recorded = True
         session_duration = time.time() - self.session_start_time
         self.stats['total_sessions'] += 1
         self.stats['total_duration'] += self.current_session['total_duration']
