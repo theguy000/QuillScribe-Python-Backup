@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 from PySide6.QtCore import QObject, QUrl
 from PySide6.QtMultimedia import QSoundEffect
+from ..frozen_compat import get_base_path
 
 
 class SoundManager(QObject):
@@ -20,9 +21,9 @@ class SoundManager(QObject):
         self.sounds_enabled = True  # Default to enabled
         
         # Handle both development and frozen executable environments
-        if getattr(sys, 'frozen', False):
-            # Running as frozen executable - use PyInstaller's temporary directory
-            base_path = Path(sys._MEIPASS)
+        base_path = get_base_path()
+        if base_path is not None:
+            # Running as frozen executable (PyInstaller or Nuitka)
             self.sounds_path = base_path / "sounds"
         else:
             # Running from source - go up to src/ directory, then into sounds/

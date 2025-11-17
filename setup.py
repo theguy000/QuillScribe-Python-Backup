@@ -50,8 +50,9 @@ setup(
             "flake8>=6.0.0",
         ],
         "build": [
-            "pyinstaller>=6.0.0",
-            # Note: Pillow only needed if using custom icons with PyInstaller
+            "nuitka>=2.0.0",
+            "ordered-set>=4.1.0",
+            "zstandard>=0.22.0",
         ],
     },
     entry_points={

@@ -9,6 +9,8 @@ from typing import Optional, Dict
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PySide6.QtCore import Qt, QSize, QRect
 from PySide6.QtSvg import QSvgRenderer
+from pathlib import Path
+from .frozen_compat import get_base_path
 
 
 class IconManager:
@@ -71,13 +73,13 @@ class IconManager:
     def __init__(self):
         self._icon_cache: Dict[str, QIcon] = {}
         # Handle both development and frozen executable environments
-        if getattr(sys, 'frozen', False):
-            # Running as frozen executable - use PyInstaller's temporary directory
-            base_path = sys._MEIPASS
-            self._icons_dir = os.path.join(base_path, 'icons')
+        base_path = get_base_path()
+        if base_path is not None:
+            # Running as frozen executable (PyInstaller or Nuitka)
+            self._icons_dir = base_path / 'icons'
         else:
             # Running from source
-            self._icons_dir = os.path.join(os.path.dirname(__file__), 'icons')
+            self._icons_dir = Path(__file__).parent / 'icons'
 
     def get_icon_path(self, icon_name: str) -> Optional[str]:
         """Get the full path to an icon file"""

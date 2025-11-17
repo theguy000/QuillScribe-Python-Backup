@@ -13,10 +13,9 @@ warnings.filterwarnings("ignore", message="pkg_resources is deprecated", categor
 
 # Handle both development and frozen executable environments
 if getattr(sys, 'frozen', False):
-    # Running as frozen executable (PyInstaller)
-    # Add the directory containing the executable to path (append to avoid shadowing)
-    app_dir = os.path.dirname(sys.executable)
-    sys.path.append(app_dir)
+    # Running as frozen executable (Nuitka)
+    # Nuitka includes quillscribe package directly, no path modification needed
+    pass
 else:
     # Running from source
     # Add src directory to path (append to avoid shadowing standard libraries)

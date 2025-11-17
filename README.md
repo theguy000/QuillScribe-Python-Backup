@@ -150,38 +150,61 @@ python run.py
 
 ### Building Executable
 
-To build a standalone executable using PyInstaller:
+QuillScribe uses **Nuitka** to build optimized native executables for superior runtime performance.
 
-1. **Install PyInstaller:**
-   ```bash
-   pip install pyinstaller
+#### Prerequisites
+
+1. **Python 3.9+** installed
+2. **C Compiler** (Nuitka will auto-download MinGW64 if needed)
+
+#### Build Steps
+
+1. **Clone the repository:**
+   ```powershell
+   git clone https://github.com/quillscribe/quillscribe.git
+   cd quillscribe
    ```
 
-2. **Build the executable:**
-   ```bash
-   pyinstaller --windowed --onefile \
-     --add-data "src/quillscribe/icons;icons" \
-     --add-data "src/sounds;sounds" \
-     --add-data "src/quillscribe/app_logo.ico;." \
-     --add-data "src/quillscribe/logo.png;." \
-     --icon="src/quillscribe/app_logo.ico" \
-     --name "QuillScribe" \
-     run.py
+2. **Install dependencies:**
+   ```powershell
+   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
-   **On Windows (single line):**
-   ```cmd
-   pyinstaller --windowed --onefile --add-data "src/quillscribe/icons;icons" --add-data "src/sounds;sounds" --add-data "src/quillscribe/app_logo.ico;." --add-data "src/quillscribe/logo.png;." --icon="src/quillscribe/app_logo.ico" --name "QuillScribe" run.py
+3. **Run the Nuitka build script:**
+   ```powershell
+   .\build_nuitka.ps1
    ```
 
-3. **Find your executable:**
-   The executable will be located in `dist/QuillScribe.exe`
+   The script will:
+   - Automatically download MinGW64 compiler (first run only, ~300MB)
+   - Clean previous builds and caches
+   - Compile QuillScribe to native code (takes 5-10 minutes on first build)
+   - Create `QuillScribe.exe` and `QuillScribe-Installer.exe`
+
+4. **Run the installer or executable:**
+   - Use the installer: `QuillScribe-Installer.exe`
+   - Or run directly: `QuillScribe.exe`
+
+#### Build Notes
+
+- **First build**: Takes 5-10 minutes as Nuitka downloads MinGW64 and compiles to C
+- **Subsequent builds**: Faster due to caching (2-3 minutes)
+- **Cache management**: The script automatically cleans Nuitka cache for clean rebuilds
+- **Output**: `QuillScribe.exe` is a standalone executable with all dependencies bundled
+
+#### Why Nuitka?
+
+Nuitka was chosen over PyInstaller for several key advantages:
+- **Better Performance**: Native compiled code runs 2-3x faster
+- **Faster Startup**: No extraction to temp directory needed
+- **Smaller Memory Footprint**: More efficient resource handling
+- **Better Compatibility**: Handles complex dependencies like `faster-whisper` more reliably
 
 **Required Data Files:**
-- `src/quillscribe/icons/` - SVG icons for the UI
+- `src/quillscribe/icons/` - SVG and ICO icons for the UI
 - `src/sounds/` - WAV files for recording notifications
-- `src/quillscribe/app_logo.ico` - Application icon (ICO format for best compatibility)
-- `src/quillscribe/logo.png` - Alternative logo file
+- `src/quillscribe/app_logo.ico` - Application icon
 
 ## Contributing
 

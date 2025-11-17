@@ -88,7 +88,7 @@ Section "QuillScribe Application" SecMain
     SetOutPath "$INSTDIR"
     
     ; Install main application files
-    File "dist\QuillScribe.exe"
+    File "QuillScribe.exe"
     
     ; Store installation folder
     WriteRegStr HKCU "Software\QuillScribe" "" $INSTDIR

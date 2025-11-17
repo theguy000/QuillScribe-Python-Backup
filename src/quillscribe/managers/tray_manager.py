@@ -10,6 +10,7 @@ from typing import Optional, Callable
 from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
+from ..frozen_compat import get_base_path
 
 
 class TrayManager(QObject):
@@ -38,14 +39,13 @@ class TrayManager(QObject):
     
     def _get_icon_path(self, filename: str) -> Path:
         """Get the path to an icon file"""
-        if getattr(sys, 'frozen', False):
-            # Running as frozen executable
-            base_path = Path(sys._MEIPASS) / "icons"
+        base_path = get_base_path()
+        if base_path is not None:
+            # Running as frozen executable (PyInstaller or Nuitka)
+            return base_path / "icons" / filename
         else:
             # Running from source - go up two levels to quillscribe root, then into icons
-            base_path = Path(__file__).parent.parent / "icons"
-        
-        return base_path / filename
+            return Path(__file__).parent.parent / "icons" / filename
     
 
     def setup_tray(self):

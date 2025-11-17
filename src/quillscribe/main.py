@@ -250,6 +250,7 @@ from .managers import (
 from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
 from .config_manager import ConfigManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
+from .frozen_compat import get_base_path
 
 
 class BreathingMicrophone(QWidget):
@@ -728,9 +729,10 @@ class QuillScribeMainWindow(QMainWindow):
         try:
             from pathlib import Path
             # Handle both development and frozen executable environments
-            if getattr(sys, 'frozen', False):
-                # Running as frozen executable - use PyInstaller's temporary directory
-                ico_path = Path(sys._MEIPASS) / "icons" / "app_logo.ico"
+            base_path = get_base_path()
+            if base_path is not None:
+                # Running as frozen executable (Nuitka)
+                ico_path = base_path / "icons" / "app_logo.ico"
             else:
                 # Running from source
                 ico_path = Path(__file__).parent / "icons" / "app_logo.ico"
@@ -883,9 +885,10 @@ class QuillScribeMainWindow(QMainWindow):
         try:
             from pathlib import Path
             # Handle both development and frozen executable environments
-            if getattr(sys, 'frozen', False):
-                # Running as frozen executable - use PyInstaller's temporary directory
-                ico_path = Path(sys._MEIPASS) / "icons" / "app_logo.ico"
+            base_path = get_base_path()
+            if base_path is not None:
+                # Running as frozen executable (Nuitka)
+                ico_path = base_path / "icons" / "app_logo.ico"
             else:
                 # Running from source
                 ico_path = Path(__file__).parent / "icons" / "app_logo.ico"
@@ -2041,9 +2044,10 @@ def main():
     try:
         from pathlib import Path
         # Handle both development and frozen executable environments
-        if getattr(sys, 'frozen', False):
-            # Running as frozen executable - use PyInstaller's temporary directory
-            ico_path = Path(sys._MEIPASS) / "app_logo.ico"
+        base_path = get_base_path()
+        if base_path is not None:
+            # Running as frozen executable (Nuitka)
+            ico_path = base_path / "app_logo.ico"
         else:
             # Running from source
             ico_path = Path(__file__).parent / "app_logo.ico"

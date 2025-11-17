@@ -22,8 +22,17 @@ share/python-wheels/
 *.egg
 MANIFEST
 .augment/
+
 # PyInstaller
 *.manifest
+
+# Nuitka build artifacts
+*.build/
+*.dist/
+*.onefile-build/
+run.build/
+run.dist/
+run.onefile-build/
 
 # Unit test / coverage reports
 htmlcov/
