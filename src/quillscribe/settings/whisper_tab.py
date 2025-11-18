@@ -37,7 +37,9 @@ class WhisperTab(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)  # Reduced spacing for compact scroll layout
+        # Minimal outer margins so group boxes sit close to dialog edges
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
         # Mode selection
         mode_group = ModernGroupBox("Transcription Mode")

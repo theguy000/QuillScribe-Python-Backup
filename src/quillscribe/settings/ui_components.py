@@ -160,40 +160,40 @@ class ModernGroupBox(QGroupBox):
             self.setStyleSheet(f"""
                 QGroupBox {{
                     font-weight: 600;
-                    font-size: 14px;
+                    font-size: 15px;
                     color: #e9ecef;
-                    border: 2px solid #495057;
-                    border-radius: 8px;
-                    margin-top: 12px;
-                    padding-top: 8px;
-                    background: {secondary_color};
+                    border: none;
+                    border-radius: 0px;
+                    margin-top: 0px;
+                    padding-top: 0px;
+                    background: transparent;
                 }}
                 QGroupBox::title {{
                     subcontrol-origin: margin;
-                    left: 12px;
-                    padding: 0 8px 0 8px;
-                    color: #adb5bd;
-                    background: {secondary_color};
+                    left: 0px;
+                    padding: 0 0 8px 0;
+                    color: #e9ecef;
+                    background: transparent;
                 }}
             """)
         else:
             self.setStyleSheet(f"""
                 QGroupBox {{
                     font-weight: 600;
-                    font-size: 14px;
-                    color: #495057;
-                    border: 2px solid #e9ecef;
-                    border-radius: 8px;
-                    margin-top: 12px;
-                    padding-top: 8px;
-                    background: {secondary_color};
+                    font-size: 15px;
+                    color: #2c3e50;
+                    border: none;
+                    border-radius: 0px;
+                    margin-top: 0px;
+                    padding-top: 0px;
+                    background: transparent;
                 }}
                 QGroupBox::title {{
                     subcontrol-origin: margin;
-                    left: 12px;
-                    padding: 0 8px 0 8px;
-                    color: #6c757d;
-                    background: {secondary_color};
+                    left: 0px;
+                    padding: 0 0 8px 0;
+                    color: #2c3e50;
+                    background: transparent;
                 }}
             """)
 

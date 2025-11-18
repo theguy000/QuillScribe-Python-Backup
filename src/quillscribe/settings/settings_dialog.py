@@ -61,33 +61,48 @@ class SettingsDialog(QDialog):
 
     def setup_ui(self):
         self.setWindowTitle("QuillScribe Settings")
-        self.setFixedSize(700, 650)  # Wider to accommodate sidebar
+        self.setFixedSize(900, 640)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        # Title
-        title = QLabel("Settings")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet("""
-            QLabel {
-                color: #2c3e50;
-                font-size: 18px;
-                font-weight: 400;
-                margin-bottom: 5px;
-            }
-        """)
-        layout.addWidget(title)
+        # Top header bar
+        header = QWidget()
+        header.setObjectName("settings_header")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(16, 10, 16, 10)
+        header_layout.setSpacing(8)
+
+        title_container = QVBoxLayout()
+        title_container.setContentsMargins(0, 0, 0, 0)
+        title_label = QLabel("QuillScribe Settings")
+        title_label.setObjectName("settings_title")
+        subtitle_label = QLabel("Tune QuillScribe to match how you work.")
+        subtitle_label.setObjectName("settings_subtitle")
+        title_container.addWidget(title_label)
+        title_container.addWidget(subtitle_label)
+        header_layout.addLayout(title_container)
+        header_layout.addStretch()
+
+        self.header_close_button = QPushButton()
+        self.header_close_button.setObjectName("settings_header_close")
+        self.header_close_button.setText("")
+        self.header_close_button.setFixedSize(28, 28)
+        self.header_close_button.clicked.connect(self.reject)
+        header_layout.addWidget(self.header_close_button)
+
+        layout.addWidget(header)
 
         # Main content area with sidebar and content
         content_layout = QHBoxLayout()
         content_layout.setSpacing(0)
+        content_layout.setContentsMargins(0, 0, 0, 0)
 
         # Left sidebar navigation
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(180)
+        self.sidebar.setFixedWidth(200)
         self.sidebar.setObjectName("sidebar")
         sidebar_layout = QVBoxLayout(self.sidebar)
         sidebar_layout.setSpacing(4)
@@ -111,7 +126,7 @@ class SettingsDialog(QDialog):
             btn.setObjectName(f"nav_btn_{idx}")
             btn.clicked.connect(lambda checked, i=idx: self.switch_page(i))
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setFixedHeight(44)
+            btn.setFixedHeight(40)
             sidebar_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
@@ -122,7 +137,8 @@ class SettingsDialog(QDialog):
         self.content_stack = QWidget()
         self.content_stack.setObjectName("content_stack")
         stack_layout = QVBoxLayout(self.content_stack)
-        stack_layout.setContentsMargins(15, 0, 0, 0)
+        # Minimal margins so tab content aligns closely with dialog edges
+        stack_layout.setContentsMargins(0, 0, 0, 0)
         stack_layout.setSpacing(0)
 
         # Create stacked widget to hold all pages
@@ -157,53 +173,24 @@ class SettingsDialog(QDialog):
 
         layout.addLayout(content_layout)
 
-        # Buttons with compact spacing
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)  # Reduced button spacing for compact layout
-        button_layout.addStretch()
+        # Footer action bar
+        footer = QWidget()
+        footer.setObjectName("settings_footer")
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(16, 8, 16, 12)
+        footer_layout.setSpacing(8)
+        footer_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.setIcon(get_white_button_icon('cancel', 16))
-        self.cancel_button.setIconSize(QSize(16, 16))
-        self.cancel_button.setStyleSheet("""
-            QPushButton {
-                background: #6c757d;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 10px 20px 10px 36px;
-                font-size: 14px;
-                min-width: 80px;
-                text-align: left;
-            }
-            QPushButton:hover {
-                background: #5a6268;
-            }
-        """)
+        self.cancel_button.setObjectName("settings_cancel_button")
 
         self.save_button = QPushButton("Save Settings")
-        self.save_button.setIcon(get_white_button_icon('save', 16))
-        self.save_button.setIconSize(QSize(16, 16))
-        self.save_button.setStyleSheet("""
-            QPushButton {
-                background: #4A90E2;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-size: 14px;
-                min-width: 80px;
-                text-align: center;
-            }
-            QPushButton:hover {
-                background: #357ABD;
-            }
-        """)
+        self.save_button.setObjectName("settings_save_button")
 
-        button_layout.addWidget(self.cancel_button)
-        button_layout.addWidget(self.save_button)
+        footer_layout.addWidget(self.cancel_button)
+        footer_layout.addWidget(self.save_button)
 
-        layout.addLayout(button_layout)
+        layout.addWidget(footer)
 
         # Connect buttons
         self.cancel_button.clicked.connect(self.reject)
@@ -237,6 +224,8 @@ class SettingsDialog(QDialog):
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll_area.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
 
         # Apply custom scrollbar styling (will be updated by theme)
         self._apply_scrollbar_theme(scroll_area, "white")
@@ -296,26 +285,49 @@ class SettingsDialog(QDialog):
         try:
             # Get theme manager for querying theme info
             theme_manager = get_theme_manager()
-            
+
             # Update theme manager if theme is different
             if theme_manager.get_current_theme() != theme_name:
-                # Clear recursion guard before signaling; the signal handler should apply the theme
                 self._applying_theme = False
                 theme_manager.set_theme(theme_name)
-                # Theme will be applied via signal, exit to avoid duplication
                 return
-            
+
             # Batch UI updates for better performance
             self.setUpdatesEnabled(False)
 
             colors = self._get_theme_colors(theme_name)
 
-            # Apply to dialog background
+            # Overall dialog background closer to light Tailwind surface
             self.setStyleSheet(f"""
                 QDialog {{
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 {colors["primary"]}, stop:1 {colors["secondary"]});
+                    background-color: {colors["secondary"]};
                     color: {colors["text_primary"]};
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                }}
+                QWidget#settings_header {{
+                    background-color: {self._lighten_color(colors["secondary"], 0.02)};
+                    border-bottom: 1px solid {colors["border"]};
+                }}
+                QLabel#settings_title {{
+                    font-size: 18px;
+                    font-weight: 600;
+                    color: {colors["text_primary"]};
+                }}
+                QLabel#settings_subtitle {{
+                    font-size: 12px;
+                    color: {colors["text_muted"]};
+                }}
+                QWidget#settings_footer {{
+                    background-color: {self._lighten_color(colors["secondary"], 0.02)};
+                    border-top: 1px solid {colors["border"]};
+                }}
+                QPushButton#settings_header_close {{
+                    border-radius: 14px;
+                    border: none;
+                    background-color: transparent;
+                }}
+                QPushButton#settings_header_close:hover {{
+                    background-color: {self._darken_color(colors["secondary"], 0.06)};
                 }}
             """)
 
@@ -448,6 +460,9 @@ class SettingsDialog(QDialog):
 
     def _apply_icon_theme(self, is_dark: bool):
         """Apply appropriate icon colors based on dark/light theme"""
+        # Ensure colors are available in this method since it references them
+        theme_manager = get_theme_manager()
+        colors = self._get_theme_colors(theme_manager.get_current_theme())
         # Update sidebar navigation icons
         if hasattr(self, 'nav_buttons'):
             nav_icons = [
@@ -465,46 +480,42 @@ class SettingsDialog(QDialog):
 
         # Update save and cancel button icons and styles based on theme
         if hasattr(self, 'cancel_button'):
-            # Cancel button - colored background with white icon (both themes)
-            self.cancel_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #6c757d;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 10px 20px 10px 36px;
-                    font-size: 14px;
-                    min-width: 80px;
-                    text-align: left;
-                }
-                QPushButton:hover {
-                    background-color: #5a6268;
-                }
+            # Cancel button - light surface with subtle border
+            self.cancel_button.setStyleSheet(f"""
+                QPushButton#settings_cancel_button {{
+                    background-color: transparent;
+                    color: {colors['text_secondary']};
+                    border-radius: 999px;
+                    border: 1px solid {colors['border']};
+                    padding: 6px 18px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }}
+                QPushButton#settings_cancel_button:hover {{
+                    background-color: {self._lighten_color(colors['secondary'], 0.04)};
+                }}
             """)
-            # Always use white icon on grey background for maximum contrast
-            self.cancel_button.setIcon(get_icon('cancel', 16, QColor(255, 255, 255)))
-            self.cancel_button.setIconSize(QSize(16, 16))
+            self.cancel_button.setIcon(get_icon('cancel', 14, QColor(120, 120, 130)))
+            self.cancel_button.setIconSize(QSize(14, 14))
         
         if hasattr(self, 'save_button'):
-            # Save button - colored background with white icon (both themes)
-            self.save_button.setStyleSheet("""
-                QPushButton {
-                    background-color: #4A90E2;
-                    color: white;
+            # Save button - primary pill button similar to Tailwind design
+            self.save_button.setStyleSheet(f"""
+                QPushButton#settings_save_button {{
+                    background-color: {colors['accent']};
+                    color: #ffffff;
                     border: none;
-                    border-radius: 6px;
-                    padding: 10px 20px;
-                    font-size: 14px;
-                    min-width: 80px;
-                    text-align: center;
-                }
-                QPushButton:hover {
-                    background-color: #357ABD;
-                }
+                    border-radius: 999px;
+                    padding: 6px 20px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }}
+                QPushButton#settings_save_button:hover {{
+                    background-color: {colors['accent_hover']};
+                }}
             """)
-            # Always use white icon on blue background for maximum contrast
-            self.save_button.setIcon(get_icon('save', 16, QColor(255, 255, 255)))
-            self.save_button.setIconSize(QSize(16, 16))
+            self.save_button.setIcon(get_icon('save', 14, QColor(255, 255, 255)))
+            self.save_button.setIconSize(QSize(14, 14))
 
         # Update icons in tab content - these need to be updated based on theme
         try:
@@ -664,20 +675,19 @@ class SettingsDialog(QDialog):
             hover_bg = self._darken_color(colors["primary"], 0.08)
             separator_color = self._darken_color(colors["primary"], 0.08)
 
-        # Style the sidebar container
+        # Style the sidebar container to match Tailwind-style nav (no borders)
         self.sidebar.setStyleSheet(f"""
             QWidget#sidebar {{
                 background-color: {sidebar_bg};
-                border-right: 2px solid {colors["border"]};
-                border-radius: 8px 0px 0px 8px;
+                border: none;
             }}
         """)
 
-        # Style the content area
+        # Style the content area as a clean surface (no borders)
         self.content_stack.setStyleSheet(f"""
             QWidget#content_stack {{
-                background-color: {colors["primary"]};
-                border-radius: 0px 8px 8px 0px;
+                background-color: {colors["secondary"]};
+                border: none;
             }}
         """)
 
@@ -705,27 +715,27 @@ class SettingsDialog(QDialog):
 
             btn.setStyleSheet(f"""
                 QPushButton {{
-                    background: transparent;
+                    background-color: transparent;
                     color: {colors["text_secondary"]};
                     border: none;
-                    border-radius: 8px;
-                    padding: 10px 12px;
+                    border-radius: 999px;
+                    padding: 8px 12px;
                     text-align: left;
                     font-size: 13px;
                     font-weight: 500;
                     margin: 2px 4px;
                 }}
                 QPushButton:hover {{
-                    background: {hover_bg};
+                    background-color: {hover_bg};
                     color: {colors["text_primary"]};
                 }}
                 QPushButton:checked {{
-                    background: {active_bg};
+                    background-color: {active_bg};
                     color: {"#ffffff" if not is_dark else colors["text_primary"]};
                     font-weight: 600;
                 }}
                 QPushButton:checked:hover {{
-                    background: {active_bg};
+                    background-color: {active_bg};
                 }}
             """)
 

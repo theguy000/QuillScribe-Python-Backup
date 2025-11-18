@@ -93,7 +93,9 @@ class StatisticsTab(QWidget):
     def setup_ui(self):
         """Setup the statistics tab UI"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)
+        # Minimal outer margins so group boxes sit close to dialog edges
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
         
         # Usage Statistics Group
         usage_group = ModernGroupBox("Usage Statistics")

@@ -28,39 +28,14 @@ class AudioTab(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)  # Reduced spacing for compact scroll layout
+        # Minimal outer margins so group boxes sit close to dialog edges
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
         # Microphone selection
         mic_group = ModernGroupBox("Microphone Settings")
         mic_layout = QFormLayout(mic_group)
         mic_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-
-        # Ensure form labels are visible
-        mic_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 14px;
-                font-weight: 600;
-                color: #2c3e50;
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                background-color: white;
-                color: #2c3e50;
-            }
-            QLabel {
-                color: #495057;
-                font-size: 13px;
-                font-weight: 500;
-                background-color: transparent;
-            }
-        """)
 
         # Microphone selection row with refresh button
         mic_selection_layout = QHBoxLayout()
@@ -216,33 +191,6 @@ class AudioTab(QWidget):
         sound_group = ModernGroupBox("Sound Settings")
         sound_layout = QFormLayout(sound_group)
         sound_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-
-        # Ensure form labels are visible
-        sound_group.setStyleSheet("""
-            QGroupBox {
-                font-size: 14px;
-                font-weight: 600;
-                color: #2c3e50;
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                background-color: white;
-                color: #2c3e50;
-            }
-            QLabel {
-                color: #495057;
-                font-size: 13px;
-                font-weight: 500;
-                background-color: transparent;
-            }
-        """)
 
         # Enable notification sounds toggle
         sounds_toggle_layout = QHBoxLayout()

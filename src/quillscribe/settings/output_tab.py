@@ -26,10 +26,12 @@ class OutputTab(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)  # Reduced spacing for compact scroll layout
+        # Minimal outer margins so group boxes sit close to dialog edges
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
         # Output behavior
-        output_group = ModernGroupBox("Output Behavior")
+        output_group = ModernGroupBox("Output mode")
         output_layout = QVBoxLayout(output_group)
 
         self.output_group = QButtonGroup()
@@ -58,8 +60,8 @@ class OutputTab(QWidget):
 
         layout.addWidget(output_group)
 
-        # Additional options
-        options_group = ModernGroupBox("Additional Options")
+        # Clipboard cleanup
+        options_group = ModernGroupBox("Clipboard cleanup")
         options_layout = QVBoxLayout(options_group)
 
         # Auto-clear toggle with delay setting
@@ -110,7 +112,7 @@ class OutputTab(QWidget):
         options_layout.addLayout(auto_clear_layout)
 
         # Help text for auto-clear
-        auto_clear_help = QLabel("Note: 'Paste to active app only' always clears clipboard immediately regardless of this setting")
+        auto_clear_help = QLabel("'Paste to active app only' always clears the clipboard immediately, even if auto-clear is disabled.")
         auto_clear_help.setStyleSheet("""
             color: #856404;
             background-color: #fff3cd;

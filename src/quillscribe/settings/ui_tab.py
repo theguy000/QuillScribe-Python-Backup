@@ -26,7 +26,9 @@ class UITab(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)
+        # Minimal outer margins so group boxes sit close to dialog edges
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(16)
 
         intro = QLabel("Configure UI, including Super Compact mode and microphone visualization.")
         intro.setWordWrap(True)
