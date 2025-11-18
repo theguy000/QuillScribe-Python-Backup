@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 from ..frozen_compat import get_base_path
+from ..managers import get_theme_manager
 
 
 class TrayManager(QObject):
@@ -108,89 +109,15 @@ class TrayManager(QObject):
         self.tray_icon.setContextMenu(self.tray_menu)
 
     def _apply_tray_menu_theme(self):
-        """Apply current theme to tray menu"""
+        """Apply current theme to tray menu using unified ThemeManager"""
         if not hasattr(self, 'config_manager') or not self.config_manager:
             return
 
         current_theme = self.config_manager.get_setting("ui/theme", "white")
-
-        # Theme color definitions (same as main application)
-        THEMES = {
-            "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-            "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-            "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-            "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-            "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-            "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
-            # Dark theme variations
-            "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-            "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-            "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-            "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-            "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
-        }
-
-        theme = THEMES.get(current_theme, THEMES["white"])
-        primary_color = theme["primary"]
-
-        # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        is_dark = brightness < 128
-
-        if is_dark:
-            # Dark theme styling
-            menu_style = f"""
-                QMenu {{
-                    background-color: {primary_color};
-                    color: #e9ecef;
-                    border: 1px solid #495057;
-                    border-radius: 4px;
-                    padding: 4px;
-                }}
-                QMenu::item {{
-                    background-color: transparent;
-                    padding: 6px 20px;
-                    border-radius: 2px;
-                }}
-                QMenu::item:selected {{
-                    background-color: #495057;
-                    color: #ffffff;
-                }}
-                QMenu::separator {{
-                    height: 1px;
-                    background-color: #495057;
-                    margin: 4px 8px;
-                }}
-            """
-        else:
-            # Light theme styling
-            menu_style = f"""
-                QMenu {{
-                    background-color: {primary_color};
-                    color: #212529;
-                    border: 1px solid #dee2e6;
-                    border-radius: 4px;
-                    padding: 4px;
-                }}
-                QMenu::item {{
-                    background-color: transparent;
-                    padding: 6px 20px;
-                    border-radius: 2px;
-                }}
-                QMenu::item:selected {{
-                    background-color: #e9ecef;
-                    color: #212529;
-                }}
-                QMenu::separator {{
-                    height: 1px;
-                    background-color: #dee2e6;
-                    margin: 4px 8px;
-                }}
-            """
-
+        theme_manager = get_theme_manager()
+        
+        # Use unified menu stylesheet from ThemeManager
+        menu_style = theme_manager.get_menu_stylesheet(current_theme)
         self.tray_menu.setStyleSheet(menu_style)
 
     def update_theme(self):

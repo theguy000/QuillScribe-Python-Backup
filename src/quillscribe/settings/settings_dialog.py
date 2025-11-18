@@ -6,7 +6,8 @@ Central dialog that manages all settings tabs
 import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTabWidget, QWidget, QSizePolicy, QScrollArea, QMessageBox
+    QTabWidget, QWidget, QSizePolicy, QScrollArea, QMessageBox,
+    QStackedWidget
 )
 from PySide6.QtCore import Qt, Signal, QSize
 from PySide6.QtGui import QColor
@@ -32,21 +33,8 @@ class SettingsDialog(QDialog):
     # Signal emitted when settings are saved
     settings_saved = Signal()
 
-    # Theme color definitions
-    THEMES = {
-        "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-        "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-        "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-        "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-        "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-        "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
-        # Dark theme variations
-        "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-        "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-        "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-        "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-        "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
-    }
+    # Theme colors are now centralized in ThemeManager
+    # Access via get_theme_manager().get_theme_colors(theme_name)
 
     def __init__(self, parent=None, config_manager=None):
         super().__init__(parent)
@@ -55,23 +43,32 @@ class SettingsDialog(QDialog):
 
         # Initialize statistics manager
         self.statistics_manager = StatisticsManager(self.config_manager)
+        
+        # Theme application state to prevent recursion
+        self._applying_theme = False
 
         self.setup_ui()
         self.setModal(True)
+
+        # Connect to theme manager for live theme updates BEFORE applying initial theme
+        # This ensures the dialog receives the theme_changed signal during initialization
+        theme_manager = get_theme_manager()
+        theme_manager.theme_changed.connect(self._on_theme_changed)
+
         # Apply initial theme
         initial_theme = self.config_manager.get_setting("ui/theme", "white")
         self.apply_theme(initial_theme)
 
     def setup_ui(self):
         self.setWindowTitle("QuillScribe Settings")
-        self.setFixedSize(600, 650)  # Increased height for better content visibility
+        self.setFixedSize(700, 650)  # Wider to accommodate sidebar
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(15)  # Reduced spacing for compact layout
-        layout.setContentsMargins(15, 15, 15, 15)  # Reduced margins for compact layout
+        layout.setSpacing(15)
+        layout.setContentsMargins(15, 15, 15, 15)
 
-        # Title - smaller for compact layout
+        # Title
         title = QLabel("Settings")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("""
@@ -84,12 +81,54 @@ class SettingsDialog(QDialog):
         """)
         layout.addWidget(title)
 
-        # Tab widget - increased height for better usability
-        self.tabs = QTabWidget()
-        self.tabs.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.tabs.setMaximumHeight(450)  # Increased height for better content visibility
-        # Tab styling will be set by apply_tab_theme method
-        self.apply_tab_theme("white")
+        # Main content area with sidebar and content
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(0)
+
+        # Left sidebar navigation
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(180)
+        self.sidebar.setObjectName("sidebar")
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setSpacing(4)
+        sidebar_layout.setContentsMargins(8, 8, 8, 8)
+
+        # Create navigation buttons
+        self.nav_buttons = []
+        nav_items = [
+            ("Audio", "audio"),
+            ("Whisper", "brain"),
+            ("Output", "clipboard"),
+            ("UI Settings", "settings"),
+            ("Statistics", "dashboard")
+        ]
+
+        for idx, (text, icon_name) in enumerate(nav_items):
+            btn = QPushButton(text)
+            btn.setIcon(get_icon(icon_name, 16))
+            btn.setIconSize(QSize(16, 16))
+            btn.setCheckable(True)
+            btn.setObjectName(f"nav_btn_{idx}")
+            btn.clicked.connect(lambda checked, i=idx: self.switch_page(i))
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setFixedHeight(44)
+            sidebar_layout.addWidget(btn)
+            self.nav_buttons.append(btn)
+
+        sidebar_layout.addStretch()
+        content_layout.addWidget(self.sidebar)
+
+        # Right content area with stacked widget
+        self.content_stack = QWidget()
+        self.content_stack.setObjectName("content_stack")
+        stack_layout = QVBoxLayout(self.content_stack)
+        stack_layout.setContentsMargins(15, 0, 0, 0)
+        stack_layout.setSpacing(0)
+
+        # Create stacked widget to hold all pages
+        from PySide6.QtWidgets import QStackedWidget
+        self.stacked_widget = QStackedWidget()
+        self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Create tabs - pass audio manager to audio tab for shared state
         audio_manager = getattr(self.parent(), 'audio_manager', None) if self.parent() else None
@@ -99,25 +138,24 @@ class SettingsDialog(QDialog):
         self.ui_tab = UITab(self.config_manager)
         self.statistics_tab = StatisticsTab(self.statistics_manager)
 
-        # Wrap each tab in a scroll area for compact layout
+        # Wrap each tab in a scroll area
         self.audio_scroll = self._create_scroll_area(self.audio_tab)
         self.whisper_scroll = self._create_scroll_area(self.whisper_tab)
         self.output_scroll = self._create_scroll_area(self.output_tab)
         self.ui_scroll = self._create_scroll_area(self.ui_tab)
         self.statistics_scroll = self._create_scroll_area(self.statistics_tab)
 
-        self.tabs.addTab(self.audio_scroll, "Audio")
-        self.tabs.setTabIcon(self.tabs.indexOf(self.audio_scroll), get_icon('audio', 16))
-        self.tabs.addTab(self.whisper_scroll, "Whisper")
-        self.tabs.setTabIcon(self.tabs.indexOf(self.whisper_scroll), get_icon('brain', 16))
-        self.tabs.addTab(self.output_scroll, "Output")
-        self.tabs.setTabIcon(self.tabs.indexOf(self.output_scroll), get_icon('clipboard', 16))
-        self.tabs.addTab(self.ui_scroll, "UI Settings")
-        self.tabs.setTabIcon(self.tabs.indexOf(self.ui_scroll), get_icon('settings', 16))
-        self.tabs.addTab(self.statistics_scroll, "Statistics")
-        self.tabs.setTabIcon(self.tabs.indexOf(self.statistics_scroll), get_icon('dashboard', 16))
+        # Add pages to stacked widget
+        self.stacked_widget.addWidget(self.audio_scroll)
+        self.stacked_widget.addWidget(self.whisper_scroll)
+        self.stacked_widget.addWidget(self.output_scroll)
+        self.stacked_widget.addWidget(self.ui_scroll)
+        self.stacked_widget.addWidget(self.statistics_scroll)
 
-        layout.addWidget(self.tabs)
+        stack_layout.addWidget(self.stacked_widget)
+        content_layout.addWidget(self.content_stack, 1)
+
+        layout.addLayout(content_layout)
 
         # Buttons with compact spacing
         button_layout = QHBoxLayout()
@@ -171,6 +209,27 @@ class SettingsDialog(QDialog):
         self.cancel_button.clicked.connect(self.reject)
         self.save_button.clicked.connect(self.save_and_close)
 
+    def _on_theme_changed(self, theme_name: str, is_dark: bool):
+        """Slot: handle theme_changed signal to update this dialog's theme."""
+        # Avoid recursive updates
+        if self._applying_theme:
+            return
+        
+        # Save current page index before applying theme
+        current_index = self.stacked_widget.currentIndex()
+        
+        self.apply_theme(theme_name)
+
+        # Restore the current page after theme change
+        self.stacked_widget.setCurrentIndex(current_index)
+
+    def switch_page(self, index):
+        """Switch to a different settings page"""
+        self.stacked_widget.setCurrentIndex(index)
+        # Update button states
+        for i, btn in enumerate(self.nav_buttons):
+            btn.setChecked(i == index)
+
     def _create_scroll_area(self, widget):
         """Create a scroll area with custom themed scrollbars for the given widget"""
         scroll_area = QScrollArea()
@@ -213,87 +272,118 @@ class SettingsDialog(QDialog):
             print(f"Error saving settings: {e}")
 
     def apply_theme(self, theme_name):
-        """Apply the selected theme to the dialog background and all group boxes"""
-        # Use theme manager for consistent theming
-        theme_manager = get_theme_manager()
-        theme_manager.set_theme(theme_name)
+        """
+        Apply the selected theme to the dialog background and all group boxes.
+        
+        This method is called:
+        1. During dialog initialization with the saved theme
+        2. Automatically via theme_changed signal when theme is changed anywhere
+        3. This ensures immediate, live theme updates across all settings tabs
+        
+        The method updates:
+        - Dialog background gradients
+        - All group boxes, modern widgets (comboboxes, switches, etc.)
+        - Text colors for labels and help text
+        - Icons throughout the dialog
+        - Sidebar navigation
+        - Scrollbar styling
+        """
+        # Prevent recursion during theme application
+        if self._applying_theme:
+            return
+        
+        self._applying_theme = True
+        try:
+            # Get theme manager for querying theme info
+            theme_manager = get_theme_manager()
+            
+            # Update theme manager if theme is different
+            if theme_manager.get_current_theme() != theme_name:
+                # Clear recursion guard before signaling; the signal handler should apply the theme
+                self._applying_theme = False
+                theme_manager.set_theme(theme_name)
+                # Theme will be applied via signal, exit to avoid duplication
+                return
+            
+            # Batch UI updates for better performance
+            self.setUpdatesEnabled(False)
 
-        colors = self._get_theme_colors(theme_name)
+            colors = self._get_theme_colors(theme_name)
 
-        # Apply to dialog background
-        self.setStyleSheet(f"""
-            QDialog {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 {colors["primary"]}, stop:1 {colors["secondary"]});
-                color: {colors["text_primary"]};
-            }}
-        """)
+            # Apply to dialog background
+            self.setStyleSheet(f"""
+                QDialog {{
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 {colors["primary"]}, stop:1 {colors["secondary"]});
+                    color: {colors["text_primary"]};
+                }}
+            """)
 
-        # Apply to all group boxes in all tabs
-        self._apply_theme_to_group_boxes(colors)
+            # Apply to all group boxes in all tabs
+            self._apply_theme_to_group_boxes(colors)
 
-        # Apply theme to all modern widgets
-        is_dark = self._is_dark_color(colors["primary"])
-        # ComboBox needs accent/border injection
-        for combo in self.findChildren(ModernComboBox):
-            combo.apply_theme(is_dark, colors["accent"], colors["border"])
-        # Other widgets keep existing signature
-        for widget in self.findChildren(ModernLineEdit):
-            widget.apply_theme(is_dark)
-        for widget in self.findChildren(ModernKeySequenceEdit):
-            widget.apply_theme(is_dark)
-        for widget in self.findChildren(ModernRadioButton):
-            widget.apply_theme(is_dark)
-        for widget in self.findChildren(ModernCheckBox):
-            widget.apply_theme(is_dark)
-        for widget in self.findChildren(AnimatedToggleSwitch):
-            widget.apply_theme(is_dark)
+            # Apply theme to all modern widgets
+            is_dark = self._is_dark_color(colors["primary"])
+            # ComboBox needs accent/border injection
+            for combo in self.findChildren(ModernComboBox):
+                combo.apply_theme(is_dark, colors["accent"], colors["border"])
+            # Other widgets keep existing signature
+            for widget in self.findChildren(ModernLineEdit):
+                widget.apply_theme(is_dark)
+            for widget in self.findChildren(ModernKeySequenceEdit):
+                widget.apply_theme(is_dark)
+            for widget in self.findChildren(ModernRadioButton):
+                widget.apply_theme(is_dark)
+            for widget in self.findChildren(ModernCheckBox):
+                widget.apply_theme(is_dark)
+            for widget in self.findChildren(AnimatedToggleSwitch):
+                widget.apply_theme(is_dark)
 
-        # Apply unified icon theming to all components
-        theme_manager.apply_icons_to_widget(self, is_dark)
+            # Apply unified icon theming to all components
+            theme_manager.apply_icons_to_widget(self, is_dark)
 
-        # Apply comprehensive text theming to all labels
-        theme_manager.apply_text_theming_to_widget(self, theme_name)
+            # Apply comprehensive text theming to all labels
+            theme_manager.apply_text_theming_to_widget(self, theme_name)
 
-        # Allow UI tab to refresh its custom slider styling for this theme
-        if hasattr(self, 'ui_tab') and hasattr(self.ui_tab, 'apply_animation_theme'):
-            self.ui_tab.apply_animation_theme(theme_name)
+            # Allow UI tab to refresh its custom slider styling for this theme
+            if hasattr(self, 'ui_tab') and hasattr(self.ui_tab, 'apply_animation_theme'):
+                self.ui_tab.apply_animation_theme(theme_name)
 
-        # Update API key toggle icon for current theme
-        if hasattr(self, 'api_key_toggle_btn'):
-            self._update_api_key_toggle_icon()
+            # Update API key toggle icon for current theme
+            if hasattr(self, 'api_key_toggle_btn'):
+                self._update_api_key_toggle_icon()
 
-        # Update important form labels for dark/light (specific styling for form labels)
-        is_dark = self._is_dark_color(colors["primary"])
-        label_primary = "#ffffff" if is_dark else "#495057"
-        muted = "#e0e0e0" if is_dark else "#6c757d"
-        for lbl in self.findChildren(QLabel):
-            name = lbl.objectName()
-            if name in {"form_label", "theme_label", "shortcut_label"}:
-                lbl.setStyleSheet(f"QLabel {{ color: {label_primary}; font-size: 13px; font-weight: 500; background-color: transparent; }}")
+            # Update important form labels for dark/light (specific styling for form labels)
+            is_dark = self._is_dark_color(colors["primary"])
+            label_primary = "#ffffff" if is_dark else "#495057"
+            muted = "#e0e0e0" if is_dark else "#6c757d"
+            for lbl in self.findChildren(QLabel):
+                name = lbl.objectName()
+                if name in {"form_label", "theme_label", "shortcut_label"}:
+                    lbl.setStyleSheet(f"QLabel {{ color: {label_primary}; font-size: 13px; font-weight: 500; background-color: transparent; }}")
 
-        # Apply theme to tabs
-        self.apply_tab_theme(theme_name)
+            # Apply theme to sidebar navigation
+            self.apply_sidebar_theme(theme_name)
 
-        # Apply theme to scrollbars and their backgrounds
-        scroll_areas = []
-        if hasattr(self, 'audio_scroll'):
-            scroll_areas.append(self.audio_scroll)
-        if hasattr(self, 'whisper_scroll'):
-            scroll_areas.append(self.whisper_scroll)
-        if hasattr(self, 'output_scroll'):
-            scroll_areas.append(self.output_scroll)
-        if hasattr(self, 'ui_scroll'):
-            scroll_areas.append(self.ui_scroll)
-        if hasattr(self, 'statistics_scroll'):
-            scroll_areas.append(self.statistics_scroll)
+            # Apply theme to scrollbars and their backgrounds
+            scroll_areas = []
+            if hasattr(self, 'audio_scroll'):
+                scroll_areas.append(self.audio_scroll)
+            if hasattr(self, 'whisper_scroll'):
+                scroll_areas.append(self.whisper_scroll)
+            if hasattr(self, 'output_scroll'):
+                scroll_areas.append(self.output_scroll)
+            if hasattr(self, 'ui_scroll'):
+                scroll_areas.append(self.ui_scroll)
+            if hasattr(self, 'statistics_scroll'):
+                scroll_areas.append(self.statistics_scroll)
 
-        for scroll_area in scroll_areas:
-            # Apply modern scrollbar styling
-            self._apply_scrollbar_theme(scroll_area, theme_name)
+            for scroll_area in scroll_areas:
+                # Apply modern scrollbar styling
+                self._apply_scrollbar_theme(scroll_area, theme_name)
 
-            # Apply background colors for dynamic theming
-            scroll_area.setStyleSheet(scroll_area.styleSheet() + f"""
+                # Apply background colors for dynamic theming
+                scroll_area.setStyleSheet(scroll_area.styleSheet() + f"""
                 QScrollArea {{
                     border: none;
                     background-color: {colors["primary"]};
@@ -306,8 +396,25 @@ class SettingsDialog(QDialog):
                 }}
             """)
 
-        # Apply theme to icons
-        self._apply_icon_theme(is_dark)
+            # Apply theme to icons
+            self._apply_icon_theme(is_dark)
+
+            # Re-enable updates after batching
+            self.setUpdatesEnabled(True)
+
+        except Exception as e:
+            print(f"Error applying theme '{theme_name}' to settings dialog: {e}")
+            # Re-enable updates even on error
+            self.setUpdatesEnabled(True)
+            # Attempt fallback to default theme
+            if theme_name != "white" and not self._applying_theme:
+                try:
+                    theme_manager = get_theme_manager()
+                    theme_manager.set_theme("white")
+                except Exception:
+                    pass  # Avoid infinite recursion
+        finally:
+            self._applying_theme = False
 
         # Explicitly set background for tab content widgets to match theme
         # This ensures areas not covered by group boxes don't appear dark
@@ -330,92 +437,31 @@ class SettingsDialog(QDialog):
             widget.apply_theme(colors["primary"], colors["secondary"])
 
     def _darken_color(self, hex_color, factor=0.15):
-        """Darken a hex color by the given factor (0.0 to 1.0)"""
-        # Remove # if present
-        hex_color = hex_color.lstrip('#')
-
-        # Convert to RGB
-        r = int(hex_color[0:2], 16)
-        g = int(hex_color[2:4], 16)
-        b = int(hex_color[4:6], 16)
-
-        # Darken by reducing values
-        r = int(r * (1 - factor))
-        g = int(g * (1 - factor))
-        b = int(b * (1 - factor))
-
-        # Convert back to hex
-        return f"#{r:02x}{g:02x}{b:02x}"
+        """Darken a hex color - delegates to ThemeManager for consistency"""
+        theme_manager = get_theme_manager()
+        return theme_manager.darken_color(hex_color, factor)
 
     def _lighten_color(self, hex_color, factor=0.15):
-        """Lighten a hex color by the given factor (0.0 to 1.0)"""
-        # Remove # if present
-        hex_color = hex_color.lstrip('#')
-
-        # Convert to RGB
-        r = int(hex_color[0:2], 16)
-        g = int(hex_color[2:4], 16)
-        b = int(hex_color[4:6], 16)
-
-        # Lighten by increasing values towards 255
-        r = int(r + (255 - r) * factor)
-        g = int(g + (255 - g) * factor)
-        b = int(b + (255 - b) * factor)
-
-        # Convert back to hex
-        return f"#{r:02x}{g:02x}{b:02x}"
+        """Lighten a hex color - delegates to ThemeManager for consistency"""
+        theme_manager = get_theme_manager()
+        return theme_manager.lighten_color(hex_color, factor)
 
     def _apply_icon_theme(self, is_dark: bool):
         """Apply appropriate icon colors based on dark/light theme"""
-        # Update tab icons
-        if hasattr(self, 'tabs'):
-            # Audio tab
-            audio_index = None
-            for i in range(self.tabs.count()):
-                if self.tabs.tabText(i) == "Audio":
-                    audio_index = i
-                    break
-            if audio_index is not None:
+        # Update sidebar navigation icons
+        if hasattr(self, 'nav_buttons'):
+            nav_icons = [
+                ('audio', 16),
+                ('brain', 16),
+                ('clipboard', 16),
+                ('settings', 16),
+                ('dashboard', 16)
+            ]
+            for btn, (icon_name, size) in zip(self.nav_buttons, nav_icons):
                 if is_dark:
-                    self.tabs.setTabIcon(audio_index, get_icon('audio', 16, QColor(255, 255, 255)))
+                    btn.setIcon(get_icon(icon_name, size, QColor(255, 255, 255)))
                 else:
-                    self.tabs.setTabIcon(audio_index, get_icon('audio', 16))
-
-            # Whisper tab
-            whisper_index = None
-            for i in range(self.tabs.count()):
-                if self.tabs.tabText(i) == "Whisper":
-                    whisper_index = i
-                    break
-            if whisper_index is not None:
-                if is_dark:
-                    self.tabs.setTabIcon(whisper_index, get_icon('brain', 16, QColor(255, 255, 255)))
-                else:
-                    self.tabs.setTabIcon(whisper_index, get_icon('brain', 16))
-
-            # Output tab
-            output_index = None
-            for i in range(self.tabs.count()):
-                if self.tabs.tabText(i) == "Output":
-                    output_index = i
-                    break
-            if output_index is not None:
-                if is_dark:
-                    self.tabs.setTabIcon(output_index, get_icon('clipboard', 16, QColor(255, 255, 255)))
-                else:
-                    self.tabs.setTabIcon(output_index, get_icon('clipboard', 16))
-
-            # UI Settings tab
-            ui_index = None
-            for i in range(self.tabs.count()):
-                if self.tabs.tabText(i) == "UI Settings":
-                    ui_index = i
-                    break
-            if ui_index is not None:
-                if is_dark:
-                    self.tabs.setTabIcon(ui_index, get_icon('settings', 16, QColor(255, 255, 255)))
-                else:
-                    self.tabs.setTabIcon(ui_index, get_icon('settings', 16))
+                    btn.setIcon(get_icon(icon_name, size))
 
         # Update save and cancel button icons and styles based on theme
         if hasattr(self, 'cancel_button'):
@@ -569,11 +615,12 @@ class SettingsDialog(QDialog):
         return luminance < 0.5
 
     def _get_theme_colors(self, theme_name):
-        """Get comprehensive color scheme for a theme"""
-        theme = self.THEMES.get(theme_name, self.THEMES["white"])
-        primary_color = theme["primary"]
-        secondary_color = theme["secondary"]
-        is_dark = self._is_dark_color(primary_color)
+        """Get comprehensive color scheme for a theme from centralized ThemeManager"""
+        theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
+        primary_color = colors["primary"]
+        secondary_color = colors["secondary"]
+        is_dark = theme_manager.is_dark_theme()
 
         if is_dark:
             return {
@@ -600,64 +647,87 @@ class SettingsDialog(QDialog):
                 "accent_hover": "#357ABD"
             }
 
-    def apply_tab_theme(self, theme_name):
-        """Apply theme-aware styling to tabs"""
+    def apply_sidebar_theme(self, theme_name):
+        """Apply theme-aware styling to sidebar navigation"""
         colors = self._get_theme_colors(theme_name)
         is_dark = self._is_dark_color(colors["primary"])
 
-        # Create appropriate accent colors for tabs
+        # Create appropriate accent colors for sidebar
         if is_dark:
-            active_bg = self._lighten_color(colors["primary"], 0.15)
-            active_border = self._lighten_color(colors["primary"], 0.3)
-            hover_bg = self._lighten_color(colors["primary"], 0.08)
+            sidebar_bg = self._darken_color(colors["primary"], 0.15)
+            active_bg = self._lighten_color(colors["primary"], 0.2)
+            hover_bg = self._lighten_color(colors["primary"], 0.1)
+            separator_color = self._lighten_color(colors["primary"], 0.15)
         else:
-            active_bg = self._darken_color(colors["primary"], 0.08)
-            active_border = self._darken_color(colors["primary"], 0.2)
-            hover_bg = self._darken_color(colors["primary"], 0.04)
+            sidebar_bg = self._darken_color(colors["primary"], 0.04)
+            active_bg = "#4A90E2"  # Accent color for active
+            hover_bg = self._darken_color(colors["primary"], 0.08)
+            separator_color = self._darken_color(colors["primary"], 0.08)
 
-        self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: 2px solid {colors["border"]};
-                border-radius: 8px;
-                background-color: {colors["primary"]};
-            }}
-            QTabWidget::tab-bar {{
-
-            }}
-            QTabBar::tab {{
-                background: {colors["secondary"]};
-                color: {colors["text_secondary"]};
-                border: 2px solid {colors["border"]};
-                border-bottom: none;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                padding: 8px 16px;
-                margin-right: 2px;
-                font-size: 13px;
-                font-weight: 500;
-                outline: none;
-            }}
-            QTabBar::tab:selected {{
-                background: {active_bg};
-                color: {colors["text_primary"]};
-                border-color: {active_border};
-                border-bottom: 2px solid {active_bg};
-                font-weight: 500;
-                outline: none;
-            }}
-            QTabBar::tab:hover {{
-                background: {hover_bg};
-                color: {colors["text_primary"]};
-                border-color: {colors["border_light"]};
-                outline: none;
-            }}
-            QTabBar::tab:selected:hover {{
-                background: {active_bg};
-                color: {colors["text_primary"]};
-                border-color: {active_border};
-                outline: none;
+        # Style the sidebar container
+        self.sidebar.setStyleSheet(f"""
+            QWidget#sidebar {{
+                background-color: {sidebar_bg};
+                border-right: 2px solid {colors["border"]};
+                border-radius: 8px 0px 0px 8px;
             }}
         """)
+
+        # Style the content area
+        self.content_stack.setStyleSheet(f"""
+            QWidget#content_stack {{
+                background-color: {colors["primary"]};
+                border-radius: 0px 8px 8px 0px;
+            }}
+        """)
+
+        # Style navigation buttons
+        for btn in self.nav_buttons:
+            # Update icon colors based on theme
+            is_dark_theme = self._is_dark_color(colors["primary"])
+            btn_icon_name = None
+            if "audio" in btn.text().lower():
+                btn_icon_name = "audio"
+            elif "whisper" in btn.text().lower():
+                btn_icon_name = "brain"
+            elif "output" in btn.text().lower():
+                btn_icon_name = "clipboard"
+            elif "ui" in btn.text().lower():
+                btn_icon_name = "settings"
+            elif "statistics" in btn.text().lower():
+                btn_icon_name = "dashboard"
+            
+            if btn_icon_name:
+                if is_dark_theme:
+                    btn.setIcon(get_icon(btn_icon_name, 16, QColor(255, 255, 255)))
+                else:
+                    btn.setIcon(get_icon(btn_icon_name, 16))
+
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    color: {colors["text_secondary"]};
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 12px;
+                    text-align: left;
+                    font-size: 13px;
+                    font-weight: 500;
+                    margin: 2px 4px;
+                }}
+                QPushButton:hover {{
+                    background: {hover_bg};
+                    color: {colors["text_primary"]};
+                }}
+                QPushButton:checked {{
+                    background: {active_bg};
+                    color: {"#ffffff" if not is_dark else colors["text_primary"]};
+                    font-weight: 600;
+                }}
+                QPushButton:checked:hover {{
+                    background: {active_bg};
+                }}
+            """)
 
     def closeEvent(self, event):
         """Handle dialog close event"""
@@ -667,4 +737,11 @@ class SettingsDialog(QDialog):
                 self.audio_tab.cleanup()
         except Exception as e:
             print(f"Error during SettingsDialog cleanup: {e}")
+        finally:
+            # Disconnect from theme manager to avoid calls on deleted objects
+            try:
+                theme_manager = get_theme_manager()
+                theme_manager.theme_changed.disconnect(self._on_theme_changed)
+            except Exception:
+                pass
         event.accept()

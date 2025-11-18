@@ -553,21 +553,8 @@ class ModernButton(QPushButton):
 class QuillScribeMainWindow(QMainWindow):
     """Main application window with beautiful minimal UI"""
 
-    # Theme color definitions (same as SettingsDialog)
-    THEMES = {
-        "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-        "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-        "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-        "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-        "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-        "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
-        # Dark theme variations
-        "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-        "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-        "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-        "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-        "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
-    }
+    # Theme colors are now centralized in ThemeManager
+    # Access via get_theme_manager().get_theme_colors(theme_name)
 
     def __init__(self):
         super().__init__()
@@ -589,6 +576,9 @@ class QuillScribeMainWindow(QMainWindow):
         # Exit state flags to prevent recursion
         self._exit_in_progress = False
         self._exit_completed = False
+        
+        # Theme application state to prevent recursion
+        self._applying_theme = False
 
         # Lazy-loaded managers (initialized when first needed)
         self._audio_manager = None
@@ -604,6 +594,10 @@ class QuillScribeMainWindow(QMainWindow):
         # Setup UI first for fast startup
         self.setup_ui()
         self.setup_connections()
+        # Connect to theme manager for live theme updates BEFORE loading settings
+        # so saved theme is applied immediately during load_settings.
+        theme_manager = get_theme_manager()
+        theme_manager.theme_changed.connect(self._on_theme_changed)
         self.load_settings()
         self.center_window()
         self.install_drag_filters()
@@ -1337,69 +1331,12 @@ class QuillScribeMainWindow(QMainWindow):
         context_menu.exec(event.globalPos())
 
     def _apply_context_menu_theme(self, menu):
-        """Apply current theme to context menu"""
+        """Apply current theme to context menu using unified ThemeManager"""
         current_theme = self.config_manager.get_setting("ui/theme", "white")
-        theme = self.THEMES.get(current_theme, self.THEMES["white"])
-        primary_color = theme["primary"]
-
-        # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        is_dark = brightness < 128
-
-        if is_dark:
-            # Dark theme styling
-            menu_style = f"""
-                QMenu {{
-                    background-color: {primary_color};
-                    color: #e9ecef;
-                    border: 1px solid #495057;
-                    border-radius: 4px;
-                    padding: 4px;
-                }}
-                QMenu::item {{
-                    background-color: transparent;
-                    padding: 6px 20px;
-                    border-radius: 2px;
-                }}
-                QMenu::item:selected {{
-                    background-color: #495057;
-                    color: #ffffff;
-                }}
-                QMenu::separator {{
-                    height: 1px;
-                    background-color: #495057;
-                    margin: 4px 8px;
-                }}
-            """
-        else:
-            # Light theme styling
-            menu_style = f"""
-                QMenu {{
-                    background-color: {primary_color};
-                    color: #212529;
-                    border: 1px solid #dee2e6;
-                    border-radius: 4px;
-                    padding: 4px;
-                }}
-                QMenu::item {{
-                    background-color: transparent;
-                    padding: 6px 20px;
-                    border-radius: 2px;
-                }}
-                QMenu::item:selected {{
-                    background-color: #e9ecef;
-                    color: #212529;
-                }}
-                QMenu::separator {{
-                    height: 1px;
-                    background-color: #dee2e6;
-                    margin: 4px 8px;
-                }}
-            """
-
+        theme_manager = get_theme_manager()
+        
+        # Use unified menu stylesheet from ThemeManager
+        menu_style = theme_manager.get_menu_stylesheet(current_theme)
         menu.setStyleSheet(menu_style)
 
     def load_settings(self):
@@ -1622,6 +1559,24 @@ class QuillScribeMainWindow(QMainWindow):
             except Exception as e:
                 print(f"Failed to set app shortcut '{qt_seq_text}': {e}")
 
+    def _get_theme_colors(self, theme_name: str) -> dict:
+        """Get theme colors from centralized ThemeManager"""
+        theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
+        is_dark = theme_manager.is_dark_theme()
+        
+        # Add computed colors for backward compatibility
+        if is_dark:
+            colors["text_primary"] = "#ffffff"
+            colors["text_secondary"] = "#e9ecef"
+            colors["border"] = "#495057"
+        else:
+            colors["text_primary"] = "#212529"
+            colors["text_secondary"] = "#495057"
+            colors["border"] = "#dee2e6"
+        
+        return colors
+
     def apply_close_button_theme(self, is_dark: bool):
         """Apply theme-appropriate styling to the close button for compact mode"""
         if is_dark:
@@ -1668,87 +1623,108 @@ class QuillScribeMainWindow(QMainWindow):
         self.close_button.setStyleSheet(style)
 
     def apply_theme(self, theme_name):
-        """Apply the selected theme to the main window background and text colors"""
-        # Use theme manager for consistent theming
-        theme_manager = get_theme_manager()
-        theme_manager.set_theme(theme_name)
+        """
+        Apply the selected theme to the main window background and text colors.
+        
+        This method is called:
+        1. During window initialization (load_settings)
+        2. When settings are saved (via settings_saved signal)
+        3. Automatically via theme_changed signal for live updates
+        
+        The signal-based approach ensures immediate visual feedback when
+        theme is changed in settings dialog, without requiring dialog close.
+        """
+        # Prevent recursion during theme application
+        if self._applying_theme:
+            return
+        
+        self._applying_theme = True
+        try:
+            # Get theme manager for querying dark/light status
+            theme_manager = get_theme_manager()
+            
+            # Update theme manager if theme is different
+            if theme_manager.get_current_theme() != theme_name:
+                # Clear recursion guard before signaling; the signal handler should apply the theme
+                self._applying_theme = False
+                theme_manager.set_theme(theme_name)
+                # Theme will be applied via signal, exit to avoid duplication
+                return
+            
+            # Get colors from centralized theme manager
+            colors = self._get_theme_colors(theme_name)
+            primary_color = colors["primary"]
+            secondary_color = colors["secondary"]
 
-        theme = self.THEMES.get(theme_name, self.THEMES["white"])
-        primary_color = theme["primary"]
-        secondary_color = theme["secondary"]
+            # Get dark theme status from theme manager
+            self.is_dark = theme_manager.is_dark_theme()
 
-        # Get dark theme status from theme manager
-        self.is_dark = theme_manager.is_dark_theme()
+            if self.is_dark:
+                text_primary = "#ffffff"
+                text_secondary = "#e0e0e0"
+                text_muted = "#b0b0b0"
+            else:
+                text_primary = "#2c3e50"
+                text_secondary = "#495057"
+                text_muted = "#6c757d"
 
-        if self.is_dark:
-            text_primary = "#ffffff"
-            text_secondary = "#e0e0e0"
-            text_muted = "#b0b0b0"
-        else:
-            text_primary = "#2c3e50"
-            text_secondary = "#495057"
-            text_muted = "#6c757d"
-
-        self.setStyleSheet(f"""
-            QMainWindow {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 {primary_color}, stop:1 {secondary_color});
-                color: {text_primary};
-            }}
-            QWidget#centralWidget {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 {primary_color}, stop:1 {secondary_color});
-                color: {text_primary};
-            }}
-        """)
-
-        # Apply theme to settings button
-        self.settings_button.apply_theme(self.is_dark, self.compact_mode)
-        self.settings_button.setIcon(get_themed_button_icon('settings', 16, self.is_dark))
-
-        # Apply themed icons to all components
-        theme_manager = get_theme_manager()
-        theme_manager.apply_icons_to_widget(self)
-
-        # Update tray menu theme
-        if hasattr(self, 'tray_manager') and self.tray_manager:
-            self.tray_manager.update_theme()
-
-        # Apply theme to close button
-        self.apply_close_button_theme(self.is_dark)
-
-
-
-        # Update text colors for existing widgets
-        if hasattr(self, 'title_label'):
-            self.title_label.setStyleSheet(f"""
-                QLabel {{
+            self.setStyleSheet(f"""
+                QMainWindow {{
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 {primary_color}, stop:1 {secondary_color});
                     color: {text_primary};
-                    font-size: 28px;
-                    font-weight: 300;
-                    margin-bottom: 10px;
-                    background-color: transparent;
-                    text-align: center;
+                }}
+                QWidget#centralWidget {{
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 {primary_color}, stop:1 {secondary_color});
+                    color: {text_primary};
                 }}
             """)
 
-        # Update custom titlebar colors
-        if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
-            # Determine titlebar colors based on theme
-            if self.is_dark:
-                titlebar_bg = "#3c3c3c"
-                titlebar_border = "#555555"
-                titlebar_text = "#ffffff"
-                titlebar_btn_color = "#ffffff"
-                titlebar_btn_hover = "#555555"
-            else:
-                titlebar_bg = "#f0f0f0"
-                titlebar_border = "#d0d0d0"
-                titlebar_text = "#2c3e50"
-                titlebar_btn_color = "#2c3e50"
-                titlebar_btn_hover = "#e0e0e0"
+            # Apply theme to settings button
+            self.settings_button.apply_theme(self.is_dark, self.compact_mode)
+            self.settings_button.setIcon(get_themed_button_icon('settings', 16, self.is_dark))
 
-            self.custom_titlebar.setStyleSheet(f"""
+            # Apply themed icons to all components
+            theme_manager.apply_icons_to_widget(self)
+
+            # Update tray menu theme
+            if hasattr(self, 'tray_manager') and self.tray_manager:
+                self.tray_manager.update_theme()
+
+            # Apply theme to close button
+            self.apply_close_button_theme(self.is_dark)
+
+            # Update text colors for existing widgets
+            if hasattr(self, 'title_label'):
+                self.title_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {text_primary};
+                        font-size: 28px;
+                        font-weight: 300;
+                        margin-bottom: 10px;
+                        background-color: transparent;
+                        text-align: center;
+                    }}
+                """)
+
+            # Update custom titlebar colors
+            if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
+                # Determine titlebar colors based on theme
+                if self.is_dark:
+                    titlebar_bg = "#3c3c3c"
+                    titlebar_border = "#555555"
+                    titlebar_text = "#ffffff"
+                    titlebar_btn_color = "#ffffff"
+                    titlebar_btn_hover = "#555555"
+                else:
+                    titlebar_bg = "#f0f0f0"
+                    titlebar_border = "#d0d0d0"
+                    titlebar_text = "#2c3e50"
+                    titlebar_btn_color = "#2c3e50"
+                    titlebar_btn_hover = "#e0e0e0"
+
+                self.custom_titlebar.setStyleSheet(f"""
                 QWidget {{
                     background: {titlebar_bg};
                     border-bottom: 1px solid {titlebar_border};
@@ -1810,17 +1786,38 @@ class QuillScribeMainWindow(QMainWindow):
                     }}
                 """)
 
-        if hasattr(self, 'status_label'):
-            font_size = "11px" if self.compact_mode else "14px"
-            margin = "4px" if self.compact_mode else "10px"
-            self.status_label.setStyleSheet(f"""
-                QLabel {{
-                    color: {text_muted};
-                    font-size: {font_size};
-                    margin-top: {margin};
-                    background-color: transparent;
-                }}
-            """)
+            if hasattr(self, 'status_label'):
+                font_size = "11px" if self.compact_mode else "14px"
+                margin = "4px" if self.compact_mode else "10px"
+                self.status_label.setStyleSheet(f"""
+                    QLabel {{
+                        color: {text_muted};
+                        font-size: {font_size};
+                        margin-top: {margin};
+                        background-color: transparent;
+                    }}
+                """)
+        
+        except Exception as e:
+            print(f"Error applying theme '{theme_name}': {e}")
+            # Attempt fallback to default theme
+            if theme_name != "white":
+                try:
+                    theme_manager = get_theme_manager()
+                    theme_manager.set_theme("white")
+                except Exception:
+                    pass  # Avoid infinite recursion
+        finally:
+            self._applying_theme = False
+
+    def _on_theme_changed(self, theme_name: str, is_dark: bool):
+        """Named slot for theme_changed signal to allow safe connect/disconnect."""
+        # Safe-guard: only apply if object is still alive
+        try:
+            self.apply_theme(theme_name)
+        except RuntimeError:
+            # Widget may have been destroyed; ignore
+            pass
 
     def apply_compact_mode(self, enabled: bool):
         """Apply or remove super-compact UI mode."""
@@ -1964,6 +1961,13 @@ class QuillScribeMainWindow(QMainWindow):
             except Exception as e:
                 print(f"Warning: Error saving settings: {e}")
 
+            # Disconnect theme change listener to avoid calls on deleted objects
+            try:
+                theme_manager = get_theme_manager()
+                theme_manager.theme_changed.disconnect(self._on_theme_changed)
+            except Exception:
+                pass
+
         except Exception as e:
             print(f"Error during exit cleanup: {e}")
         finally:
@@ -2070,6 +2074,19 @@ def main():
             if not icon.isNull():
                 app.setWindowIcon(icon)
     except Exception:
+        pass
+
+    # Ensure theme manager has the saved theme BEFORE creating windows so
+    # any widget created by windows can query it safely without falling back
+    # to the default theme.
+    try:
+        cfg = ConfigManager()
+        current_theme = cfg.get_setting("ui/theme", "white")
+        theme_manager = get_theme_manager()
+        # set_theme will emit signal which connected windows can listen to
+        theme_manager.set_theme(current_theme)
+    except Exception:
+        # Do not fail startup if theme application fails
         pass
 
     # Create and show main window

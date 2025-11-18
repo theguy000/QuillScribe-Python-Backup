@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ..managers import StatisticsManager
+from ..managers import StatisticsManager, get_theme_manager
 from .ui_components import ModernButton, ModernGroupBox
 from .base_tab import BaseSettingsTab
 
@@ -333,33 +333,19 @@ class StatisticsTab(QWidget):
 
         if parent_dialog and hasattr(parent_dialog, 'config_manager'):
             theme = parent_dialog.config_manager.get_setting("ui/theme", "white")
+            theme_manager = get_theme_manager()
+            colors = theme_manager.get_theme_colors(theme)
+            primary_color = colors.get("primary", "#ffffff")
 
-            # Theme color definitions (same as main settings dialog)
-            THEMES = {
-                "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-                "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-                "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-                "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-                "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-                "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
-                # Dark theme variations
-                "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-                "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-                "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-                "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-                "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
-            }
-
-            if theme in THEMES:
-                theme_colors = THEMES[theme]
-                primary_color = theme_colors["primary"]
-
-                # Determine if this is a dark theme
+            # Determine if this is a dark theme
+            try:
                 r = int(primary_color.lstrip('#')[0:2], 16)
                 g = int(primary_color.lstrip('#')[2:4], 16)
                 b = int(primary_color.lstrip('#')[4:6], 16)
                 brightness = (r * 299 + g * 587 + b * 114) / 1000
                 is_dark = brightness < 128
+            except Exception:
+                is_dark = False
 
                 if is_dark:
                     msg_style = f"""

@@ -11,7 +11,22 @@ from ..icon_manager import get_themed_button_icon, get_themed_icon
 
 
 class ThemeManager(QObject):
-    """Centralized theme management for consistent theming across the application"""
+    """
+    Centralized theme management for consistent theming across the application.
+    
+    The ThemeManager uses a signal-based architecture for theme propagation:
+    - Call set_theme(theme_name) to change the current theme
+    - The theme_changed signal (theme_name, is_dark) is emitted automatically
+    - Windows and dialogs should connect to theme_changed in their constructors:
+      theme_manager.theme_changed.connect(lambda name, is_dark: self.apply_theme(name))
+    - This ensures live, consistent theme updates across all UI components
+    
+    Benefits:
+    - Immediate visual feedback when theme changes
+    - No manual parent traversal needed
+    - Centralized theme state management
+    - Automatic propagation to all connected widgets
+    """
 
     theme_changed = Signal(str, bool)  # theme_name, is_dark
 
@@ -505,8 +520,8 @@ class ThemeManager(QObject):
                 compact_mode=compact_mode
             )
 
-    def _is_dark_color(self, color_hex: str) -> bool:
-        """Determine if a color is dark based on its brightness"""
+    def is_dark_color(self, color_hex: str) -> bool:
+        """Determine if a color is dark based on its brightness (public API)"""
         try:
             # Remove # if present
             color_hex = color_hex.lstrip('#')
@@ -522,6 +537,140 @@ class ThemeManager(QObject):
         except (ValueError, IndexError):
             # Default to light theme if color parsing fails
             return False
+
+    def _is_dark_color(self, color_hex: str) -> bool:
+        """Internal alias for backwards compatibility"""
+        return self.is_dark_color(color_hex)
+
+
+    def darken_color(self, hex_color: str, factor: float = 0.15) -> str:
+        """Safely darken a hex color by the given factor (0.0 to 1.0)"""
+        try:
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) != 6:
+                return f"#{hex_color}"  # Return original if invalid
+            
+            # Convert to RGB
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+            
+            # Darken by reducing values
+            r = int(r * (1 - factor))
+            g = int(g * (1 - factor))
+            b = int(b * (1 - factor))
+            
+            # Convert back to hex
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, IndexError, TypeError):
+            return hex_color  # Return original on error
+    
+    def lighten_color(self, hex_color: str, factor: float = 0.15) -> str:
+        """Safely lighten a hex color by the given factor (0.0 to 1.0)"""
+        try:
+            hex_color = hex_color.lstrip('#')
+            if len(hex_color) != 6:
+                return f"#{hex_color}"  # Return original if invalid
+            
+            # Convert to RGB
+            r = int(hex_color[0:2], 16)
+            g = int(hex_color[2:4], 16)
+            b = int(hex_color[4:6], 16)
+            
+            # Lighten by increasing values towards 255
+            r = int(r + (255 - r) * factor)
+            g = int(g + (255 - g) * factor)
+            b = int(b + (255 - b) * factor)
+            
+            # Convert back to hex
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, IndexError, TypeError):
+            return hex_color  # Return original on error
+    
+    def blend_hex_colors(self, color1: str, color2: str, ratio: float = 0.5) -> str:
+        """Blend two hex colors with the given ratio (0.0 = color1, 1.0 = color2)"""
+        try:
+            # Remove # if present
+            color1 = color1.lstrip('#')
+            color2 = color2.lstrip('#')
+            
+            if len(color1) != 6 or len(color2) != 6:
+                return f"#{color1}"  # Return first color if invalid
+            
+            # Convert to RGB
+            r1, g1, b1 = int(color1[0:2], 16), int(color1[2:4], 16), int(color1[4:6], 16)
+            r2, g2, b2 = int(color2[0:2], 16), int(color2[2:4], 16), int(color2[4:6], 16)
+            
+            # Blend
+            ratio = max(0.0, min(1.0, ratio))  # Clamp to [0, 1]
+            r = int(r1 * (1 - ratio) + r2 * ratio)
+            g = int(g1 * (1 - ratio) + g2 * ratio)
+            b = int(b1 * (1 - ratio) + b2 * ratio)
+            
+            # Convert back to hex
+            return f"#{r:02x}{g:02x}{b:02x}"
+        except (ValueError, IndexError, TypeError):
+            return color1  # Return first color on error
+
+    def get_menu_stylesheet(self, theme_name: Optional[str] = None) -> str:
+        """Get unified menu stylesheet for consistent theming across all menus"""
+        if theme_name is None:
+            theme_name = self._current_theme
+
+        colors = self.get_theme_colors(theme_name)
+        primary_color = colors.get("primary", "#ffffff")
+        is_dark = self.is_dark_color(primary_color)
+
+        if is_dark:
+            # Dark theme styling
+            return f"""
+                QMenu {{
+                    background-color: {primary_color};
+                    color: #e9ecef;
+                    border: 1px solid #495057;
+                    border-radius: 4px;
+                    padding: 4px;
+                }}
+                QMenu::item {{
+                    background-color: transparent;
+                    padding: 6px 20px;
+                    border-radius: 2px;
+                }}
+                QMenu::item:selected {{
+                    background-color: #495057;
+                    color: #ffffff;
+                }}
+                QMenu::separator {{
+                    height: 1px;
+                    background-color: #495057;
+                    margin: 4px 8px;
+                }}
+            """
+        else:
+            # Light theme styling
+            return f"""
+                QMenu {{
+                    background-color: {primary_color};
+                    color: #212529;
+                    border: 1px solid #dee2e6;
+                    border-radius: 4px;
+                    padding: 4px;
+                }}
+                QMenu::item {{
+                    background-color: transparent;
+                    padding: 6px 20px;
+                    border-radius: 2px;
+                }}
+                QMenu::item:selected {{
+                    background-color: #e9ecef;
+                    color: #212529;
+                }}
+                QMenu::separator {{
+                    height: 1px;
+                    background-color: #dee2e6;
+                    margin: 4px 8px;
+                }}
+            """
 
 
 # Global theme manager instance

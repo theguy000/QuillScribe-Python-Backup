@@ -434,19 +434,9 @@ class UITab(QWidget):
 
     @staticmethod
     def _blend_hex_colors(base_hex: str, blend_hex: str, factor: float) -> str:
-        """Blend two hex colors by a given factor (0.0 -> base, 1.0 -> blend)."""
-        factor = max(0.0, min(1.0, factor))
-        try:
-            base_hex = base_hex.lstrip('#')
-            blend_hex = blend_hex.lstrip('#')
-            br, bg, bb = int(base_hex[0:2], 16), int(base_hex[2:4], 16), int(base_hex[4:6], 16)
-            rr, rg, rb = int(blend_hex[0:2], 16), int(blend_hex[2:4], 16), int(blend_hex[4:6], 16)
-            r = int(br + (rr - br) * factor)
-            g = int(bg + (rg - bg) * factor)
-            b = int(bb + (rb - bb) * factor)
-            return f"#{r:02x}{g:02x}{b:02x}"
-        except (ValueError, TypeError):
-            return base_hex if base_hex.startswith('#') else f"#{base_hex}"
+        """Blend two hex colors - delegates to ThemeManager for consistency."""
+        theme_manager = get_theme_manager()
+        return theme_manager.blend_hex_colors(base_hex, blend_hex, factor)
 
     def _update_slider_fill_visibility(self, value: int):
         """Update slider stylesheet to hide sub-page fill when at minimum value."""
@@ -515,23 +505,24 @@ class UITab(QWidget):
             return False
 
     def on_theme_changed(self):
-        """Apply theme immediately when changed"""
+        """
+        Apply theme immediately when changed.
+        
+        Uses ThemeManager.set_theme() to trigger theme_changed signal,
+        which automatically propagates to all connected windows/dialogs.
+        This replaces the old parent-traversal approach with signal-based
+        propagation for reliable, consistent theme updates.
+        """
         theme_data = self.theme_dropdown.currentData()
         if theme_data:
+            # Persist theme selection immediately
             self.config_manager.set_setting("ui/theme", theme_data)
-            self.config_manager.save_settings()  # Save immediately
+            self.config_manager.save_settings()
 
-            # Refresh slider styling instantly for better feedback
+            # Update theme via theme manager - this emits theme_changed signal
+            # which automatically propagates to SettingsDialog and MainWindow
+            theme_manager = get_theme_manager()
+            theme_manager.set_theme(theme_data)
+            
+            # Refresh local slider styling for immediate visual feedback
             self._style_animation_controls(theme_data)
-
-            # Apply theme to the parent dialog immediately
-            dialog = self.parent()
-            while dialog and not (hasattr(dialog, 'apply_theme') and hasattr(dialog, 'tabs')):
-                dialog = dialog.parent()
-            if dialog:
-                dialog.apply_theme(theme_data)
-
-                # Also apply to main window if it exists
-                main_window = dialog.parent()
-                if main_window and hasattr(main_window, 'apply_theme'):
-                    main_window.apply_theme(theme_data)
