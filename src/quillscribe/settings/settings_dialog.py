@@ -351,6 +351,10 @@ class SettingsDialog(QDialog):
                 widget.apply_theme(is_dark)
             theme_manager.apply_text_theming_to_widget(self, theme_name)
 
+            # Apply theme to Audio Tab specific elements
+            if hasattr(self, 'audio_tab') and hasattr(self.audio_tab, 'apply_theme'):
+                self.audio_tab.apply_theme(theme_name)
+
             # Allow UI tab to refresh its custom slider styling for this theme
             if hasattr(self, 'ui_tab') and hasattr(self.ui_tab, 'apply_animation_theme'):
                 self.ui_tab.apply_animation_theme(theme_name)
@@ -542,11 +546,6 @@ class SettingsDialog(QDialog):
                             button.setIcon(get_white_button_icon('refresh', 16))
                         else:
                             button.setIcon(get_button_icon('refresh', 16))
-                    elif 'detect' in button.text().lower():
-                        if is_dark:
-                            button.setIcon(get_white_button_icon('refresh', 14))
-                        else:
-                            button.setIcon(get_button_icon('refresh', 14))
 
                 # Find and update checkbox icons
                 for checkbox in self.audio_tab.findChildren(ModernCheckBox):
