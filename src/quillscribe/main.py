@@ -70,7 +70,6 @@ class WindowsHotkeyEventFilter(QAbstractNativeEventFilter):
             return False, 0
         except Exception as e:
             # Only print this occasionally to avoid spam
-            import time
             if not hasattr(self, '_last_error_time') or time.time() - self._last_error_time > 5:
                 print(f"DEBUG: Exception in nativeEventFilter: {e}")
                 self._last_error_time = time.time()
@@ -93,6 +92,22 @@ class WindowsGlobalHotkeyManager:
         dispatcher = QAbstractEventDispatcher.instance()
         if dispatcher is not None:
             dispatcher.installNativeEventFilter(self.event_filter)
+
+    # Class-level constants for hotkey mapping
+    SPECIAL_CHAR_MAP = {
+        "`": 0xC0, "~": 0xC0, "=": 0xBB, "+": 0xBB, "-": 0xBD, "_": 0xBD,
+        "[": 0xDB, "{": 0xDB, "]": 0xDD, "}": 0xDD, "\\": 0xDC, "|": 0xDC,
+        ";": 0xBA, ":": 0xBA, "'": 0xDE, '"': 0xDE, ",": 0xBC, "<": 0xBC,
+        ".": 0xBE, ">": 0xBE, "/": 0xBF, "?": 0xBF,
+    }
+
+    SPECIAL_KEY_MAP = {
+        "space": 0x20, "tab": 0x09, "enter": 0x0D, "return": 0x0D,
+        "escape": 0x1B, "esc": 0x1B, "backspace": 0x08, "insert": 0x2D,
+        "delete": 0x2E, "home": 0x24, "end": 0x23, "pageup": 0x21,
+        "pagedown": 0x22, "left": 0x25, "up": 0x26, "right": 0x27,
+        "down": 0x28,
+    }
 
     def _parse_shortcut(self, shortcut_text: str) -> tuple[int, int] | None:
         if not shortcut_text:
@@ -128,57 +143,12 @@ class WindowsGlobalHotkeyManager:
             if 1 <= n <= 24:
                 vk = 0x70 + (n - 1)  # VK_F1 = 0x70
         elif len(key) == 1:
-            # Special handling for certain characters that have different VK codes
-            special_char_map = {
-                "`": 0xC0,  # VK_OEM_3 (backtick/tilde key)
-                "~": 0xC0,  # VK_OEM_3 (backtick/tilde key)
-                "=": 0xBB,  # VK_OEM_PLUS
-                "+": 0xBB,  # VK_OEM_PLUS
-                "-": 0xBD,  # VK_OEM_MINUS
-                "_": 0xBD,  # VK_OEM_MINUS
-                "[": 0xDB,  # VK_OEM_4
-                "{": 0xDB,  # VK_OEM_4
-                "]": 0xDD,  # VK_OEM_6
-                "}": 0xDD,  # VK_OEM_6
-                "\\": 0xDC, # VK_OEM_5
-                "|": 0xDC,  # VK_OEM_5
-                ";": 0xBA,  # VK_OEM_1
-                ":": 0xBA,  # VK_OEM_1
-                "'": 0xDE,  # VK_OEM_7
-                '"': 0xDE,  # VK_OEM_7
-                ",": 0xBC,  # VK_OEM_COMMA
-                "<": 0xBC,  # VK_OEM_COMMA
-                ".": 0xBE,  # VK_OEM_PERIOD
-                ">": 0xBE,  # VK_OEM_PERIOD
-                "/": 0xBF,  # VK_OEM_2
-                "?": 0xBF,  # VK_OEM_2
-            }
-
-            if key in special_char_map:
-                vk = special_char_map[key]
+            if key in self.SPECIAL_CHAR_MAP:
+                vk = self.SPECIAL_CHAR_MAP[key]
             else:
                 vk = ord(key.upper())
         else:
-            special_map = {
-                "space": 0x20,
-                "tab": 0x09,
-                "enter": 0x0D,
-                "return": 0x0D,
-                "escape": 0x1B,
-                "esc": 0x1B,
-                "backspace": 0x08,
-                "insert": 0x2D,
-                "delete": 0x2E,
-                "home": 0x24,
-                "end": 0x23,
-                "pageup": 0x21,
-                "pagedown": 0x22,
-                "left": 0x25,
-                "up": 0x26,
-                "right": 0x27,
-                "down": 0x28,
-            }
-            vk = special_map.get(key_lower)
+            vk = self.SPECIAL_KEY_MAP.get(key_lower)
 
         if vk is None:
             return None
@@ -808,22 +778,8 @@ class QuillScribeMainWindow(QMainWindow):
             # No custom titlebar needed
             self.custom_titlebar = None
 
-        # Topbar with right-aligned close button (visible only in compact mode)
-        self.topbar = QHBoxLayout()
-        self.topbar.setContentsMargins(0, 8, 8, 0)  # Add right margin
-        self.topbar.addStretch()
-        self.close_button = QPushButton("×")
-        self.close_button.setFixedSize(24, 24)
-        self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.close_button.setVisible(False)
-        self.close_button.clicked.connect(self.close)
-        # Ensure the text is perfectly centered
-        self.close_button.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        self.topbar.addWidget(self.close_button)
+        # Topbar removed - using unified custom titlebar for both modes
 
-        # Apply initial close button styling
-        self.apply_close_button_theme(False)
-        layout.addLayout(self.topbar)
 
         # Title - properly centered
         title = QLabel("QuillScribe")
@@ -902,7 +858,8 @@ class QuillScribeMainWindow(QMainWindow):
 
         # Left section: icon + spacer (fixed width to balance right section)
         left_section = QWidget()
-        left_section.setFixedWidth(100)  # Fixed width to match right section
+        left_section.setFixedWidth(70)  # Reduced width for compact mode compatibility
+
         left_layout = QHBoxLayout(left_section)
         left_layout.setContentsMargins(8, 0, 0, 0)
         left_layout.setSpacing(8)
@@ -964,7 +921,8 @@ class QuillScribeMainWindow(QMainWindow):
 
         # Right section: window controls (fixed width to balance left section)
         right_section = QWidget()
-        right_section.setFixedWidth(100)  # Fixed width to match left section
+        right_section.setFixedWidth(70)  # Reduced width for compact mode compatibility
+
         right_layout = QHBoxLayout(right_section)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(0)
@@ -975,7 +933,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.minimize_btn.setObjectName("minimize_btn")  # For theme manager identification
         self.minimize_btn.setIcon(get_button_icon('minimize', 16))  # Set initial icon
         self.minimize_btn.setIconSize(QSize(16, 16))
-        self.minimize_btn.setFixedSize(46, 32)  # Match titlebar height exactly
+        self.minimize_btn.setFixedSize(34, 32)  # Reduced width for compact mode
         self.minimize_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.minimize_btn.setStyleSheet("""
             QPushButton {
@@ -1000,7 +958,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.titlebar_close_btn.setObjectName("titlebar_close_btn")  # For theme manager identification
         self.titlebar_close_btn.setIcon(get_button_icon('close', 16))  # Set initial icon
         self.titlebar_close_btn.setIconSize(QSize(16, 16))
-        self.titlebar_close_btn.setFixedSize(46, 32)  # Match titlebar height exactly
+        self.titlebar_close_btn.setFixedSize(34, 32)  # Reduced width for compact mode
         self.titlebar_close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.titlebar_close_btn.setStyleSheet("""
             QPushButton {
@@ -1608,50 +1566,6 @@ class QuillScribeMainWindow(QMainWindow):
         
         return colors
 
-    def apply_close_button_theme(self, is_dark: bool):
-        """Apply theme-appropriate styling to the close button for compact mode"""
-        if is_dark:
-            style = """
-                QPushButton {
-                    background: rgba(255, 255, 255, 0.1);
-                    color: #ffffff;
-                    border: 1px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 12px;
-                    text-align: center;
-                    padding: 0px;
-                    margin: 0px;
-                    text-align: center;
-                }
-                QPushButton:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                    border-color: rgba(255, 255, 255, 0.4);
-                }
-                QPushButton:pressed {
-                    background: rgba(255, 255, 255, 0.3);
-                }
-            """
-        else:
-            style = """
-                QPushButton {
-                    background: rgba(0, 0, 0, 0.05);
-                    color: #495057;
-                    border: 1px solid rgba(0, 0, 0, 0.1);
-                    border-radius: 12px;
-                    text-align: center;
-                    padding: 0px;
-                    margin: 0px;
-                    text-align: center;
-                }
-                QPushButton:hover {
-                    background: rgba(0, 0, 0, 0.1);
-                    border-color: rgba(0, 0, 0, 0.2);
-                    color: #212529;
-                }
-                QPushButton:pressed {
-                    background: rgba(0, 0, 0, 0.15);
-                }
-            """
-        self.close_button.setStyleSheet(style)
 
     def apply_theme(self, theme_name):
         """
@@ -1723,8 +1637,6 @@ class QuillScribeMainWindow(QMainWindow):
             if hasattr(self, 'tray_manager') and self.tray_manager:
                 self.tray_manager.update_theme()
 
-            # Apply theme to close button
-            self.apply_close_button_theme(self.is_dark)
 
             # Update text colors for existing widgets
             if hasattr(self, 'title_label'):
@@ -1854,11 +1766,11 @@ class QuillScribeMainWindow(QMainWindow):
         """Apply or remove super-compact UI mode."""
         self.compact_mode = enabled
         if enabled:
-            # Hide custom titlebar in compact mode (already frameless)
+            # Ensure custom titlebar is visible in compact mode
             if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
-                self.custom_titlebar.setVisible(False)
+                self.custom_titlebar.setVisible(True)
             # Slightly larger to allow bigger mic view box and bottom-aligned settings
-            self.setFixedSize(220, 240)
+            self.setFixedSize(220, 272)  # Increased height to account for titlebar
             # Tight spacing
             self.main_layout.setContentsMargins(8, 8, 8, 8)
             self.main_layout.setSpacing(6)
@@ -1871,9 +1783,6 @@ class QuillScribeMainWindow(QMainWindow):
             self.status_label.setStyleSheet("QLabel { color: #6c757d; font-size: 11px; margin-top: 4px; }")
             # Shrink settings button
             self.settings_button.apply_theme(self.is_dark, True)
-            # Show centered close button with proper theme
-            self.close_button.setVisible(True)
-            self.apply_close_button_theme(self.is_dark)
             # Re-show to apply window flag changes
             self.show()
             # Reapply always-on-top if needed
@@ -1893,7 +1802,6 @@ class QuillScribeMainWindow(QMainWindow):
             self.status_label.setStyleSheet("QLabel { color: #6c757d; font-size: 14px; margin-top: 10px; }")
             # Restore settings button default style
             self.settings_button.apply_theme(self.is_dark, False)
-            self.close_button.setVisible(False)
             # Re-show to apply window flag changes
             self.show()
             # Reapply always-on-top if needed
