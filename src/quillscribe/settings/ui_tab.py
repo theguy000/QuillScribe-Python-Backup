@@ -264,7 +264,7 @@ class UITab(QWidget):
         self.always_on_top_checkbox.setChecked(always_on_top)
         snap_to_edges = bool(self.config_manager.get_setting("ui/snap_to_edges", True))
         self.snap_to_edges_checkbox.setChecked(snap_to_edges)
-        shortcut = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
+        shortcut = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+Shift+`")
         if isinstance(shortcut, str):
             # Convert Windows format to Qt format for display
             qt_shortcut = ModernKeySequenceEdit.windows_to_qt_shortcut(shortcut)
@@ -296,7 +296,7 @@ class UITab(QWidget):
         self.config_manager.set_setting("ui/snap_to_edges", self.snap_to_edges_checkbox.isChecked())
         qt_shortcut_sequence = self.shortcut_edit.keySequence().toString()
         # Convert Qt format to Windows format for storage
-        windows_shortcut = ModernKeySequenceEdit.qt_to_windows_shortcut(qt_shortcut_sequence) or "Meta+`"
+        windows_shortcut = ModernKeySequenceEdit.qt_to_windows_shortcut(qt_shortcut_sequence) or "Meta+Shift+`"
         self.config_manager.set_setting("shortcuts/record_toggle", windows_shortcut)
 
         # Save custom title bar setting

@@ -1502,9 +1502,9 @@ class QuillScribeMainWindow(QMainWindow):
 
     def get_formatted_shortcut(self) -> str:
         """Get a nicely formatted shortcut string for display"""
-        shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
+        shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+Shift+`")
         if not isinstance(shortcut_text, str) or not shortcut_text:
-            shortcut_text = "Meta+`"
+            shortcut_text = "Meta+Shift+`"
 
         # Convert to a more user-friendly format
         formatted = shortcut_text.replace("Meta", "Win").replace("+", " + ")
@@ -1528,9 +1528,9 @@ class QuillScribeMainWindow(QMainWindow):
                 self._app_shortcut.setParent(None)
                 self._app_shortcut = None
 
-            shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+`")
+            shortcut_text = self.config_manager.get_setting("shortcuts/record_toggle", "Meta+Shift+`")
             if not isinstance(shortcut_text, str) or not shortcut_text:
-                shortcut_text = "Meta+`"
+                shortcut_text = "Meta+Shift+`"
 
             # Try global first on Windows
             registered_globally = False

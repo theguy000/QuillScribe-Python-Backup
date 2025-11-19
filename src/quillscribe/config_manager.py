@@ -63,7 +63,7 @@ class ConfigManager:
                 "custom_titlebar": True
             },
             "shortcuts": {
-                "record_toggle": "Meta+`"
+                "record_toggle": "Meta+Shift+`"
             },
             "advanced": {
                 "buffer_size": 1024,

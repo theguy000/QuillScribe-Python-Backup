@@ -11,7 +11,7 @@ A minimal, elegant voice-to-text transcription application with a stunning breat
 - **Beautiful Minimal UI** - A clean and focused interface.
 - **Stunning Animations** - Dynamic microphone visualization with a breathing animation and an audio-responsive waveform.
 - **Dual AI Modes** - Choose between the powerful OpenAI Whisper API or a private, offline local model using `faster-whisper`.
-- **Global Hotkeys** - Start and stop recording from anywhere on your desktop (Windows only, `Win+F` by default).
+- **Global Hotkeys** - Start and stop recording from anywhere on your desktop (Windows only, `Win+Shift+` ` ` by default).
 - **Theming** - Customize the look and feel with multiple light and dark themes.
 - **Compact Mode** - Switch to a super-compact, always-on-top style UI.
 - **Custom Title Bar** - A sleek, custom title bar for a more integrated look (can be disabled).
@@ -77,7 +77,7 @@ quillscribe
 
 ## Usage
 
-1.  **Start Recording:** Click the microphone or use the global hotkey (`Win+F` by default on Windows).
+1.  **Start Recording:** Click the microphone or use the global hotkey (`Win+Shift+` ` ` by default on Windows).
 2.  **Watch the Magic:** The microphone animates with a live audio waveform.
 3.  **Stop Recording:** Click the microphone again or use the hotkey.
 4.  **Get Results:** Text is automatically copied/pasted based on your settings.
