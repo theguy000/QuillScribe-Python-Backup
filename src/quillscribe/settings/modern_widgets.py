@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush
+from ..icon_manager import icon_manager
 
 # ModernGroupBox is now imported directly from ui_components and used as is
 # to ensure consistency across the application.
@@ -24,7 +25,7 @@ class ModernComboBox(QComboBox):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         # Use a list view for better styling control and add subtle shadow
         self.setView(QListView(self))
-        self.view().setAlternatingRowColors(True)
+        # self.view().setAlternatingRowColors(True) # Disabled for cleaner look
         try:
             shadow = QGraphicsDropShadowEffect(self.view())
             shadow.setBlurRadius(18)
@@ -37,93 +38,118 @@ class ModernComboBox(QComboBox):
         self.apply_theme(is_dark=False)
 
     def apply_theme(self, is_dark: bool, accent: str = "#4A90E2", border: str | None = None):
-        border = border or ("#555555" if is_dark else "#dee2e6")
-        text_color = "#ffffff" if is_dark else "#212529"
-        bg = "#2c2c2c" if is_dark else "white"
-        hover_bg = "#333333" if is_dark else "#f8f9fa"
-        alt_bg = "#252525" if is_dark else "#f7f7f7"
-        # Fix selection text color - use white for dark accent backgrounds, dark for light backgrounds
-        selection_text_color = "white"  # Accent color is always dark enough to need white text
+        # Material Design Button + Precision Popup Style
+        
+        # Dynamic colors based on theme
+        # User requested "active" (resting) color to be the old hover color
+        # and hover color to be "better" (more distinct)
+        
+        if is_dark:
+            bg = "#333333"        # Old hover color (Surface)
+            text_color = "#ffffff"
+            border_color = "#555555"
+            hover_bg = "#404040"  # Lighter surface for hover
+            hover_border = "#777777"
+            
+            popup_bg = "#2c2c2c"  # Keep popup bg dark
+            popup_border = "#555555"
+            item_hover_bg = "#333333"
+            item_hover_border = "#777777"
+            
+            selection_bg = "#1a3c5e"
+            selection_text = "#4A90E2"
+            selection_border = "#4A90E2"
+        else:
+            bg = "#f8f9fa"        # Old hover color (Light grey)
+            text_color = "#2c3e50"
+            border_color = "#e9ecef"
+            hover_bg = "#e9ecef"  # Darker grey for hover
+            hover_border = "#dee2e6"
+            
+            popup_bg = "#ffffff"
+            popup_border = "#e9ecef"
+            item_hover_bg = "#f8f9fa"
+            item_hover_border = "#adb5bd"
+            
+            selection_bg = "#f1f8ff"
+            selection_text = "#4A90E2"
+            selection_border = "#4A90E2"
+
+        # Get arrow icon path
+        arrow_icon = icon_manager.get_icon_path('chevron-down-white' if is_dark else 'chevron-down')
+        if arrow_icon:
+            arrow_icon = arrow_icon.replace('\\', '/')
+        else:
+            arrow_icon = "" # Fallback or empty
 
         stylesheet = f"""
-
+            /* Material Design Button Style */
             QComboBox {{
-                border: 1.5px solid {border};
-                border-radius: 8px;
-                padding: 6px 20px 6px 12px;
-                min-height: 28px;
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 13px;
+                border: none;
+                border-radius: 6px;
+                padding: 0px 12px; /* Remove vertical padding, let flexbox center it */
+                min-height: 32px;
+                max-height: 32px;
                 background-color: {bg};
                 color: {text_color};
-                outline: none;
+                font-family: 'Segoe UI', sans-serif;
+                font-weight: 600;
+                font-size: 13px;
+                border-bottom: 2px solid {border_color};
+                text-align: left;
             }}
             QComboBox:hover {{
-                border-color: {'#777777' if is_dark else '#adb5bd'};
                 background-color: {hover_bg};
+                border-bottom: 2px solid {hover_border};
             }}
             QComboBox:focus {{
-                outline: none;
-                border: 1.5px solid {accent};
+                border-bottom: 2px solid {accent};
             }}
             QComboBox::drop-down {{
                 border: none;
-                background: transparent;
-                width: 24px;
+                width: 32px; /* Square drop-down area */
+                height: 30px; /* 32px - 2px border */
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
             }}
             QComboBox::down-arrow {{
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid {text_color};
-                width: 0px;
-                height: 0px;
-                margin: 8px;
+                image: url({arrow_icon});
+                width: 14px;
+                height: 14px;
+                margin-right: 10px; /* Center horizontally in the 32px box */
+                margin-top: 1px; /* Slight visual adjustment */
+                border: none; /* Remove CSS triangle borders */
             }}
+
+            /* Precision Popup Style */
             QComboBox QAbstractItemView {{
-                border: 1px solid {border};
-                border-radius: 8px;
-                background-color: {bg};
+                border: 1px solid {popup_border};
+                border-radius: 0px;
+                background-color: {popup_bg};
                 color: {text_color};
-                selection-background-color: {accent};
-                selection-color: {selection_text_color};
-                alternate-background-color: {alt_bg};
-                padding: 4px;
+                outline: none;
+                padding: 0px;
+                selection-background-color: transparent; /* We handle selection manually */
             }}
             QComboBox QAbstractItemView::item {{
-                height: 28px;
-                padding: 4px 8px;
+                height: 40px;
+                padding-left: 16px;
+                border: none;
+                border-left: 3px solid transparent;
                 color: {text_color};
-                border-radius: 4px;
             }}
             QComboBox QAbstractItemView::item:hover {{
-                background-color: {accent};
-                color: {selection_text_color};
-                outline: none;
-                border: none;
+                background-color: {item_hover_bg};
+                border-left: 3px solid {item_hover_border};
             }}
             QComboBox QAbstractItemView::item:selected {{
-                background-color: {accent};
-                color: {selection_text_color};
-                outline: none !important;
-                border: none !important;
-            }}
-            QListView {{
+                background-color: {selection_bg};
+                border-left: 3px solid {selection_border};
+                color: {selection_text};
                 outline: none;
-                border: none;
             }}
-            QListView::item {{
-                outline: none !important;
-                border: none !important;
-            }}
-            QListView::item:focus {{
-                outline: none !important;
-                border: none !important;
-            }}
-            QListView::item:selected {{
-                outline: none !important;
-                border: none !important;
-            }}
+            
+            /* Scrollbar Styling */
             QScrollBar:vertical {{
                 width: 6px;
                 background: transparent;
@@ -133,11 +159,12 @@ class ModernComboBox(QComboBox):
                 border-radius: 3px;
                 min-height: 20px;
             }}
+            
+            /* Disabled State */
             QComboBox:disabled {{
                 color: {'#6c757d' if is_dark else '#868e96'};
                 background-color: {'#1a1a1a' if is_dark else '#f1f3f4'};
-                border-style: dashed;
-                border-color: {'#404040' if is_dark else '#ced4da'};
+                border-bottom: 2px solid {'#404040' if is_dark else '#ced4da'};
             }}
         """
         self.setStyleSheet(stylesheet)

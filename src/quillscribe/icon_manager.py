@@ -67,7 +67,9 @@ class IconManager:
         'local': 'brain.svg',  # Brain for local processing
         'compact': 'minimize-2.svg',  # Minimize for compact mode
         'keyboard': 'key.svg',  # Keyboard shortcut
-        'window': 'window-minimize.svg'  # Window minimize option
+        'window': 'window-minimize.svg',  # Window minimize option
+        'chevron-down': 'chevron-down.svg',  # Dropdown arrow
+        'chevron-down-white': 'chevron-down-white.svg'
     }
 
     def __init__(self):
