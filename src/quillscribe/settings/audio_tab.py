@@ -389,54 +389,63 @@ class AudioTab(QWidget):
         # Update device list in audio manager
         self.audio_manager.update_available_devices()
 
-        # Clear and repopulate combo box
-        self.mic_combo.clear()
-        devices = self.audio_manager.get_available_devices()
+        # Block signals to prevent intermediate selection changes during repopulation
+        self.mic_combo.blockSignals(True)
+        try:
+            # Clear and repopulate combo box
+            self.mic_combo.clear()
+            devices = self.audio_manager.get_available_devices()
 
-        # Get blocklist from config
-        blocklist = self.config_manager.get_setting("audio/microphone_blocklist", [])
+            # Get blocklist from config
+            blocklist = self.config_manager.get_setting("audio/microphone_blocklist", [])
 
-        # Remove duplicates and apply blocklist
-        seen_names = set()
-        filtered_devices = []
+            # Remove duplicates and apply blocklist
+            seen_names = set()
+            filtered_devices = []
 
-        for device in devices:
-            device_name = device['name']
+            for device in devices:
+                device_name = device['name']
+                
+                # Skip if device is in blocklist
+                if device_name in blocklist:
+                    continue
+
+                # Skip if we've already seen this device name (remove duplicates)
+                if device_name in seen_names:
+                    continue
+
+                seen_names.add(device_name)
+                filtered_devices.append(device)
+
+            for device in filtered_devices:
+                self.mic_combo.addItem(f"{device['name']}", device['id'])
+
+            # Try to restore previous selection
+            selection_restored = False
+            if current_device_id is not None:
+                for i in range(self.mic_combo.count()):
+                    if self.mic_combo.itemData(i) == current_device_id:
+                        self.mic_combo.setCurrentIndex(i)
+                        selection_restored = True
+                        break
             
-            # Skip if device is in blocklist
-            if device_name in blocklist:
-                continue
+            # If no selection was restored but we have devices, select the first one (or default)
+            if not selection_restored and self.mic_combo.count() > 0:
+                 self.mic_combo.setCurrentIndex(0)
 
-            # Skip if we've already seen this device name (remove duplicates)
-            if device_name in seen_names:
-                continue
+            # If no devices found, show helpful message
+            if len(filtered_devices) == 0:
+                if len(devices) > 0:
+                    self.mic_combo.addItem("All microphones are blocked", None)
+                else:
+                    self.mic_combo.addItem("No microphones found", None)
 
-            seen_names.add(device_name)
-            filtered_devices.append(device)
-
-        for device in filtered_devices:
-            self.mic_combo.addItem(f"{device['name']}", device['id'])
-
-        # Try to restore previous selection
-        if current_device_id is not None:
-            for i in range(self.mic_combo.count()):
-                if self.mic_combo.itemData(i) == current_device_id:
-                    self.mic_combo.setCurrentIndex(i)
-                    break
-        
-        # If no selection was restored but we have devices, select the first one (or default)
-        if self.mic_combo.currentIndex() == -1 and self.mic_combo.count() > 0:
-             self.mic_combo.setCurrentIndex(0)
-
-        # If no devices found, show helpful message
-        if len(filtered_devices) == 0:
-            if len(devices) > 0:
-                self.mic_combo.addItem("All microphones are blocked", None)
-            else:
-                self.mic_combo.addItem("No microphones found", None)
-
-        # Store current device list for comparison
-        self.last_device_list = [device['id'] for device in filtered_devices]
+            # Store RAW device list for comparison in monitor_device_changes
+            # This prevents infinite refresh loops caused by filtering
+            self.last_device_list = [device['id'] for device in devices]
+            
+        finally:
+            self.mic_combo.blockSignals(False)
 
     def on_auto_select_toggled(self, checked: bool):
         """Handle auto-select checkbox toggle"""
