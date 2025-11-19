@@ -12,7 +12,9 @@ from PySide6.QtCore import Qt, QSize, QTimer
 from ..managers import AudioManager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
-from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox, AnimatedToggleSwitch
+from ..icon_manager import get_button_icon, get_white_button_icon
+from .ui_components import ModernGroupBox, ModernButton
+from .modern_widgets import ModernComboBox, ModernCheckBox, AnimatedToggleSwitch, ModernProgressBar
 
 
 class AudioTab(QWidget):
@@ -44,44 +46,16 @@ class AudioTab(QWidget):
         mic_selection_layout.addWidget(self.mic_combo)
 
         # Add refresh button
-        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button = ModernButton("Refresh", primary=True)
         self.refresh_button.setIcon(get_white_button_icon('refresh', 16))
         self.refresh_button.setIconSize(QSize(16, 16))
-        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.refresh_button.setStyleSheet("""
-            QPushButton {
-                background: #17a2b8;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: #138496;
-            }
-        """)
         self.refresh_button.clicked.connect(self.refresh_devices)
         mic_selection_layout.addWidget(self.refresh_button)
 
         # Add blocklist button
-        self.blocklist_button = QPushButton("Blocklist")
-        self.blocklist_button.setIcon(get_white_button_icon('block', 16))
+        self.blocklist_button = ModernButton("Blocklist", primary=False)
+        self.blocklist_button.setIcon(get_button_icon('block', 16))
         self.blocklist_button.setIconSize(QSize(16, 16))
-        self.blocklist_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.blocklist_button.setStyleSheet("""
-            QPushButton {
-                background: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            QPushButton:hover {
-                background: #c82333;
-            }
-        """)
         self.blocklist_button.clicked.connect(self.show_blocklist_dialog)
         mic_selection_layout.addWidget(self.blocklist_button)
 
@@ -102,28 +76,9 @@ class AudioTab(QWidget):
         auto_select_layout.addWidget(auto_select_label, 1)
 
         # Add "Detect Now" button
-        self.detect_now_button = QPushButton("Detect Now")
+        self.detect_now_button = ModernButton("Detect Now", primary=True)
         self.detect_now_button.setIcon(get_white_button_icon('refresh', 14))
         self.detect_now_button.setIconSize(QSize(14, 14))
-        self.detect_now_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.detect_now_button.setStyleSheet("""
-            QPushButton {
-                background: #28a745;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                min-width: 60px;
-            }
-            QPushButton:hover {
-                background: #218838;
-            }
-            QPushButton:disabled {
-                background: #6c757d;
-                color: #adb5bd;
-            }
-        """)
         self.detect_now_button.clicked.connect(self.detect_active_microphone_now)
         self.detect_now_button.setEnabled(True)  # Always enabled
         auto_select_layout.addWidget(self.detect_now_button)
@@ -143,23 +98,11 @@ class AudioTab(QWidget):
 
         # Test button
         test_layout = QHBoxLayout()
-        self.test_button = QPushButton("Test")
+        # Test button
+        test_layout = QHBoxLayout()
+        self.test_button = ModernButton("Test", primary=True)
         self.test_button.setIcon(get_white_button_icon('test', 16))
         self.test_button.setIconSize(QSize(16, 16))
-        self.test_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.test_button.setStyleSheet("""
-            QPushButton {
-                background: #28a745;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 8px 12px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background: #218838;
-            }
-        """)
         self.test_button.clicked.connect(self.test_microphone)
         test_layout.addWidget(self.test_button)
         test_layout.addStretch()
@@ -167,26 +110,10 @@ class AudioTab(QWidget):
 
         # Audio level meter
         self.level_label = QLabel("Audio Level:")
-        self.level_bar = QProgressBar()
+        self.level_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
+        self.level_bar = ModernProgressBar()
         self.level_bar.setRange(0, 100)
         self.level_bar.setValue(0)  # Initialize to 0
-        self.level_bar.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #dee2e6;
-                border-radius: 6px;
-                background-color: #f8f9fa;
-                height: 24px;
-                text-align: center;
-                color: #495057;
-                font-weight: bold;
-            }
-            QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #28a745, stop:0.6 #28a745, stop:0.8 #ffc107, stop:1 #dc3545);
-                border-radius: 4px;
-                margin: 1px;
-            }
-        """)
         mic_layout.addRow(self.level_label, self.level_bar)
 
         layout.addWidget(mic_group)

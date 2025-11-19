@@ -7,8 +7,9 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, 
     QTextEdit, QMessageBox, QFileDialog, QFrame, QGridLayout, QScrollArea,
-    QSizePolicy
+    QSizePolicy, QGraphicsDropShadowEffect
 )
+from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
 
 from ..managers import StatisticsManager, get_theme_manager
@@ -21,70 +22,86 @@ class StatCard(QFrame):
     
     def __init__(self, title, value="0", parent=None):
         super().__init__(parent)
-        self.setFrameShape(QFrame.Shape.StyledPanel)
-        self.setFrameShadow(QFrame.Shadow.Raised)
+        self.setFrameShape(QFrame.Shape.NoFrame)
         
         # Set size policy to expand
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        self.setMinimumWidth(120) # Slightly smaller minimum
-
+        self.setMinimumWidth(140)
         
+        # Add drop shadow effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(15)
+        shadow.setXOffset(0)
+        shadow.setYOffset(4)
+        shadow.setColor(Qt.GlobalColor.transparent) # Initial transparent shadow
+        self.setGraphicsEffect(shadow)
+        self.shadow_effect = shadow
+
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(4)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(8)
         
         self.value_label = QLabel(value)
-        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.value_label.setWordWrap(True) # Allow wrapping if value is very long
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.value_label.setWordWrap(True)
         
         self.title_label = QLabel(title)
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setWordWrap(True) # Allow wrapping for title
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.title_label.setWordWrap(True)
         
-        layout.addWidget(self.value_label)
         layout.addWidget(self.title_label)
+        layout.addWidget(self.value_label)
         
     def set_value(self, value):
         self.value_label.setText(str(value))
         
     def apply_theme(self, primary_color, secondary_color, text_color, is_dark):
         """Apply theme to the card"""
-        # Use theme manager for consistent colors
         theme_manager = get_theme_manager()
         
         if is_dark:
-            bg_color = theme_manager.lighten_color(secondary_color, 0.05)
-            border_color = theme_manager.lighten_color(secondary_color, 0.1)
+            bg_color = theme_manager.lighten_color(secondary_color, 0.08)
+            border_color = "transparent"
             value_color = text_color
             title_color = "#adb5bd"
+            shadow_color = "#000000"
+            shadow_opacity = 80
         else:
             bg_color = "#ffffff"
-            border_color = theme_manager.darken_color(secondary_color, 0.1)
-            value_color = text_color
+            border_color = "#e9ecef"
+            value_color = primary_color # Use primary color for value in light mode
             title_color = "#6c757d"
+            shadow_color = "#000000"
+            shadow_opacity = 20
             
         self.setStyleSheet(f"""
             StatCard {{
                 background-color: {bg_color};
                 border: 1px solid {border_color};
-                border-radius: 8px;
+                border-radius: 12px;
             }}
         """)
         
+        # Update shadow color
+        s_color = QColor(shadow_color)
+        s_color.setAlpha(shadow_opacity)
+        self.shadow_effect.setColor(s_color)
+        
         self.value_label.setStyleSheet(f"""
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 28px;
+            font-weight: 700;
             color: {value_color};
             border: none;
             background: transparent;
+            font-family: 'Segoe UI', sans-serif;
         """)
         
         self.title_label.setStyleSheet(f"""
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
             color: {title_color};
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
             border: none;
             background: transparent;
         """)

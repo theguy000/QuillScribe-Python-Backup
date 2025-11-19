@@ -5,7 +5,7 @@ Handles UI customization, themes, and window behavior
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFormLayout,
-    QSlider, QSizePolicy
+    QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QKeySequence
@@ -13,7 +13,8 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_icon
 from ..managers import get_theme_manager
-from .modern_widgets import ModernGroupBox, ModernComboBox, ModernCheckBox, ModernKeySequenceEdit, AnimatedToggleSwitch
+from .ui_components import ModernGroupBox
+from .modern_widgets import ModernComboBox, ModernCheckBox, ModernKeySequenceEdit, AnimatedToggleSwitch, ModernSlider
 
 
 class UITab(QWidget):
@@ -32,7 +33,7 @@ class UITab(QWidget):
 
         intro = QLabel("Configure UI, including Super Compact mode and microphone visualization.")
         intro.setWordWrap(True)
-        intro.setStyleSheet("color: #6c757d; font-size: 12px;")
+        intro.setStyleSheet("color: #6c757d; font-size: 12px; font-family: 'Segoe UI', sans-serif;")
         layout.addWidget(intro)
 
         box = ModernGroupBox("UI Settings")
@@ -44,13 +45,13 @@ class UITab(QWidget):
         self.compact_checkbox = AnimatedToggleSwitch()
         compact_layout.addWidget(self.compact_checkbox)
         compact_label = QLabel("Enable Super Compact UI")
-        compact_label.setStyleSheet("color: #495057; font-size: 13px;")
+        compact_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         compact_layout.addWidget(compact_label, 1)
         form.addLayout(compact_layout)
 
         tip = QLabel("In compact mode, the window is frameless with a right-aligned close button, and you can drag anywhere to move.")
         tip.setWordWrap(True)
-        tip.setStyleSheet("color: #6c757d; font-size: 11px;")
+        tip.setStyleSheet("color: #6c757d; font-size: 11px; font-family: 'Segoe UI', sans-serif;")
         form.addWidget(tip)
 
         # Add custom title bar setting
@@ -59,13 +60,13 @@ class UITab(QWidget):
         self.custom_titlebar_checkbox = AnimatedToggleSwitch()
         titlebar_layout.addWidget(self.custom_titlebar_checkbox)
         titlebar_label = QLabel("Enable custom title bar")
-        titlebar_label.setStyleSheet("color: #495057; font-size: 13px;")
+        titlebar_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         titlebar_layout.addWidget(titlebar_label, 1)
         form.addLayout(titlebar_layout)
 
         titlebar_tip = QLabel("When enabled, uses a custom title bar instead of the system default. Disable for standard OS title bar.")
         titlebar_tip.setWordWrap(True)
-        titlebar_tip.setStyleSheet("color: #6c757d; font-size: 11px;")
+        titlebar_tip.setStyleSheet("color: #6c757d; font-size: 11px; font-family: 'Segoe UI', sans-serif;")
         form.addWidget(titlebar_tip)
 
         # Add theme selection to the same group box
@@ -86,6 +87,7 @@ class UITab(QWidget):
 
         self.theme_label = QLabel("Background theme:")
         self.theme_label.setObjectName("theme_label")
+        self.theme_label.setStyleSheet("font-family: 'Segoe UI', sans-serif;")
         theme_widget_layout.addWidget(self.theme_label)
         theme_widget_layout.addStretch()
 
@@ -108,7 +110,7 @@ class UITab(QWidget):
 
         theme_help = QLabel("Choose a background color theme for the application. Changes apply immediately.")
         theme_help.setWordWrap(True)
-        theme_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent;")
+        theme_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent; font-family: 'Segoe UI', sans-serif;")
         theme_form_layout.addRow("", theme_help)
 
         form.addLayout(theme_form_layout)
@@ -126,23 +128,22 @@ class UITab(QWidget):
         self.show_waveform_checkbox.setChecked(True)
         waveform_layout.addWidget(self.show_waveform_checkbox)
         waveform_label = QLabel("Show circular waveform during recording")
-        waveform_label.setStyleSheet("color: #495057; font-size: 13px;")
+        waveform_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         waveform_layout.addWidget(waveform_label, 1)
         viz_layout.addLayout(waveform_layout)
 
         # Animation strength slider
         self.animation_strength_label = QLabel("Animation Amplification:")
         self.animation_strength_label.setObjectName("animation_strength_label")
-        self.animation_strength_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px;")
+        self.animation_strength_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px; font-family: 'Segoe UI', sans-serif; font-weight: 600;")
         viz_layout.addWidget(self.animation_strength_label)
 
-        self.animation_strength_slider = QSlider(Qt.Orientation.Horizontal)
+        self.animation_strength_slider = ModernSlider(Qt.Orientation.Horizontal)
         self.animation_strength_slider.setRange(1, 10)
         self.animation_strength_slider.setValue(3)
-        self.animation_strength_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self.animation_strength_slider.setTickPosition(ModernSlider.TickPosition.TicksBelow)
         self.animation_strength_slider.setTickInterval(1)
         self.animation_strength_slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.animation_strength_slider.setCursor(Qt.CursorShape.PointingHandCursor)
         # Accessibility improvements
         self.animation_strength_slider.setPageStep(2)  # Page Up/Down steps
         self.animation_strength_slider.setSingleStep(1)  # Arrow key steps
@@ -165,7 +166,7 @@ class UITab(QWidget):
         self.strength_help = QLabel("Higher values make waveform more visible with quiet voice")
         self.strength_help.setObjectName("strength_help_label")
         self.strength_help.setWordWrap(True)
-        self.strength_help.setStyleSheet("color: #6c757d; font-size: 11px;")
+        self.strength_help.setStyleSheet("color: #6c757d; font-size: 11px; font-family: 'Segoe UI', sans-serif;")
         viz_layout.addWidget(self.strength_help)
 
         layout.addWidget(viz_group)
@@ -182,7 +183,7 @@ class UITab(QWidget):
         self.minimize_on_close_checkbox.setToolTip("When enabled, closing the window will minimize it instead of exiting the application.")
         minimize_close_layout.addWidget(self.minimize_on_close_checkbox)
         minimize_close_label = QLabel("Minimize on close (instead of exiting)")
-        minimize_close_label.setStyleSheet("color: #495057; font-size: 13px;")
+        minimize_close_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         minimize_close_layout.addWidget(minimize_close_label, 1)
         shortcuts_layout.addLayout(minimize_close_layout)
 
@@ -201,7 +202,7 @@ class UITab(QWidget):
 
         minimize_tray_layout.addWidget(self.minimize_to_tray_checkbox)
         minimize_tray_label = QLabel("Minimize to system tray")
-        minimize_tray_label.setStyleSheet("color: #495057; font-size: 13px;")
+        minimize_tray_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         minimize_tray_layout.addWidget(minimize_tray_label, 1)
         shortcuts_layout.addLayout(minimize_tray_layout)
 
@@ -213,7 +214,7 @@ class UITab(QWidget):
         self.always_on_top_checkbox.setToolTip("Keep the QuillScribe window always on top of other windows")
         always_top_layout.addWidget(self.always_on_top_checkbox)
         always_top_label = QLabel("Always on top")
-        always_top_label.setStyleSheet("color: #495057; font-size: 13px;")
+        always_top_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         always_top_layout.addWidget(always_top_label, 1)
         shortcuts_layout.addLayout(always_top_layout)
 
@@ -225,14 +226,14 @@ class UITab(QWidget):
         self.snap_to_edges_checkbox.setToolTip("Automatically snap window to screen edges when dragged close to them")
         snap_edges_layout.addWidget(self.snap_to_edges_checkbox)
         snap_edges_label = QLabel("Snap to screen edges")
-        snap_edges_label.setStyleSheet("color: #495057; font-size: 13px;")
+        snap_edges_label.setStyleSheet("color: #495057; font-size: 13px; font-family: 'Segoe UI', sans-serif;")
         snap_edges_layout.addWidget(snap_edges_label, 1)
         shortcuts_layout.addLayout(snap_edges_layout)
 
         # Recording shortcut
         self.shortcut_label = QLabel("Recording shortcut:")
         self.shortcut_label.setObjectName("shortcut_label")
-        self.shortcut_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px;")
+        self.shortcut_label.setStyleSheet("color: #495057; font-size: 13px; margin-top: 10px; font-family: 'Segoe UI', sans-serif;")
         shortcuts_layout.addWidget(self.shortcut_label)
 
         self.shortcut_edit = ModernKeySequenceEdit()
@@ -240,7 +241,7 @@ class UITab(QWidget):
 
         shortcut_help = QLabel("Click in the field above and press your desired key combination to record a shortcut. This shortcut toggles recording. On Windows, 'Win' refers to the Windows key.")
         shortcut_help.setWordWrap(True)
-        shortcut_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent;")
+        shortcut_help.setStyleSheet("color: #6c757d; font-size: 11px; background-color: transparent; font-family: 'Segoe UI', sans-serif;")
         shortcuts_layout.addWidget(shortcut_help)
 
         layout.addWidget(shortcuts_group)
@@ -336,7 +337,6 @@ class UITab(QWidget):
 
         colors = theme_manager.get_theme_colors(theme_name)
         primary = colors.get("primary", "#ffffff")
-        secondary = colors.get("secondary", "#f8f9fa")
         accent = colors.get("accent", "#4A90E2")
         
         is_dark = self._is_dark_theme(primary)
@@ -346,49 +346,12 @@ class UITab(QWidget):
         self._current_accent = accent
         self._current_primary = primary
         
-        # Simplified colors
-        groove_bg = self._blend_hex_colors(primary, "#000000", 0.3 if is_dark else 0.1)
-        handle_border = self._blend_hex_colors(accent, "#000000", 0.1)
-        
-        slider_stylesheet = f"""
-            QSlider {{
-                min-height: 40px;
-                max-height: 40px;
-                padding: 0px;
-                border: none;
-            }}
-            QSlider::groove:horizontal {{
-                background: {groove_bg};
-                height: 4px;
-                border-radius: 2px;
-            }}
-            QSlider::sub-page:horizontal {{
-                background: {accent};
-                border-radius: 2px;
-            }}
-            QSlider::add-page:horizontal {{
-                background: {groove_bg};
-                border-radius: 2px;
-            }}
-            QSlider::handle:horizontal {{
-                background: #ffffff;
-                border: 1px solid {handle_border};
-                width: 20px;
-                height: 20px;
-                margin: -9px 0;
-                border-radius: 11px;
-            }}
-            QSlider::handle:horizontal:hover {{
-                border: 1px solid {accent};
-                background: #f0f0f0;
-            }}
-        """
-
-        self.animation_strength_slider.setStyleSheet(slider_stylesheet)
+        # Apply theme to ModernSlider
+        self.animation_strength_slider.apply_theme(is_dark, accent)
 
         heading_color = "#e5e5eb" if is_dark else "#2c3e50"
         self.animation_strength_label.setStyleSheet(
-            f"QLabel {{ color: {heading_color}; font-size: 13px; font-weight: 600; }}"
+            f"QLabel {{ color: {heading_color}; font-size: 13px; font-weight: 600; font-family: 'Segoe UI', sans-serif; }}"
         )
         
         # Style help text with theme awareness
@@ -396,7 +359,7 @@ class UITab(QWidget):
             help_color = "#8a8e98" if is_dark else "#6c757d"
             self.strength_help.setStyleSheet(
                 f"color: {help_color}; font-size: 11px; "
-                f"padding-left: 4px; background-color: transparent;"
+                f"padding-left: 4px; background-color: transparent; font-family: 'Segoe UI', sans-serif;"
             )
 
     @staticmethod
@@ -440,6 +403,7 @@ class UITab(QWidget):
                 border-radius: 4px;
                 background: {label_bg};
                 min-width: 30px;
+                font-family: 'Segoe UI', sans-serif;
             }}
             """
         )

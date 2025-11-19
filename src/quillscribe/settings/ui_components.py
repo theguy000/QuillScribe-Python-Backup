@@ -72,10 +72,11 @@ class ModernButton(QPushButton):
                         background: #0d6efd;
                         color: white;
                         border: none;
-                        border-radius: 6px;
-                        padding: 8px 16px;
+                        border-radius: 8px;
+                        padding: 10px 20px;
+                        font-family: 'Segoe UI', sans-serif;
                         font-size: 13px;
-                        font-weight: 500;
+                        font-weight: 600;
                     }
                     QPushButton:hover {
                         background: #0b5ed7;
@@ -90,10 +91,11 @@ class ModernButton(QPushButton):
                         background: #007bff;
                         color: white;
                         border: none;
-                        border-radius: 6px;
-                        padding: 8px 16px;
+                        border-radius: 8px;
+                        padding: 10px 20px;
+                        font-family: 'Segoe UI', sans-serif;
                         font-size: 13px;
-                        font-weight: 500;
+                        font-weight: 600;
                     }
                     QPushButton:hover {
                         background: #0056b3;
@@ -109,9 +111,11 @@ class ModernButton(QPushButton):
                         background: {secondary_color};
                         color: #e9ecef;
                         border: 1px solid #495057;
-                        border-radius: 6px;
-                        padding: 8px 16px;
+                        border-radius: 8px;
+                        padding: 10px 20px;
+                        font-family: 'Segoe UI', sans-serif;
                         font-size: 13px;
+                        font-weight: 500;
                     }}
                     QPushButton:hover {{
                         background: #495057;
@@ -127,9 +131,11 @@ class ModernButton(QPushButton):
                         background: {secondary_color};
                         color: #495057;
                         border: 1px solid #dee2e6;
-                        border-radius: 6px;
-                        padding: 8px 16px;
+                        border-radius: 8px;
+                        padding: 10px 20px;
+                        font-family: 'Segoe UI', sans-serif;
                         font-size: 13px;
+                        font-weight: 500;
                     }}
                     QPushButton:hover {{
                         background: #e9ecef;
@@ -157,19 +163,20 @@ class ModernGroupBox(QGroupBox):
         if is_dark:
             self.setStyleSheet(f"""
                 QGroupBox {{
+                    font-family: 'Segoe UI', sans-serif;
                     font-weight: 600;
-                    font-size: 15px;
+                    font-size: 16px;
                     color: #e9ecef;
                     border: none;
                     border-radius: 0px;
-                    margin-top: 28px;
+                    margin-top: 24px;
                     padding-top: 0px;
                     background: transparent;
                 }}
                 QGroupBox::title {{
                     subcontrol-origin: margin;
                     left: 0px;
-                    padding: 0 0 8px 0;
+                    padding: 0 0 12px 0;
                     color: #e9ecef;
                     background: transparent;
                 }}
@@ -177,20 +184,21 @@ class ModernGroupBox(QGroupBox):
         else:
             self.setStyleSheet(f"""
                 QGroupBox {{
+                    font-family: 'Segoe UI', sans-serif;
                     font-weight: 600;
-                    font-size: 15px;
-                    color: #2c3e50;
+                    font-size: 16px;
+                    color: #212529;
                     border: none;
                     border-radius: 0px;
-                    margin-top: 28px;
+                    margin-top: 24px;
                     padding-top: 0px;
                     background: transparent;
                 }}
                 QGroupBox::title {{
                     subcontrol-origin: margin;
                     left: 0px;
-                    padding: 0 0 8px 0;
-                    color: #2c3e50;
+                    padding: 0 0 12px 0;
+                    color: #212529;
                     background: transparent;
                 }}
             """)

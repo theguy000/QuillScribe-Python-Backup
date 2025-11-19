@@ -10,8 +10,8 @@ from PySide6.QtCore import Qt, Signal, QSize
 
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon
-from .ui_components import ModernButton
-from .modern_widgets import ModernGroupBox, ModernCheckBox
+from .ui_components import ModernButton, ModernGroupBox
+from .modern_widgets import ModernCheckBox
 
 
 class WindowManagerDialog(QDialog):

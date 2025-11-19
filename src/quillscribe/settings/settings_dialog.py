@@ -20,10 +20,11 @@ from .whisper_tab import WhisperTab
 from .output_tab import OutputTab
 from .ui_tab import UITab
 from .statistics_tab import StatisticsTab
+from .ui_components import ModernGroupBox, ModernButton
 from .modern_widgets import (
-    ModernGroupBox, ModernComboBox, ModernLineEdit,
+    ModernComboBox, ModernLineEdit,
     ModernKeySequenceEdit, ModernRadioButton, ModernCheckBox,
-    AnimatedToggleSwitch
+    AnimatedToggleSwitch, ModernProgressBar
 )
 
 
@@ -348,17 +349,6 @@ class SettingsDialog(QDialog):
                 widget.apply_theme(is_dark)
             for widget in self.findChildren(ModernKeySequenceEdit):
                 widget.apply_theme(is_dark)
-            for widget in self.findChildren(ModernRadioButton):
-                widget.apply_theme(is_dark)
-            for widget in self.findChildren(ModernCheckBox):
-                widget.apply_theme(is_dark)
-            for widget in self.findChildren(AnimatedToggleSwitch):
-                widget.apply_theme(is_dark)
-
-            # Apply unified icon theming to all components
-            theme_manager.apply_icons_to_widget(self, is_dark)
-
-            # Apply comprehensive text theming to all labels
             theme_manager.apply_text_theming_to_widget(self, theme_name)
 
             # Allow UI tab to refresh its custom slider styling for this theme

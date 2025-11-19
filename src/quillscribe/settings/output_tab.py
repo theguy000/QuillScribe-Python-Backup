@@ -12,7 +12,8 @@ from PySide6.QtGui import QIntValidator
 
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon
-from .modern_widgets import ModernGroupBox, ModernRadioButton, ModernCheckBox, AnimatedToggleSwitch
+from .ui_components import ModernGroupBox
+from .modern_widgets import ModernRadioButton, ModernCheckBox, AnimatedToggleSwitch, ModernLineEdit
 
 
 class OutputTab(QWidget):
@@ -69,34 +70,18 @@ class OutputTab(QWidget):
         auto_clear_layout.setSpacing(10)
         self.auto_clear = AnimatedToggleSwitch()
         auto_clear_layout.addWidget(self.auto_clear)
+        
         auto_clear_label = QLabel("Auto-clear after copying/pasting")
         auto_clear_label.setStyleSheet("color: #495057; font-size: 13px;")
-        auto_clear_layout.addWidget(auto_clear_label, 1)
+        auto_clear_layout.addWidget(auto_clear_label)
 
-        # Add delay input next to auto-clear checkbox
         delay_label = QLabel("after")
         delay_label.setStyleSheet("color: #6c757d; font-size: 12px; margin-left: 10px;")
-
-        self.auto_clear_delay = QLineEdit()
+        
+        self.auto_clear_delay = ModernLineEdit()
         self.auto_clear_delay.setFixedWidth(40)
         self.auto_clear_delay.setText("5")
         self.auto_clear_delay.setValidator(QIntValidator(1, 999))  # Only allow integers 1-999
-        self.auto_clear_delay.setStyleSheet("""
-            QLineEdit {
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 4px;
-                font-size: 12px;
-                background-color: white;
-                color: black;
-            }
-            QLineEdit:hover {
-                border-color: #adb5bd;
-            }
-            QLineEdit:focus {
-                border-color: #4A90E2;
-            }
-        """)
 
         seconds_label = QLabel("seconds")
         seconds_label.setStyleSheet("color: #6c757d; font-size: 12px;")

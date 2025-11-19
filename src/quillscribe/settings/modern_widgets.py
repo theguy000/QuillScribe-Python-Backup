@@ -5,60 +5,15 @@ Reusable styled components with theme support
 
 from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QRadioButton, QCheckBox,
-    QKeySequenceEdit, QListView, QGraphicsDropShadowEffect
+    QKeySequenceEdit, QListView, QGraphicsDropShadowEffect,
+    QSlider, QProgressBar
 )
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush
 
-from .ui_components import ModernGroupBox as BaseModernGroupBox
+# ModernGroupBox is now imported directly from ui_components and used as is
+# to ensure consistency across the application.
 
-
-class ModernGroupBox(BaseModernGroupBox):
-    """Beautiful modern group box with theme support"""
-
-    def __init__(self, title: str, parent=None):
-        super().__init__(title, parent)
-        self.apply_default_theme()
-
-    def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
-        """Apply theme colors to the group box"""
-        # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-        is_dark = luminance < 0.5
-
-        if is_dark:
-            text_color = "#ffffff"
-            border_color = "#555555"
-        else:
-            text_color = "#2c3e50"
-            border_color = "#dee2e6"
-
-        self.setStyleSheet(f"""
-            QGroupBox {{
-                font-size: 14px;
-                font-weight: 600;
-                color: {text_color};
-                border: 2px solid {border_color};
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-                background-color: {primary_color};
-            }}
-            QGroupBox::title {{
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                background-color: {primary_color};
-                color: {text_color};
-            }}
-        """)
-
-    def apply_default_theme(self):
-        """Apply default white theme"""
-        self.apply_theme("#ffffff", "#f8f9fa")
 
 
 class ModernComboBox(QComboBox):
@@ -91,11 +46,13 @@ class ModernComboBox(QComboBox):
         selection_text_color = "white"  # Accent color is always dark enough to need white text
 
         stylesheet = f"""
+
             QComboBox {{
                 border: 1.5px solid {border};
                 border-radius: 8px;
-                padding: 4px 20px 4px 8px;
-                min-height: 26px;
+                padding: 6px 20px 6px 12px;
+                min-height: 28px;
+                font-family: 'Segoe UI', sans-serif;
                 font-size: 13px;
                 background-color: {bg};
                 color: {text_color};
@@ -112,30 +69,32 @@ class ModernComboBox(QComboBox):
             QComboBox::drop-down {{
                 border: none;
                 background: transparent;
-                width: 20px;
+                width: 24px;
             }}
             QComboBox::down-arrow {{
                 image: none;
-                border-left: 4px solid transparent;
-                border-right: 4px solid transparent;
-                border-top: 4px solid {text_color};
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid {text_color};
                 width: 0px;
                 height: 0px;
-                margin: 6px;
+                margin: 8px;
             }}
             QComboBox QAbstractItemView {{
-                border: 1.5px solid {border};
+                border: 1px solid {border};
                 border-radius: 8px;
                 background-color: {bg};
                 color: {text_color};
                 selection-background-color: {accent};
                 selection-color: {selection_text_color};
                 alternate-background-color: {alt_bg};
+                padding: 4px;
             }}
             QComboBox QAbstractItemView::item {{
-                height: 24px;
+                height: 28px;
                 padding: 4px 8px;
                 color: {text_color};
+                border-radius: 4px;
             }}
             QComboBox QAbstractItemView::item:hover {{
                 background-color: {accent};
@@ -166,7 +125,13 @@ class ModernComboBox(QComboBox):
                 border: none !important;
             }}
             QScrollBar:vertical {{
-                width: 0px;
+                width: 6px;
+                background: transparent;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {'#555555' if is_dark else '#ced4da'};
+                border-radius: 3px;
+                min-height: 20px;
             }}
             QComboBox:disabled {{
                 color: {'#6c757d' if is_dark else '#868e96'};
@@ -197,12 +162,13 @@ class ModernLineEdit(QLineEdit):
             stylesheet = """
                 QLineEdit {
                     border: 2px solid #555555;
-                    border-radius: 6px;
-                    padding: 8px;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-family: 'Segoe UI', sans-serif;
                     font-size: 13px;
                     background-color: #2c2c2c;
                     color: #ffffff;
-                    min-height: 20px;
+                    min-height: 24px;
                     outline: none;
                 }
                 QLineEdit:hover {
@@ -222,12 +188,13 @@ class ModernLineEdit(QLineEdit):
             stylesheet = """
                 QLineEdit {
                     border: 2px solid #dee2e6;
-                    border-radius: 6px;
-                    padding: 8px;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-family: 'Segoe UI', sans-serif;
                     font-size: 13px;
                     background-color: white;
                     color: #212529;
-                    min-height: 20px;
+                    min-height: 24px;
                     outline: none;
                 }
                 QLineEdit:hover {
@@ -706,3 +673,89 @@ class AnimatedToggleSwitch(QCheckBox):
             self.animation.stop()
             self.animation.deleteLater()
             self.animation = None
+
+
+class ModernSlider(QSlider):
+    """Beautiful modern slider"""
+
+    def __init__(self, orientation=Qt.Orientation.Horizontal, parent=None):
+        super().__init__(orientation, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.apply_theme(is_dark=False)
+
+    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
+        if is_dark:
+            groove_bg = "#555555"
+            handle_border = "#777777"
+            handle_bg = "#ffffff"
+        else:
+            groove_bg = "#dee2e6"
+            handle_border = "#adb5bd"
+            handle_bg = "#ffffff"
+
+        self.setStyleSheet(f"""
+            QSlider {{
+                min-height: 40px;
+                max-height: 40px;
+                padding: 0px;
+                border: none;
+            }}
+            QSlider::groove:horizontal {{
+                background: {groove_bg};
+                height: 6px;
+                border-radius: 3px;
+            }}
+            QSlider::sub-page:horizontal {{
+                background: {accent};
+                border-radius: 3px;
+            }}
+            QSlider::add-page:horizontal {{
+                background: {groove_bg};
+                border-radius: 3px;
+            }}
+            QSlider::handle:horizontal {{
+                background: {handle_bg};
+                border: 1px solid {handle_border};
+                width: 24px;
+                height: 24px;
+                margin: -9px 0;
+                border-radius: 12px;
+                
+            }}
+            QSlider::handle:horizontal:hover {{
+                border: 1px solid {accent};
+                background: #f8f9fa;
+            }}
+        """)
+
+
+class ModernProgressBar(QProgressBar):
+    """Beautiful modern progress bar"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTextVisible(False)
+        self.apply_theme(is_dark=False)
+
+    def apply_theme(self, is_dark: bool, accent: str = "#28a745"):
+        if is_dark:
+            bg_color = "#2c2c2c"
+            border_color = "#555555"
+        else:
+            bg_color = "#f8f9fa"
+            border_color = "#dee2e6"
+
+        self.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {border_color};
+                border-radius: 6px;
+                background-color: {bg_color};
+                height: 12px;
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background-color: {accent};
+                border-radius: 5px;
+            }}
+        """)
+

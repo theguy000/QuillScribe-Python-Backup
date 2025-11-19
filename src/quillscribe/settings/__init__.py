@@ -3,9 +3,8 @@ Settings Module
 Modular settings dialogs and tabs for QuillScribe
 """
 
-from .ui_components import ModernButton, ModernGroupBox as BaseModernGroupBox
+from .ui_components import ModernButton, ModernGroupBox
 from .modern_widgets import (
-    ModernGroupBox,
     ModernComboBox,
     ModernLineEdit,
     ModernKeySequenceEdit,
@@ -26,10 +25,9 @@ from .ui_settings_dialog import UISettingsDialog
 __all__ = [
     # UI Components
     'ModernButton',
-    'BaseModernGroupBox',
+    'ModernGroupBox',
 
     # Modern widgets
-    'ModernGroupBox',
     'ModernComboBox',
     'ModernLineEdit',
     'ModernKeySequenceEdit',

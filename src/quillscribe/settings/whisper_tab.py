@@ -13,7 +13,8 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..managers import WhisperManager, get_theme_manager
 from ..icon_manager import get_button_icon, get_themed_button_icon
-from .modern_widgets import ModernGroupBox, ModernComboBox, ModernLineEdit, ModernRadioButton
+from .ui_components import ModernGroupBox, ModernButton
+from .modern_widgets import ModernComboBox, ModernLineEdit, ModernRadioButton
 
 
 class WhisperTab(QWidget):
