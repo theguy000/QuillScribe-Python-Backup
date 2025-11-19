@@ -329,12 +329,12 @@ class AudioTab(QWidget):
         try:
             # Ensure audio manager is monitoring
             self.audio_manager.start_monitoring()
-            # Connect signal if not already connected
+            # Connect signal using UniqueConnection to avoid duplicates and disconnect warnings
             try:
-                self.audio_manager.audio_level_changed.disconnect(self.update_level_meter_value)
-            except:
+                self.audio_manager.audio_level_changed.connect(self.update_level_meter_value, Qt.UniqueConnection)
+            except RuntimeError:
+                # Already connected
                 pass
-            self.audio_manager.audio_level_changed.connect(self.update_level_meter_value)
         except Exception as e:
             print(f"Error starting monitoring: {e}")
 
