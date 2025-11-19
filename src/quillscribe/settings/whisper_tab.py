@@ -5,16 +5,20 @@ Handles Whisper AI transcription configuration
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QFormLayout, QButtonGroup
+    QLineEdit, QFormLayout, QButtonGroup, QStackedWidget,
+    QSizePolicy, QFrame
 )
-from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtCore import Qt, QSize, QTimer, Signal
 from PySide6.QtGui import QKeySequence
 
 from ..config_manager import ConfigManager
 from ..managers import WhisperManager, get_theme_manager
 from ..icon_manager import get_button_icon, get_themed_button_icon
 from .ui_components import ModernGroupBox, ModernButton
-from .modern_widgets import ModernComboBox, ModernLineEdit, ModernRadioButton
+from .modern_widgets import (
+    ModernComboBox, ModernLineEdit, ModernRadioButton,
+    ModernTabBar
+)
 
 
 class WhisperTab(QWidget):
@@ -33,301 +37,335 @@ class WhisperTab(QWidget):
         self.pending_language_code = None
         
         self.setup_ui()
-        self.setup_model_connections()
         self.load_settings()
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        # Minimal outer margins so group boxes sit close to dialog edges
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(24)
 
-        # Mode selection
-        mode_group = ModernGroupBox("Transcription Mode")
-        mode_layout = QVBoxLayout(mode_group)
+        # 1. Header / Mode Selection (Tabs)
+        self.mode_selector = ModernTabBar(["Cloud API", "Local Device"])
+        self.mode_selector.tabChanged.connect(self.on_mode_changed)
+        
+        layout.addWidget(self.mode_selector)
 
-        self.mode_group = QButtonGroup()
-        self.api_radio = ModernRadioButton("OpenAI Whisper API (Fast, requires internet)")
-        self.api_radio.setIconSize(QSize(16, 16))
-        self.local_radio = ModernRadioButton("Local Whisper.cpp (Private, works offline)")
-        self.local_radio.setIconSize(QSize(16, 16))
-
-        self.mode_group.addButton(self.api_radio, 0)
-        self.mode_group.addButton(self.local_radio, 1)
-
-        mode_layout.addWidget(self.api_radio)
-        mode_layout.addWidget(self.local_radio)
-
-        # Connect mode change
-        self.mode_group.buttonToggled.connect(self.on_mode_changed)
-
-        layout.addWidget(mode_group)
-
-        # Group boxes will use the ModernGroupBox theming system instead of static styles
-
-        # API settings
-        self.api_group = ModernGroupBox("API Settings")
-        api_layout = QFormLayout(self.api_group)
-        api_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        api_layout.setFormAlignment(Qt.AlignmentFlag.AlignVCenter)
-        # API group will use ModernGroupBox theming
-
-        # API key input with icon
-        api_key_widget = QWidget()
-        api_key_layout = QHBoxLayout(api_key_widget)
+        # 2. Content Area (Stacked Widget)
+        self.content_stack = QStackedWidget()
+        
+        # --- Page 0: API Settings ---
+        self.api_page = QWidget()
+        api_page_layout = QVBoxLayout(self.api_page)
+        api_page_layout.setContentsMargins(0, 10, 0, 0)
+        api_page_layout.setSpacing(24)
+        
+        # API Key Section
+        api_key_container = QWidget()
+        api_key_layout = QVBoxLayout(api_key_container)
         api_key_layout.setContentsMargins(0, 0, 0, 0)
-        api_key_layout.setSpacing(6)
-
-        api_key_icon = QLabel()
-        api_key_icon.setPixmap(get_button_icon('key', 16).pixmap(16, 16))
-        api_key_icon.setObjectName("icon_api_key")
-        api_key_layout.addWidget(api_key_icon)
-
+        api_key_layout.setSpacing(8)
+        
+        # Header
+        api_header = QLabel("API Configuration")
+        api_header.setStyleSheet("font-size: 14px; font-weight: 600;")
+        api_key_layout.addWidget(api_header)
+        
+        # API Key Field
+        key_label = QLabel("OpenAI API Key")
+        key_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+        api_key_layout.addWidget(key_label)
+        
+        key_input_row = QHBoxLayout()
+        key_input_row.setSpacing(8)
+        
         self.api_key_edit = ModernLineEdit("sk-...")
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
-        api_key_layout.addWidget(self.api_key_edit)
-
-        # Add eye toggle button
+        
         self.api_key_toggle_btn = QPushButton()
-        self.api_key_toggle_btn.setObjectName("api_key_toggle_btn")
-        # Icon will be set by theme manager and toggle method
-        self.api_key_toggle_btn.setIconSize(QSize(16, 16))
         self.api_key_toggle_btn.setFixedSize(32, 32)
         self.api_key_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        # Styling will be applied by theme manager
-        self.api_key_toggle_btn.setToolTip("Show/hide API key")
         self.api_key_toggle_btn.clicked.connect(self.toggle_api_key_visibility)
-        api_key_layout.addWidget(self.api_key_toggle_btn)
-
-        # Initialize the toggle button icon (will be updated by theme manager)
-        self._update_api_key_toggle_icon()
-
-        api_key_layout.addStretch()
-
-        # Create properly aligned label for API key
-        api_key_label = QLabel("OpenAI API Key:")
-        api_key_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        api_key_label.setMinimumHeight(36)  # Match input box height
-        api_key_label.setObjectName("form_label")
-
-        api_layout.addRow(api_key_label, api_key_widget)
-
-        # Helper text for API key
-        api_help = QLabel("Get your API key from: https://platform.openai.com/api-keys")
-        api_help.setStyleSheet("""
-            color: #6c757d;
-            font-size: 11px;
-            background-color: transparent;
-            margin-left: 22px;
-        """)
-        api_help.setWordWrap(True)
-        api_layout.addRow("", api_help)
-
-        # API pricing information
-        self.api_pricing_info = QLabel("Pricing: ~$0.006 per minute of audio (~$0.36/hour)")
+        
+        key_input_row.addWidget(self.api_key_edit)
+        key_input_row.addWidget(self.api_key_toggle_btn)
+        
+        api_key_layout.addLayout(key_input_row)
+        
+        # Helper text
+        api_help = QLabel("Get your API key from: <a href='https://platform.openai.com/api-keys' style='color: #4A90E2;'>platform.openai.com</a>")
+        api_help.setOpenExternalLinks(True)
+        api_help.setStyleSheet("font-size: 11px; color: #6c757d;")
+        api_key_layout.addWidget(api_help)
+        
+        api_page_layout.addWidget(api_key_container)
+        
+        # Model & Language Section
+        model_container = QWidget()
+        model_layout = QVBoxLayout(model_container)
+        model_layout.setContentsMargins(0, 0, 0, 0)
+        model_layout.setSpacing(8)
+        
+        # Header
+        model_header = QLabel("Transcription Settings")
+        model_header.setStyleSheet("font-size: 14px; font-weight: 600; margin-top: 16px;")
+        model_layout.addWidget(model_header)
+        
+        # Side-by-Side Dropdowns
+        dropdowns_row = QHBoxLayout()
+        dropdowns_row.setSpacing(16)
+        
+        # Left: Model
+        model_col = QVBoxLayout()
+        model_col.setSpacing(6)
+        model_label = QLabel("Model")
+        model_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+        
+        self.api_model_combo = ModernComboBox()
+        self.populate_api_model_combo()
+        self.api_model_combo.currentIndexChanged.connect(self.on_api_model_changed)
+        
+        model_col.addWidget(model_label)
+        model_col.addWidget(self.api_model_combo)
+        dropdowns_row.addLayout(model_col)
+        
+        # Right: Language
+        lang_col = QVBoxLayout()
+        lang_col.setSpacing(6)
+        lang_label = QLabel("Language")
+        lang_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+        
+        self.api_language_combo = ModernComboBox()
+        self.populate_api_language_combo()
+        self.api_language_combo.currentIndexChanged.connect(self.on_api_language_changed)
+        
+        lang_col.addWidget(lang_label)
+        lang_col.addWidget(self.api_language_combo)
+        dropdowns_row.addLayout(lang_col)
+        
+        model_layout.addLayout(dropdowns_row)
+        
+        # Pricing Badge
+        self.api_pricing_info = QLabel()
         self.api_pricing_info.setStyleSheet("""
             color: #28a745;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             background-color: #f8fff9;
             border: 1px solid #d4edda;
             border-radius: 4px;
-            padding: 4px 6px;
-            margin-left: 22px;
-            max-width: 280px;
+            padding: 4px 8px;
+            margin-top: 4px;
         """)
-        self.api_pricing_info.setWordWrap(True)
-        api_layout.addRow("", self.api_pricing_info)
-
-        # API model selection with icon
-        api_model_widget = QWidget()
-        api_model_layout = QHBoxLayout(api_model_widget)
-        api_model_layout.setContentsMargins(0, 0, 0, 0)
-        api_model_layout.setSpacing(6)
-
-        api_model_icon = QLabel()
-        api_model_icon.setPixmap(get_button_icon('brain', 16).pixmap(16, 16))
-        api_model_icon.setObjectName("icon_api_model")
-        api_model_layout.addWidget(api_model_icon)
-
-        self.api_model_combo = ModernComboBox()
-        self.populate_api_model_combo()
-        self.api_model_combo.currentIndexChanged.connect(self.on_api_model_changed)
-        api_model_layout.addWidget(self.api_model_combo)
-        api_model_layout.addStretch()
-
-        # Create properly aligned label for API model
-        api_model_label = QLabel("API Model:")
-        api_model_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        api_model_label.setMinimumHeight(36)  # Match combo box height
-        api_model_label.setObjectName("form_label")
-
-        api_layout.addRow(api_model_label, api_model_widget)
-
-        # Helper text for API model
-        api_model_help = QLabel("Select the OpenAI Whisper model to use for transcription")
-        api_model_help.setStyleSheet("""
-            color: #6c757d;
-            font-size: 11px;
-            background-color: transparent;
-            margin-left: 22px;
-        """)
-        api_model_help.setWordWrap(True)
-        api_layout.addRow("", api_model_help)
-
-        # API language selection with icon
-        api_language_widget = QWidget()
-        api_language_layout = QHBoxLayout(api_language_widget)
-        api_language_layout.setContentsMargins(0, 0, 0, 0)
-        api_language_layout.setSpacing(6)
-
-        api_language_icon = QLabel()
-        api_language_icon.setPixmap(get_button_icon('language', 16).pixmap(16, 16))
-        api_language_icon.setObjectName("icon_api_language")
-        api_language_layout.addWidget(api_language_icon)
-
-        self.api_language_combo = ModernComboBox()
-        self.populate_api_language_combo()
-        self.api_language_combo.currentIndexChanged.connect(self.on_api_language_changed)
-        api_language_layout.addWidget(self.api_language_combo)
-        api_language_layout.addStretch()
-
-        # Create properly aligned label for API language
-        api_language_label = QLabel("Language:")
-        api_language_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        api_language_label.setMinimumHeight(36)  # Match combo box height
-        api_language_label.setObjectName("form_label")
-
-        api_layout.addRow(api_language_label, api_language_widget)
-
-        # Helper text for API language
-        api_language_help = QLabel("Select the language for better transcription accuracy (100 languages supported)")
-        api_language_help.setStyleSheet("""
-            color: #6c757d;
-            font-size: 11px;
-            background-color: transparent;
-            margin-left: 22px;
-        """)
-        api_language_help.setWordWrap(True)
-        api_layout.addRow("", api_language_help)
-
-        layout.addWidget(self.api_group)
-
-        # Local model settings (only show if Faster-Whisper is available)
+        model_layout.addWidget(self.api_pricing_info)
+        
+        api_page_layout.addWidget(model_container)
+        api_page_layout.addStretch()
+        
+        self.content_stack.addWidget(self.api_page)
+        
+        # --- Page 1: Local Settings ---
+        self.local_page = QWidget()
+        local_page_layout = QVBoxLayout(self.local_page)
+        local_page_layout.setContentsMargins(0, 10, 0, 0)
+        local_page_layout.setSpacing(24)
+        
         from ..managers.whisper_manager import FASTER_WHISPER_AVAILABLE
-
-        self.local_group = ModernGroupBox("Local Model Settings")
-        local_layout = QFormLayout(self.local_group)
-        local_layout.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        local_layout.setFormAlignment(Qt.AlignmentFlag.AlignVCenter)
-        # Local group will use ModernGroupBox theming
-
+        
         if not FASTER_WHISPER_AVAILABLE:
-            # Show message that local mode is not available
-            not_available_label = QLabel("Local models not available.\nFaster-Whisper package not installed.\nPlease install it or use API mode.")
-            not_available_label.setStyleSheet("""
-                color: #856404;
-                background-color: #fff3cd;
-                border: 1px solid #ffeaa7;
-                border-radius: 6px;
-                padding: 10px;
-                font-size: 13px;
-            """)
-            local_layout.addRow(not_available_label)
-
-        # Only show model selection UI if Faster-Whisper is available
-        if FASTER_WHISPER_AVAILABLE:
-            # Category dropdown for filtering models with icon
-            category_widget = QWidget()
-            category_layout = QHBoxLayout(category_widget)
-            category_layout.setContentsMargins(0, 0, 0, 0)
-            category_layout.setSpacing(6)
-
-            category_icon = QLabel()
-            category_icon.setPixmap(get_button_icon('category', 16).pixmap(16, 16))
-            category_icon.setObjectName("icon_category")
-            category_layout.addWidget(category_icon)
-
+            # Error State
+            error_container = QWidget()
+            error_layout = QVBoxLayout(error_container)
+            
+            not_available_label = QLabel(
+                "Local transcription requires the 'faster-whisper' package.\n"
+                "Please install it to use offline capabilities."
+            )
+            not_available_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            not_available_label.setStyleSheet("color: #dc3545; font-weight: 500;")
+            
+            error_layout.addWidget(not_available_label)
+            local_page_layout.addWidget(error_container)
+        else:
+            # Local Settings
+            local_container = QWidget()
+            local_layout = QVBoxLayout(local_container)
+            local_layout.setContentsMargins(0, 0, 0, 0)
+            local_layout.setSpacing(8)
+            
+            # Header
+            local_header = QLabel("Model Selection")
+            local_header.setStyleSheet("font-size: 14px; font-weight: 600;")
+            local_layout.addWidget(local_header)
+            
+            # Side-by-Side Dropdowns
+            local_dropdowns_row = QHBoxLayout()
+            local_dropdowns_row.setSpacing(16)
+            
+            # Left: Category
+            cat_col = QVBoxLayout()
+            cat_col.setSpacing(6)
+            cat_label = QLabel("Category")
+            cat_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+            
             self.category_combo = ModernComboBox()
             self.populate_category_combo()
             self.category_combo.currentTextChanged.connect(self.on_category_changed)
-            category_layout.addWidget(self.category_combo)
-            category_layout.addStretch()
-
-            # Create properly aligned label for category
-            category_label = QLabel("Model Category:")
-            category_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            category_label.setMinimumHeight(36)  # Match combo box height
-            category_label.setObjectName("form_label")
-
-            local_layout.addRow(category_label, category_widget)
-
-            # Helper text for category selection
-            category_help = QLabel("Choose a category to filter available models by size and performance")
-            category_help.setStyleSheet("""
-                color: #6c757d;
-                font-size: 11px;
-                background-color: transparent;
-                margin-left: 22px;
-            """)
-            category_help.setWordWrap(True)
-            local_layout.addRow("", category_help)
-
-            # Model dropdown for selecting specific model with icon
-            model_widget = QWidget()
-            model_layout = QHBoxLayout(model_widget)
-            model_layout.setContentsMargins(0, 0, 0, 0)
-            model_layout.setSpacing(6)
-
-            model_icon = QLabel()
-            model_icon.setPixmap(get_button_icon('brain', 16).pixmap(16, 16))
-            model_icon.setObjectName("icon_model")
-            model_layout.addWidget(model_icon)
-
+            
+            cat_col.addWidget(cat_label)
+            cat_col.addWidget(self.category_combo)
+            local_dropdowns_row.addLayout(cat_col)
+            
+            # Right: Model
+            lmodel_col = QVBoxLayout()
+            lmodel_col.setSpacing(6)
+            lmodel_label = QLabel("Model")
+            lmodel_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+            
             self.model_combo = ModernComboBox()
             self.populate_model_combo()
             self.model_combo.currentIndexChanged.connect(self.on_model_combo_changed)
-            model_layout.addWidget(self.model_combo)
-            model_layout.addStretch()
+            
+            lmodel_col.addWidget(lmodel_label)
+            lmodel_col.addWidget(self.model_combo)
+            local_dropdowns_row.addLayout(lmodel_col)
+            
+            local_layout.addLayout(local_dropdowns_row)
+            
+            # Info text
+            info_label = QLabel("Larger models are more accurate but require more RAM and run slower.")
+            info_label.setStyleSheet("color: #6c757d; font-size: 11px; margin-top: 4px;")
+            local_layout.addWidget(info_label)
+            
+            local_page_layout.addWidget(local_container)
+            
+        local_page_layout.addStretch()
+        self.content_stack.addWidget(self.local_page)
+        
+        layout.addWidget(self.content_stack)
 
-            # Create properly aligned label for model selection
-            model_label = QLabel("Select Model:")
-            model_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            model_label.setMinimumHeight(36)  # Match combo box height
-            model_label.setObjectName("form_label")
+        # Connect theme changes
+        get_theme_manager().theme_changed.connect(self._on_theme_changed)
+        
+        # Initial theme application
+        self._on_theme_changed(get_theme_manager().is_dark_theme())
+        self._update_api_key_toggle_icon()
 
-            local_layout.addRow(model_label, model_widget)
+    def _on_theme_changed(self, is_dark: bool):
+        """Apply theme changes to custom widgets"""
+        if hasattr(self, 'mode_selector'):
+            self.mode_selector.apply_theme(is_dark)
+        self._update_api_key_toggle_icon()
 
-            # Helper text for model selection
-            model_help = QLabel("Pick a specific Whisper model for transcription based on your needs")
-            model_help.setStyleSheet("""
-                color: #6c757d;
-                font-size: 11px;
-                background-color: transparent;
-                margin-left: 22px;
-            """)
-            model_help.setWordWrap(True)
-            local_layout.addRow("", model_help)
+    def on_mode_changed(self, index: int):
+        """Handle mode selection change"""
+        self.content_stack.setCurrentIndex(index)
+        
+        mode = "api" if index == 0 else "local"
+        self.whisper_manager.set_mode(mode)
+        
+        if mode == "api":
+            # Refresh API model combo when switching to API mode
+            if hasattr(self, 'api_model_combo'):
+                self.populate_api_model_combo()
+        else:
+            pass # Local mode logic if needed
 
-            # Removed download UI as per guidance
+    def load_settings(self):
+        """Load Whisper settings from config"""
+        mode = self.config_manager.get_setting("whisper/mode", "api")
+        if mode == "api":
+            self.mode_selector.set_current_index(0)
+        else:
+            self.mode_selector.set_current_index(1)
 
-        layout.addWidget(self.local_group)
+        api_key = self.config_manager.get_setting("whisper/api_key", "")
+        self.api_key_edit.setText(api_key)
 
-        # Add minimal space for scroll layout
-        layout.addStretch()
+        # Load selected API model
+        selected_api_model = self.config_manager.get_setting("whisper/api_model", "gpt-4o-transcribe")
+        if hasattr(self, 'api_model_combo'):
+            # Find the matching model in the combo box
+            for i in range(self.api_model_combo.count()):
+                if self.api_model_combo.itemData(i) == selected_api_model:
+                    self.api_model_combo.setCurrentIndex(i)
+                    break
 
-    def refresh_models_display(self):
-        """Download UI removed; nothing to refresh here"""
-        return
+            # Update pricing display for the selected model
+            self.update_pricing_display(selected_api_model)
+        
+        # Load selected API language
+        selected_api_language = self.config_manager.get_setting("whisper/language", "en")
+        if hasattr(self, 'api_language_combo'):
+            # Find the matching language in the combo box
+            for i in range(self.api_language_combo.count()):
+                if self.api_language_combo.itemData(i) == selected_api_language:
+                    self.api_language_combo.setCurrentIndex(i)
+                    break
 
+        # Load selected local model for local mode
+        selected_model = self.config_manager.get_setting("whisper/local_model", "base")
+        # Sync dropdowns if present
+        if hasattr(self, 'category_combo') and hasattr(self, 'model_combo'):
+            # First determine which category contains the selected model
+            found_category = "All"
+            for category in self.whisper_manager.get_model_categories():
+                if selected_model in self.whisper_manager.get_models_by_category(category):
+                    if category != "All":  # Prefer specific category over "All"
+                        found_category = category
+                        break
 
-    def create_integrated_model_widget(self, model_info: dict):
-        """Deprecated: download UI removed"""
-        return QWidget()
+            # Set the category dropdown
+            self.category_combo.setCurrentText(found_category)
+            # Update model dropdown for that category
+            self.populate_model_combo(found_category)
+            # Set the specific model by finding matching item data
+            for i in range(self.model_combo.count()):
+                if self.model_combo.itemData(i) == selected_model:
+                    self.model_combo.setCurrentIndex(i)
+                    break
 
-    def setup_model_connections(self):
-        """Deprecated: download manager removed"""
-        return
+    def save_settings(self):
+        """Save Whisper settings to config"""
+        mode = "api" if self.mode_selector.current_index() == 0 else "local"
+        self.config_manager.set_setting("whisper/mode", mode)
+        self.config_manager.set_setting("whisper/api_key", self.api_key_edit.text())
+
+        # Save selected API model from dropdown
+        if hasattr(self, 'api_model_combo') and self.api_model_combo.currentIndex() >= 0:
+            api_model_name = self.api_model_combo.currentData()  # Get actual model name from item data
+            if api_model_name:
+                self.config_manager.set_setting("whisper/api_model", api_model_name)
+                if mode == "api":
+                    try:
+                        self.whisper_manager.set_api_model(api_model_name)
+                    except ValueError as e:
+                        print(f"Error setting API model: {e}")
+        
+        # Save selected API language from dropdown
+        if hasattr(self, 'api_language_combo') and self.api_language_combo.currentIndex() >= 0:
+            api_language_code = self.api_language_combo.currentData()  # Get actual language code from item data
+            if api_language_code:
+                self.config_manager.set_setting("whisper/language", api_language_code)
+                if mode == "api":
+                    try:
+                        self.whisper_manager.set_api_language(api_language_code)
+                    except ValueError as e:
+                        print(f"Error setting API language: {e}")
+
+        # Save selected local model from dropdown
+        if hasattr(self, 'model_combo') and self.model_combo.currentIndex() >= 0:
+            model_name = self.model_combo.currentData()  # Get actual model name from item data
+            if model_name:
+                self.config_manager.set_setting("whisper/local_model", model_name)
+                if mode == "local":
+                    self.whisper_manager.set_local_model(model_name)
+
+    def closeEvent(self, event):
+        """Handle dialog close event"""
+        # Stop UI refresh timer
+        if hasattr(self, 'ui_refresh_timer'):
+            self.ui_refresh_timer.stop()
+        event.accept()
 
     def populate_category_combo(self):
         """Fill the category dropdown with available categories"""
@@ -517,148 +555,3 @@ class WhisperTab(QWidget):
         else:
             # Default pricing for unknown models
             return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
-
-    def process_ui_events(self):
-        """Process UI events to keep interface responsive"""
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
-
-    def on_model_selected(self, model_info: dict):
-        """Deprecated: selection via download list removed"""
-        return
-
-    def download_model(self, model_file: str):
-        """Deprecated: download removed"""
-        return
-
-    def cancel_download(self, model_file: str):
-        """Deprecated: download removed"""
-        return
-
-    def delete_model(self, model_file: str):
-        """Deprecated: download removed"""
-        return
-
-    def on_model_status_changed(self, model_name: str, status: str):
-        """Deprecated: download removed"""
-        return
-
-    def on_download_progress(self, model_name: str, progress: int):
-        """Deprecated: download removed"""
-        return
-
-    def on_mode_changed(self, button, checked):
-        """Handle mode selection change"""
-        if checked:
-            if button == self.api_radio:
-                self.api_group.setEnabled(True)
-                self.local_group.setEnabled(False)
-                self.whisper_manager.set_mode("api")
-                # Refresh API model combo when switching to API mode
-                if hasattr(self, 'api_model_combo'):
-                    self.populate_api_model_combo()
-            else:
-                self.api_group.setEnabled(False)
-                self.local_group.setEnabled(True)
-                self.whisper_manager.set_mode("local")
-
-
-    def load_settings(self):
-        """Load Whisper settings from config"""
-        mode = self.config_manager.get_setting("whisper/mode", "api")
-        if mode == "api":
-            self.api_radio.setChecked(True)
-        else:
-            self.local_radio.setChecked(True)
-
-        api_key = self.config_manager.get_setting("whisper/api_key", "")
-        self.api_key_edit.setText(api_key)
-
-        # Load selected API model
-        selected_api_model = self.config_manager.get_setting("whisper/api_model", "gpt-4o-transcribe")
-        if hasattr(self, 'api_model_combo'):
-            # Find the matching model in the combo box
-            for i in range(self.api_model_combo.count()):
-                if self.api_model_combo.itemData(i) == selected_api_model:
-                    self.api_model_combo.setCurrentIndex(i)
-                    break
-
-            # Update pricing display for the selected model
-            self.update_pricing_display(selected_api_model)
-        
-        # Load selected API language
-        selected_api_language = self.config_manager.get_setting("whisper/language", "en")
-        if hasattr(self, 'api_language_combo'):
-            # Find the matching language in the combo box
-            for i in range(self.api_language_combo.count()):
-                if self.api_language_combo.itemData(i) == selected_api_language:
-                    self.api_language_combo.setCurrentIndex(i)
-                    break
-
-        # Load selected model for local mode
-        selected_model = self.config_manager.get_setting("whisper/local_model", "base")
-        # Sync dropdowns if present
-        if hasattr(self, 'category_combo') and hasattr(self, 'model_combo'):
-            # First determine which category contains the selected model
-            found_category = "All"
-            for category in self.whisper_manager.get_model_categories():
-                if selected_model in self.whisper_manager.get_models_by_category(category):
-                    if category != "All":  # Prefer specific category over "All"
-                        found_category = category
-                        break
-
-            # Set the category dropdown
-            self.category_combo.setCurrentText(found_category)
-            # Update model dropdown for that category
-            self.populate_model_combo(found_category)
-            # Set the specific model by finding matching item data
-            for i in range(self.model_combo.count()):
-                if self.model_combo.itemData(i) == selected_model:
-                    self.model_combo.setCurrentIndex(i)
-                    break
-
-    def save_settings(self):
-        """Save Whisper settings to config"""
-        mode = "api" if self.api_radio.isChecked() else "local"
-        self.config_manager.set_setting("whisper/mode", mode)
-        self.config_manager.set_setting("whisper/api_key", self.api_key_edit.text())
-
-        # Save selected API model from dropdown
-        if hasattr(self, 'api_model_combo') and self.api_model_combo.currentIndex() >= 0:
-            api_model_name = self.api_model_combo.currentData()  # Get actual model name from item data
-            if api_model_name:
-                self.config_manager.set_setting("whisper/api_model", api_model_name)
-                if mode == "api":
-                    try:
-                        self.whisper_manager.set_api_model(api_model_name)
-                    except ValueError as e:
-                        print(f"Error setting API model: {e}")
-        
-        # Save selected API language from dropdown
-        if hasattr(self, 'api_language_combo') and self.api_language_combo.currentIndex() >= 0:
-            api_language_code = self.api_language_combo.currentData()  # Get actual language code from item data
-            if api_language_code:
-                self.config_manager.set_setting("whisper/language", api_language_code)
-                if mode == "api":
-                    try:
-                        self.whisper_manager.set_api_language(api_language_code)
-                    except ValueError as e:
-                        print(f"Error setting API language: {e}")
-
-        # Save selected local model from dropdown
-        if hasattr(self, 'model_combo') and self.model_combo.currentIndex() >= 0:
-            model_name = self.model_combo.currentData()  # Get actual model name from item data
-            if model_name:
-                self.config_manager.set_setting("whisper/local_model", model_name)
-                if mode == "local":
-                    self.whisper_manager.set_local_model(model_name)
-
-
-    # Removed fixed size constraints to allow better layout flexibility
-
-    def closeEvent(self, event):
-        """Handle dialog close event"""
-        # Stop UI refresh timer
-        if hasattr(self, 'ui_refresh_timer'):
-            self.ui_refresh_timer.stop()
-        event.accept()

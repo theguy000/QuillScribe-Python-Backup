@@ -6,9 +6,10 @@ Reusable styled components with theme support
 from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QRadioButton, QCheckBox,
     QKeySequenceEdit, QListView, QGraphicsDropShadowEffect,
-    QSlider, QProgressBar
+    QSlider, QProgressBar, QWidget, QHBoxLayout, QButtonGroup,
+    QPushButton, QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property
+from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property, Signal, QRect, QTimer
 from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush
 from ..icon_manager import icon_manager
 
@@ -190,12 +191,13 @@ class ModernLineEdit(QLineEdit):
                 QLineEdit {
                     border: 2px solid #555555;
                     border-radius: 8px;
-                    padding: 8px 12px;
+                    padding: 0px 12px;
                     font-family: 'Segoe UI', sans-serif;
                     font-size: 13px;
                     background-color: #2c2c2c;
                     color: #ffffff;
-                    min-height: 24px;
+                    min-height: 32px;
+                    max-height: 32px;
                     outline: none;
                 }
                 QLineEdit:hover {
@@ -216,12 +218,13 @@ class ModernLineEdit(QLineEdit):
                 QLineEdit {
                     border: 2px solid #dee2e6;
                     border-radius: 8px;
-                    padding: 8px 12px;
+                    padding: 0px 12px;
                     font-family: 'Segoe UI', sans-serif;
                     font-size: 13px;
                     background-color: white;
                     color: #212529;
-                    min-height: 24px;
+                    min-height: 32px;
+                    max-height: 32px;
                     outline: none;
                 }
                 QLineEdit:hover {
@@ -262,11 +265,12 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 QKeySequenceEdit {
                     border: 2px solid #555555;
                     border-radius: 6px;
-                    padding: 8px;
+                    padding: 0px 8px;
                     font-size: 13px;
                     background-color: #2c2c2c;
                     color: #f0f0f0;
-                    min-height: 20px;
+                    min-height: 32px;
+                    max-height: 32px;
                     outline: none;
                 }
                 QKeySequenceEdit:hover {
@@ -282,11 +286,12 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 QKeySequenceEdit {
                     border: 2px solid #dee2e6;
                     border-radius: 6px;
-                    padding: 8px;
+                    padding: 0px 8px;
                     font-size: 13px;
                     background-color: white;
                     color: black;
-                    min-height: 20px;
+                    min-height: 32px;
+                    max-height: 32px;
                     outline: none;
                 }
                 QKeySequenceEdit:hover {
@@ -786,3 +791,271 @@ class ModernProgressBar(QProgressBar):
             }}
         """)
 
+
+class ModernSegmentedControl(QWidget):
+    """
+    iOS-style segmented control (pill toggle).
+    
+    A container with multiple mutually exclusive options, styled as a single
+    pill-shaped element with a sliding selector.
+    """
+    
+    selectionChanged = Signal(int)  # Emits index of selected segment
+    
+    def __init__(self, items: list[str], parent=None):
+        super().__init__(parent)
+        self._items = items
+        self._buttons = []
+        self._current_index = 0
+        
+        # Setup layout
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(4, 4, 4, 4)
+        self._layout.setSpacing(0)
+        
+        # Create buttons
+        self._group = QButtonGroup(self)
+        self._group.setExclusive(True)
+        self._group.idClicked.connect(self._on_button_clicked)
+        
+        for i, text in enumerate(items):
+            btn = QPushButton(text)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setFixedHeight(32)
+            
+            if i == 0:
+                btn.setChecked(True)
+                
+            self._layout.addWidget(btn)
+            self._group.addButton(btn, i)
+            self._buttons.append(btn)
+            
+        self.apply_theme(is_dark=False)
+        
+    def _on_button_clicked(self, id: int):
+        if id != self._current_index:
+            self._current_index = id
+            self.selectionChanged.emit(id)
+            
+    def set_current_index(self, index: int):
+        if 0 <= index < len(self._buttons):
+            self._buttons[index].setChecked(True)
+            self._on_button_clicked(index)
+            
+    def current_index(self) -> int:
+        return self._current_index
+
+    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
+        if is_dark:
+            bg_color = "#2c2c2c"
+            text_color = "#b0b0b0"
+            selected_bg = "#4A90E2"
+            selected_text = "#ffffff"
+            border_color = "#555555"
+        else:
+            bg_color = "#f1f3f4"
+            text_color = "#5f6368"
+            selected_bg = "#ffffff"
+            selected_text = "#1a73e8"
+            border_color = "#e0e0e0"
+
+        # Container style
+        self.setStyleSheet(f"""
+            ModernSegmentedControl {{
+                background-color: {bg_color};
+                border-radius: 20px; /* Half of height (40px total) */
+                border: 1px solid {border_color};
+            }}
+        """)
+        
+        # Button style
+        # Note: We use a specific styling trick here. 
+        # The container has the background. The buttons are transparent when unchecked.
+        # When checked, they get the "card" look (light mode) or "accent" look (dark mode).
+        
+        for i, btn in enumerate(self._buttons):
+            # Determine border radius for corners
+            radius_style = "border-radius: 16px;" # Inner radius
+            
+            if is_dark:
+                # Dark mode: Selected item is accented
+                btn_style = f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {text_color};
+                        border: none;
+                        font-weight: 600;
+                        font-family: 'Segoe UI', sans-serif;
+                        font-size: 13px;
+                        {radius_style}
+                    }}
+                    QPushButton:hover {{
+                        color: #ffffff;
+                    }}
+                    QPushButton:checked {{
+                        background-color: {selected_bg};
+                        color: {selected_text};
+                        border: 1px solid {selected_bg};
+                    }}
+                """
+            else:
+                # Light mode: Selected item is white card with shadow
+                btn_style = f"""
+                    QPushButton {{
+                        background-color: transparent;
+                        color: {text_color};
+                        border: none;
+                        font-weight: 600;
+                        font-family: 'Segoe UI', sans-serif;
+                        font-size: 13px;
+                        {radius_style}
+                    }}
+                    QPushButton:hover {{
+                        color: #202124;
+                    }}
+                    QPushButton:checked {{
+                        background-color: {selected_bg};
+                        color: {selected_text};
+                        border: 1px solid {border_color};
+                    }}
+                """
+            btn.setStyleSheet(btn_style)
+
+
+class ModernTabBar(QWidget):
+    """
+    Modern tab bar with text buttons and animated underline.
+    """
+    
+    tabChanged = Signal(int)
+    
+    def __init__(self, items: list[str], parent=None):
+        super().__init__(parent)
+        self._items = items
+        self._buttons = []
+        self._current_index = 0
+        
+        # Layout
+        self._layout = QHBoxLayout(self)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(0) # No spacing for coherent look
+        
+        # Button Group
+        self._group = QButtonGroup(self)
+        self._group.setExclusive(True)
+        self._group.idClicked.connect(self._on_button_clicked)
+        
+        for i, text in enumerate(items):
+            btn = QPushButton(text)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setFixedHeight(32)
+            
+            if i == 0:
+                btn.setChecked(True)
+                
+            self._layout.addWidget(btn)
+            self._group.addButton(btn, i)
+            self._buttons.append(btn)
+            
+        # Underline (Indicator)
+        # We'll draw this in paintEvent or use a separate widget. 
+        # For simplicity and smooth animation, let's use a separate widget that moves.
+        self._indicator = QWidget(self)
+        self._indicator.setFixedHeight(3)
+        self._indicator.hide() # Hidden initially, shown in resizeEvent
+        
+        # Animation
+        self._anim = QPropertyAnimation(self._indicator, b"geometry")
+        self._anim.setDuration(250)
+        self._anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        
+        self.apply_theme(is_dark=False)
+        
+    def _on_button_clicked(self, id: int):
+        if id != self._current_index:
+            self._current_index = id
+            self.tabChanged.emit(id)
+            self._animate_indicator()
+            
+    def set_current_index(self, index: int):
+        if 0 <= index < len(self._buttons):
+            self._buttons[index].setChecked(True)
+            self._on_button_clicked(index)
+            
+    def current_index(self) -> int:
+        return self._current_index
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._update_indicator_geometry()
+        
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Delay initial geometry update to ensure buttons have size
+        QTimer.singleShot(0, self._update_indicator_geometry)
+
+    def _update_indicator_geometry(self):
+        if not self._buttons:
+            return
+            
+        btn = self._buttons[self._current_index]
+        # Position indicator at bottom of button
+        rect = btn.geometry()
+        target_rect = QRect(rect.x(), self.height() - 3, rect.width(), 3)
+        
+        self._indicator.setGeometry(target_rect)
+        self._indicator.show()
+
+    def _animate_indicator(self):
+        if not self._buttons:
+            return
+            
+        btn = self._buttons[self._current_index]
+        rect = btn.geometry()
+        target_rect = QRect(rect.x(), self.height() - 3, rect.width(), 3)
+        
+        self._anim.stop()
+        self._anim.setStartValue(self._indicator.geometry())
+        self._anim.setEndValue(target_rect)
+        self._anim.start()
+
+    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
+        if is_dark:
+            text_color = "#b0b0b0"
+            active_color = "#ffffff"
+            hover_color = "#e0e0e0"
+        else:
+            text_color = "#444746"
+            active_color = "#1a73e8"
+            hover_color = "#1f1f1f"
+            
+        # Indicator color
+        self._indicator.setStyleSheet(f"background-color: {accent}; border-radius: 1px;")
+        
+        # Button styles
+        for btn in self._buttons:
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background: transparent;
+                    border: none;
+                    border-radius: 6px;
+                    color: {text_color};
+                    font-family: 'Segoe UI', sans-serif;
+                    font-size: 14px;
+                    font-weight: 600;
+                    padding: 0 8px;
+                }}
+                QPushButton:hover {{
+                    color: {hover_color};
+                    background-color: {'rgba(255, 255, 255, 0.04)' if is_dark else 'rgba(0, 0, 0, 0.03)'};
+                }}
+                QPushButton:checked {{
+                    color: {active_color};
+                    background-color: {'rgba(255, 255, 255, 0.08)' if is_dark else 'rgba(0, 0, 0, 0.05)'};
+                }}
+            """)
