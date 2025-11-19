@@ -337,8 +337,7 @@ class UITab(QWidget):
         primary = colors.get("primary", "#ffffff")
         secondary = colors.get("secondary", "#f8f9fa")
         accent = colors.get("accent", "#4A90E2")
-        accent_hover = colors.get("accent_hover", "#357ABD")
-
+        
         is_dark = self._is_dark_theme(primary)
         
         # Store current theme info for value badge updates
@@ -346,76 +345,41 @@ class UITab(QWidget):
         self._current_accent = accent
         self._current_primary = primary
         
-        groove_start = self._blend_hex_colors(primary, secondary, 0.6 if is_dark else 0.25)
-        groove_end = self._blend_hex_colors(primary, "#000000", 0.15 if is_dark else 0.05)
-        groove_border = self._blend_hex_colors(primary, "#000000" if is_dark else "#4A90E2", 0.18 if is_dark else 0.08)
-
-        accent_fill = self._blend_hex_colors(accent, "#ffffff", 0.2 if is_dark else 0.05)
-        handle_color = self._blend_hex_colors(accent, "#ffffff", 0.35 if is_dark else 0.15)
-        handle_hover = self._blend_hex_colors(accent_hover, "#ffffff", 0.3 if is_dark else 0.1)
-        handle_pressed = self._blend_hex_colors(accent, "#000000", 0.25)
-        # Improved tick marks - taller and more visible
-        tick_color = self._blend_hex_colors(secondary if not is_dark else primary, "#4a4d55" if is_dark else "#adb5bd", 0.7)
-
-        # Get current slider value to determine sub-page visibility
-        current_value = self.animation_strength_slider.value() if hasattr(self, 'animation_strength_slider') else 3
-        
-        # Hide sub-page (blue fill) when at minimum value (1)
-        if current_value == 1:
-            sub_page_bg = "transparent"
-        else:
-            sub_page_bg = f"qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {accent}, stop:1 {accent_fill})"
+        # Simplified colors
+        groove_bg = self._blend_hex_colors(primary, "#000000", 0.3 if is_dark else 0.1)
+        handle_border = self._blend_hex_colors(accent, "#000000", 0.1)
         
         slider_stylesheet = f"""
+            QSlider {{
+                min-height: 40px;
+                max-height: 40px;
+                padding: 0px;
+                border: none;
+            }}
             QSlider::groove:horizontal {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 {groove_start}, stop:1 {groove_end});
-                height: 10px;
-                border-radius: 5px;
-                border: 1px solid {groove_border};
-                margin: 8px 14px;
+                background: {groove_bg};
+                height: 4px;
+                border-radius: 2px;
             }}
             QSlider::sub-page:horizontal {{
-                background: {sub_page_bg};
-                border-radius: 5px;
-                border: none;
-                margin: 8px 14px;
+                background: {accent};
+                border-radius: 2px;
             }}
             QSlider::add-page:horizontal {{
-                background: transparent;
-                border-radius: 5px;
-                margin: 8px 14px;
+                background: {groove_bg};
+                border-radius: 2px;
             }}
             QSlider::handle:horizontal {{
-                background: {handle_color};
-                border: 2px solid {accent};
+                background: #ffffff;
+                border: 1px solid {handle_border};
                 width: 20px;
                 height: 20px;
-                margin: -7px -13px;
-                border-radius: 10px;
+                margin: -9px 0;
+                border-radius: 11px;
             }}
             QSlider::handle:horizontal:hover {{
-                background: {handle_hover};
-                border-color: {accent_hover};
-                width: 22px;
-                height: 22px;
-                margin: -8px -14px;
-            }}
-            QSlider::handle:horizontal:pressed {{
-                background: {handle_pressed};
-                border-color: {accent_hover};
-                width: 20px;
-                height: 20px;
-                margin: -7px -13px;
-            }}
-            QSlider::handle:horizontal:disabled {{
-                background: {self._blend_hex_colors(handle_color, primary, 0.6)};
-                border-color: {self._blend_hex_colors(accent, primary, 0.6)};
-            }}
-            QSlider::tick-mark:horizontal {{
-                background: {tick_color};
-                width: 1px;
-                height: 8px;
+                border: 1px solid {accent};
+                background: #f0f0f0;
             }}
         """
 
@@ -430,7 +394,7 @@ class UITab(QWidget):
         if hasattr(self, 'strength_help'):
             help_color = "#8a8e98" if is_dark else "#6c757d"
             self.strength_help.setStyleSheet(
-                f"color: {help_color}; font-size: 11px; font-style: italic; "
+                f"color: {help_color}; font-size: 11px; "
                 f"padding-left: 4px; background-color: transparent;"
             )
 
@@ -460,23 +424,10 @@ class UITab(QWidget):
         
         is_dark = self._is_dark_theme(primary)
         
-        # Apply different colors for extreme values
-        if value == 1:
-            # Minimum value - subtle gray
-            label_text = "#d1d5db" if is_dark else "#6c757d"
-            label_bg = self._blend_hex_colors(primary, "#6c757d", 0.25 if is_dark else 0.1)
-            label_border = self._blend_hex_colors("#9ca3af", primary, 0.5)
-        elif value >= 9:
-            # High values - warning/attention color
-            warning_color = "#f59e0b"
-            label_text = "#fef3c7" if is_dark else "#c2410c"
-            label_bg = self._blend_hex_colors(primary, warning_color, 0.4 if is_dark else 0.15)
-            label_border = self._blend_hex_colors(warning_color, primary, 0.5)
-        else:
-            # Normal range - use accent color with improved light mode
-            label_text = "#e9edf8" if is_dark else "#2563eb"
-            label_bg = self._blend_hex_colors(primary, accent, 0.35 if is_dark else 0.15)
-            label_border = self._blend_hex_colors(accent, primary, 0.5)
+        # Simple, clean badge style
+        label_text = "#ffffff" if is_dark else "#333333"
+        # Subtle background
+        label_bg = self._blend_hex_colors(primary, "#000000", 0.1 if is_dark else 0.05)
         
         self.animation_strength_value_label.setStyleSheet(
             f"""
@@ -485,10 +436,9 @@ class UITab(QWidget):
                 font-size: 12px;
                 font-weight: 600;
                 padding: 2px 8px;
-                border-radius: 10px;
+                border-radius: 4px;
                 background: {label_bg};
-                border: 1px solid {label_border};
-                min-width: 40px;
+                min-width: 30px;
             }}
             """
         )
