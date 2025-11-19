@@ -142,6 +142,7 @@ class UITab(QWidget):
         self.animation_strength_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.animation_strength_slider.setTickInterval(1)
         self.animation_strength_slider.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.animation_strength_slider.setCursor(Qt.CursorShape.PointingHandCursor)
         # Accessibility improvements
         self.animation_strength_slider.setPageStep(2)  # Page Up/Down steps
         self.animation_strength_slider.setSingleStep(1)  # Arrow key steps

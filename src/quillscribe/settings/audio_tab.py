@@ -47,6 +47,7 @@ class AudioTab(QWidget):
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.setIcon(get_white_button_icon('refresh', 16))
         self.refresh_button.setIconSize(QSize(16, 16))
+        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setStyleSheet("""
             QPushButton {
                 background: #17a2b8;
@@ -67,6 +68,7 @@ class AudioTab(QWidget):
         self.blocklist_button = QPushButton("Blocklist")
         self.blocklist_button.setIcon(get_white_button_icon('block', 16))
         self.blocklist_button.setIconSize(QSize(16, 16))
+        self.blocklist_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.blocklist_button.setStyleSheet("""
             QPushButton {
                 background: #dc3545;
@@ -103,6 +105,7 @@ class AudioTab(QWidget):
         self.detect_now_button = QPushButton("Detect Now")
         self.detect_now_button.setIcon(get_white_button_icon('refresh', 14))
         self.detect_now_button.setIconSize(QSize(14, 14))
+        self.detect_now_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.detect_now_button.setStyleSheet("""
             QPushButton {
                 background: #28a745;
@@ -143,6 +146,7 @@ class AudioTab(QWidget):
         self.test_button = QPushButton("Test")
         self.test_button.setIcon(get_white_button_icon('test', 16))
         self.test_button.setIconSize(QSize(16, 16))
+        self.test_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.test_button.setStyleSheet("""
             QPushButton {
                 background: #28a745;
@@ -517,6 +521,7 @@ class AudioTab(QWidget):
         available_buttons = QHBoxLayout()
         block_button = QPushButton("Block Selected")
         block_button.setIcon(get_button_icon('block', 16))
+        block_button.setCursor(Qt.CursorShape.PointingHandCursor)
         block_button.clicked.connect(lambda: self._move_to_blocklist(available_list, blocked_list))
         available_buttons.addWidget(block_button)
         available_buttons.addStretch()
@@ -565,6 +570,7 @@ class AudioTab(QWidget):
         blocked_buttons = QHBoxLayout()
         unblock_button = QPushButton("Unblock Selected")
         unblock_button.setIcon(get_button_icon('refresh', 16))
+        unblock_button.setCursor(Qt.CursorShape.PointingHandCursor)
         unblock_button.clicked.connect(lambda: self._move_from_blocklist(blocked_list, available_list))
         blocked_buttons.addWidget(unblock_button)
         blocked_buttons.addStretch()
@@ -575,10 +581,12 @@ class AudioTab(QWidget):
         dialog_buttons.addStretch()
 
         save_button = QPushButton("Save")
+        save_button.setCursor(Qt.CursorShape.PointingHandCursor)
         save_button.clicked.connect(lambda: self._save_blocklist(dialog, available_list, blocked_list))
         dialog_buttons.addWidget(save_button)
 
         cancel_button = QPushButton("Cancel")
+        cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
         cancel_button.clicked.connect(dialog.reject)
         dialog_buttons.addWidget(cancel_button)
 

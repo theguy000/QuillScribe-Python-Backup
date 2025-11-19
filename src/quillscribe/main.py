@@ -464,6 +464,7 @@ class ModernButton(QPushButton):
     def __init__(self, text: str, primary: bool = False, parent=None):
         super().__init__(text, parent)
         self.primary = primary
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False, compact=False)
 
         # Hover animation
@@ -786,6 +787,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.topbar.addStretch()
         self.close_button = QPushButton("×")
         self.close_button.setFixedSize(24, 24)
+        self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.close_button.setVisible(False)
         self.close_button.clicked.connect(self.close)
         # Ensure the text is perfectly centered
@@ -947,6 +949,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.minimize_btn.setIcon(get_button_icon('minimize', 16))  # Set initial icon
         self.minimize_btn.setIconSize(QSize(16, 16))
         self.minimize_btn.setFixedSize(46, 32)  # Match titlebar height exactly
+        self.minimize_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.minimize_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;
@@ -971,6 +974,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.titlebar_close_btn.setIcon(get_button_icon('close', 16))  # Set initial icon
         self.titlebar_close_btn.setIconSize(QSize(16, 16))
         self.titlebar_close_btn.setFixedSize(46, 32)  # Match titlebar height exactly
+        self.titlebar_close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.titlebar_close_btn.setStyleSheet("""
             QPushButton {
                 background: transparent;

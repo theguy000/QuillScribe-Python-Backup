@@ -92,6 +92,7 @@ class WhisperTab(QWidget):
         # Icon will be set by theme manager and toggle method
         self.api_key_toggle_btn.setIconSize(QSize(16, 16))
         self.api_key_toggle_btn.setFixedSize(32, 32)
+        self.api_key_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         # Styling will be applied by theme manager
         self.api_key_toggle_btn.setToolTip("Show/hide API key")
         self.api_key_toggle_btn.clicked.connect(self.toggle_api_key_visibility)

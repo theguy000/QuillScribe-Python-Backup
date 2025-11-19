@@ -66,6 +66,7 @@ class ModernComboBox(QComboBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         # Use a list view for better styling control and add subtle shadow
         self.setView(QListView(self))
         self.view().setAlternatingRowColors(True)
@@ -363,6 +364,7 @@ class ModernRadioButton(QRadioButton):
 
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False)
 
     def apply_theme(self, is_dark: bool):
@@ -434,6 +436,7 @@ class ModernCheckBox(QCheckBox):
 
     def __init__(self, text: str, parent=None):
         super().__init__(text, parent)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False)
 
     def apply_theme(self, is_dark: bool):

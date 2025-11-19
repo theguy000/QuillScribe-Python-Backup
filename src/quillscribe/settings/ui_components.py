@@ -17,6 +17,7 @@ class ModernButton(QPushButton):
     def __init__(self, text: str, primary: bool = False, parent=None):
         super().__init__(text, parent)
         self.primary = primary
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_default_theme()
     
     def apply_default_theme(self):

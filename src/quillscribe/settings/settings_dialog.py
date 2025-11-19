@@ -90,6 +90,7 @@ class SettingsDialog(QDialog):
         self.header_close_button.setObjectName("settings_header_close")
         self.header_close_button.setText("")
         self.header_close_button.setFixedSize(28, 28)
+        self.header_close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.header_close_button.clicked.connect(self.reject)
         header_layout.addWidget(self.header_close_button)
 
@@ -127,6 +128,7 @@ class SettingsDialog(QDialog):
             btn.clicked.connect(lambda checked, i=idx: self.switch_page(i))
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             btn.setFixedHeight(40)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
             sidebar_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
@@ -183,9 +185,11 @@ class SettingsDialog(QDialog):
 
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setObjectName("settings_cancel_button")
+        self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.save_button = QPushButton("Save Settings")
         self.save_button.setObjectName("settings_save_button")
+        self.save_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
         footer_layout.addWidget(self.cancel_button)
         footer_layout.addWidget(self.save_button)
@@ -485,6 +489,7 @@ class SettingsDialog(QDialog):
         # Update save and cancel button icons and styles based on theme
         if hasattr(self, 'cancel_button'):
             # Cancel button - light surface with subtle border
+            hover_bg = self._lighten_color(colors['secondary'], 0.04) if is_dark else self._darken_color(colors['secondary'], 0.05)
             self.cancel_button.setStyleSheet(f"""
                 QPushButton#settings_cancel_button {{
                     background-color: transparent;
@@ -499,7 +504,7 @@ class SettingsDialog(QDialog):
                     outline: none;
                 }}
                 QPushButton#settings_cancel_button:hover {{
-                    background-color: {self._lighten_color(colors['secondary'], 0.04)};
+                    background-color: {hover_bg};
                 }}
             """)
             self.cancel_button.setIcon(get_icon('cancel', 13, QColor(120, 120, 130)))
