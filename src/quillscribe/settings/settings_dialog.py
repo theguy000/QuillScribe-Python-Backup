@@ -439,6 +439,10 @@ class SettingsDialog(QDialog):
                 self.output_tab.setStyleSheet(f"background-color: {colors['primary']};")
             if hasattr(self, 'ui_tab'):
                 self.ui_tab.setStyleSheet(f"background-color: {colors['primary']};")
+            
+            # Explicitly apply theme to statistics tab to update cards
+            if hasattr(self, 'statistics_tab'):
+                self.statistics_tab.apply_theme(colors['primary'], colors['secondary'])
         except Exception:
             pass
 

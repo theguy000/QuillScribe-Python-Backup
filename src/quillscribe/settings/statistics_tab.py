@@ -6,13 +6,88 @@ Displays usage statistics, performance metrics, and transcription history
 from datetime import datetime
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, 
-    QTextEdit, QMessageBox, QFileDialog
+    QTextEdit, QMessageBox, QFileDialog, QFrame, QGridLayout, QScrollArea,
+    QSizePolicy
 )
 from PySide6.QtCore import Qt
 
 from ..managers import StatisticsManager, get_theme_manager
 from .ui_components import ModernButton, ModernGroupBox
 from .base_tab import BaseSettingsTab
+
+
+class StatCard(QFrame):
+    """A card widget to display a single statistic"""
+    
+    def __init__(self, title, value="0", parent=None):
+        super().__init__(parent)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setFrameShadow(QFrame.Shadow.Raised)
+        
+        # Set size policy to expand
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.setMinimumWidth(120) # Slightly smaller minimum
+
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(4)
+        
+        self.value_label = QLabel(value)
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.value_label.setWordWrap(True) # Allow wrapping if value is very long
+        
+        self.title_label = QLabel(title)
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setWordWrap(True) # Allow wrapping for title
+        
+        layout.addWidget(self.value_label)
+        layout.addWidget(self.title_label)
+        
+    def set_value(self, value):
+        self.value_label.setText(str(value))
+        
+    def apply_theme(self, primary_color, secondary_color, text_color, is_dark):
+        """Apply theme to the card"""
+        # Use theme manager for consistent colors
+        theme_manager = get_theme_manager()
+        
+        if is_dark:
+            bg_color = theme_manager.lighten_color(secondary_color, 0.05)
+            border_color = theme_manager.lighten_color(secondary_color, 0.1)
+            value_color = text_color
+            title_color = "#adb5bd"
+        else:
+            bg_color = "#ffffff"
+            border_color = theme_manager.darken_color(secondary_color, 0.1)
+            value_color = text_color
+            title_color = "#6c757d"
+            
+        self.setStyleSheet(f"""
+            StatCard {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 8px;
+            }}
+        """)
+        
+        self.value_label.setStyleSheet(f"""
+            font-size: 24px;
+            font-weight: bold;
+            color: {value_color};
+            border: none;
+            background: transparent;
+        """)
+        
+        self.title_label.setStyleSheet(f"""
+            font-size: 12px;
+            font-weight: 500;
+            color: {title_color};
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: none;
+            background: transparent;
+        """)
 
 
 class StatisticsTab(QWidget):
@@ -30,11 +105,8 @@ class StatisticsTab(QWidget):
     def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
         """Apply theme colors to the statistics tab"""
         # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        is_dark = brightness < 128
+        theme_manager = get_theme_manager()
+        is_dark = theme_manager.is_dark_color(primary_color)
 
         # Apply theme to history text area
         if is_dark:
@@ -79,85 +151,117 @@ class StatisticsTab(QWidget):
         # Apply background color and text color to the tab itself
         # Use dark text for light themes, light text for dark themes
         text_color = "#e9ecef" if is_dark else "#212529"
-        print(f"Statistics tab theming: is_dark={is_dark}, primary_color={primary_color}, text_color={text_color}")
+        
+        # Apply to the scroll area widget if it exists
+        if hasattr(self, 'scroll_widget'):
+            self.scroll_widget.setStyleSheet(f"""
+                QWidget#stats_scroll_widget {{
+                    background-color: {secondary_color};
+                    color: {text_color};
+                }}
+            """)
+            
         self.setStyleSheet(f"""
             StatisticsTab {{
-                background-color: {primary_color};
-                color: {text_color};
+                background-color: {secondary_color};
             }}
         """)
-
-        # Apply text color to all labels
-        self._apply_label_theming(text_color)
+        
+        # Apply theme to all StatCards
+        # We need to pass the correct text color for the title/value logic inside StatCard
+        # StatCard logic uses primary_color for value, so we pass that.
+        for card in self.findChildren(StatCard):
+            card.apply_theme(primary_color, secondary_color, text_color, is_dark)
     
     def setup_ui(self):
         """Setup the statistics tab UI"""
-        layout = QVBoxLayout(self)
-        # Minimal outer margins so group boxes sit close to dialog edges
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(16)
+        # Main layout for the tab
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Create a scroll area
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Create a widget to hold the content
+        self.scroll_widget = QWidget()
+        self.scroll_widget.setObjectName("stats_scroll_widget")
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
+        self.scroll_layout.setContentsMargins(16, 16, 16, 16)
+        self.scroll_layout.setSpacing(16)
+        
+        self.scroll_area.setWidget(self.scroll_widget)
+        main_layout.addWidget(self.scroll_area)
         
         # Usage Statistics Group
         usage_group = ModernGroupBox("Usage Statistics")
-        usage_layout = QFormLayout(usage_group)
+        usage_layout = QGridLayout(usage_group)
+        usage_layout.setSpacing(12)
         
-        self.total_sessions_label = QLabel("0")
-        self.total_recordings_label = QLabel("0")
-        self.total_duration_label = QLabel("0h 0m")
-        self.success_rate_label = QLabel("0%")
+        self.total_sessions_card = StatCard("Total Sessions")
+        self.total_recordings_card = StatCard("Total Recordings")
+        self.total_duration_card = StatCard("Total Duration")
+        self.success_rate_card = StatCard("Success Rate")
         
-        usage_layout.addRow("Total Sessions:", self.total_sessions_label)
-        usage_layout.addRow("Total Recordings:", self.total_recordings_label)
-        usage_layout.addRow("Total Duration:", self.total_duration_label)
-        usage_layout.addRow("Success Rate:", self.success_rate_label)
+        usage_layout.addWidget(self.total_sessions_card, 0, 0)
+        usage_layout.addWidget(self.total_recordings_card, 0, 1)
+        usage_layout.addWidget(self.total_duration_card, 1, 0)
+        usage_layout.addWidget(self.success_rate_card, 1, 1)
         
-        layout.addWidget(usage_group)
+        self.scroll_layout.addWidget(usage_group)
         
         # Performance Metrics Group
         performance_group = ModernGroupBox("Performance Metrics")
-        performance_layout = QFormLayout(performance_group)
+        performance_layout = QGridLayout(performance_group)
+        performance_layout.setSpacing(12)
         
-        self.avg_transcription_time_label = QLabel("0.0s")
-        self.fastest_transcription_label = QLabel("0.0s")
-        self.slowest_transcription_label = QLabel("0.0s")
-        self.avg_audio_duration_label = QLabel("0.0s")
+        self.avg_transcription_time_card = StatCard("Avg Time")
+        self.fastest_transcription_card = StatCard("Fastest")
+        self.slowest_transcription_card = StatCard("Slowest")
+        self.avg_audio_duration_card = StatCard("Avg Audio")
         
-        performance_layout.addRow("Avg Transcription Time:", self.avg_transcription_time_label)
-        performance_layout.addRow("Fastest Transcription:", self.fastest_transcription_label)
-        performance_layout.addRow("Slowest Transcription:", self.slowest_transcription_label)
-        performance_layout.addRow("Avg Audio Duration:", self.avg_audio_duration_label)
+        performance_layout.addWidget(self.avg_transcription_time_card, 0, 0)
+        performance_layout.addWidget(self.fastest_transcription_card, 0, 1)
+        performance_layout.addWidget(self.slowest_transcription_card, 1, 0)
+        performance_layout.addWidget(self.avg_audio_duration_card, 1, 1)
         
-        layout.addWidget(performance_group)
+        self.scroll_layout.addWidget(performance_group)
         
         # Mode Usage Group
         mode_group = ModernGroupBox("Mode Usage")
-        mode_layout = QFormLayout(mode_group)
+        mode_layout = QGridLayout(mode_group)
+        mode_layout.setSpacing(12)
         
-        self.api_usage_label = QLabel("0")
-        self.local_usage_label = QLabel("0")
-        self.total_characters_label = QLabel("0")
+        self.api_usage_card = StatCard("API Mode")
+        self.local_usage_card = StatCard("Local Mode")
+        self.total_characters_card = StatCard("Total Chars")
         
-        mode_layout.addRow("API Transcriptions:", self.api_usage_label)
-        mode_layout.addRow("Local Transcriptions:", self.local_usage_label)
-        mode_layout.addRow("Total Characters:", self.total_characters_label)
+        mode_layout.addWidget(self.api_usage_card, 0, 0)
+        mode_layout.addWidget(self.local_usage_card, 0, 1)
+        mode_layout.addWidget(self.total_characters_card, 1, 0, 1, 2) # Span 2 columns
         
-        layout.addWidget(mode_group)
+        self.scroll_layout.addWidget(mode_group)
         
         # Current Session Group
         session_group = ModernGroupBox("Current Session")
-        session_layout = QFormLayout(session_group)
+        session_layout = QGridLayout(session_group)
+        session_layout.setSpacing(12)
         
-        self.session_duration_label = QLabel("0h 0m")
-        self.session_recordings_label = QLabel("0")
-        self.session_success_label = QLabel("0")
-        self.session_failed_label = QLabel("0")
+        self.session_duration_card = StatCard("Duration")
+        self.session_recordings_card = StatCard("Recordings")
+        self.session_success_card = StatCard("Successful")
+        self.session_failed_card = StatCard("Failed")
         
-        session_layout.addRow("Session Duration:", self.session_duration_label)
-        session_layout.addRow("Recordings:", self.session_recordings_label)
-        session_layout.addRow("Successful:", self.session_success_label)
-        session_layout.addRow("Failed:", self.session_failed_label)
+        session_layout.addWidget(self.session_duration_card, 0, 0)
+        session_layout.addWidget(self.session_recordings_card, 0, 1)
+        session_layout.addWidget(self.session_success_card, 1, 0)
+        session_layout.addWidget(self.session_failed_card, 1, 1)
         
-        layout.addWidget(session_group)
+        self.scroll_layout.addWidget(session_group)
         
         # Recent History Group
         history_group = ModernGroupBox("Recent History (Last 7 Days)")
@@ -176,7 +280,7 @@ class StatisticsTab(QWidget):
         """)
         history_layout.addWidget(self.history_list)
         
-        layout.addWidget(history_group)
+        self.scroll_layout.addWidget(history_group)
         
         # Action buttons
         button_layout = QHBoxLayout()
@@ -194,16 +298,7 @@ class StatisticsTab(QWidget):
         button_layout.addWidget(self.reset_button)
         
         button_layout.addStretch()
-        layout.addLayout(button_layout)
-
-        # Store references to all our labels for easier theming
-        self.all_value_labels = [
-            self.total_sessions_label, self.total_recordings_label, self.total_duration_label,
-            self.success_rate_label, self.avg_transcription_time_label, self.fastest_transcription_label,
-            self.slowest_transcription_label, self.avg_audio_duration_label, self.api_usage_label,
-            self.local_usage_label, self.total_characters_label, self.session_duration_label,
-            self.session_recordings_label, self.session_success_label, self.session_failed_label
-        ]
+        self.scroll_layout.addLayout(button_layout)
     
     def load_statistics(self):
         """Load and display current statistics"""
@@ -211,44 +306,44 @@ class StatisticsTab(QWidget):
         session_stats = self.statistics_manager.get_session_statistics()
         
         # Usage statistics
-        self.total_sessions_label.setText(str(stats['total_sessions']))
-        self.total_recordings_label.setText(str(stats['total_recordings']))
+        self.total_sessions_card.set_value(stats['total_sessions'])
+        self.total_recordings_card.set_value(stats['total_recordings'])
         
         # Format duration
         total_minutes = int(stats['total_duration'] / 60)
         hours = total_minutes // 60
         minutes = total_minutes % 60
-        self.total_duration_label.setText(f"{hours}h {minutes}m")
+        self.total_duration_card.set_value(f"{hours}h {minutes}m")
         
         # Success rate
         success_rate = self.statistics_manager.get_accuracy_rate()
-        self.success_rate_label.setText(f"{success_rate:.1f}%")
+        self.success_rate_card.set_value(f"{success_rate:.1f}%")
         
         # Performance metrics
         perf = stats['performance_metrics']
-        self.avg_transcription_time_label.setText(f"{perf['average_transcription_time']:.2f}s")
+        self.avg_transcription_time_card.set_value(f"{perf['average_transcription_time']:.2f}s")
         
         if perf['fastest_transcription'] != float('inf'):
-            self.fastest_transcription_label.setText(f"{perf['fastest_transcription']:.2f}s")
+            self.fastest_transcription_card.set_value(f"{perf['fastest_transcription']:.2f}s")
         else:
-            self.fastest_transcription_label.setText("N/A")
+            self.fastest_transcription_card.set_value("N/A")
             
-        self.slowest_transcription_label.setText(f"{perf['slowest_transcription']:.2f}s")
-        self.avg_audio_duration_label.setText(f"{perf['average_audio_duration']:.2f}s")
+        self.slowest_transcription_card.set_value(f"{perf['slowest_transcription']:.2f}s")
+        self.avg_audio_duration_card.set_value(f"{perf['average_audio_duration']:.2f}s")
         
         # Mode usage
-        self.api_usage_label.setText(str(stats['usage_by_mode']['api']))
-        self.local_usage_label.setText(str(stats['usage_by_mode']['local']))
-        self.total_characters_label.setText(f"{stats['total_characters']:,}")
+        self.api_usage_card.set_value(stats['usage_by_mode']['api'])
+        self.local_usage_card.set_value(stats['usage_by_mode']['local'])
+        self.total_characters_card.set_value(f"{stats['total_characters']:,}")
         
         # Current session
         session_minutes = int(session_stats['session_duration'] / 60)
         session_hours = session_minutes // 60
         session_mins = session_minutes % 60
-        self.session_duration_label.setText(f"{session_hours}h {session_mins}m")
-        self.session_recordings_label.setText(str(session_stats['recordings']))
-        self.session_success_label.setText(str(session_stats['successful_transcriptions']))
-        self.session_failed_label.setText(str(session_stats['failed_transcriptions']))
+        self.session_duration_card.set_value(f"{session_hours}h {session_mins}m")
+        self.session_recordings_card.set_value(session_stats['recordings'])
+        self.session_success_card.set_value(session_stats['successful_transcriptions'])
+        self.session_failed_card.set_value(session_stats['failed_transcriptions'])
         
         # Recent history
         self.load_recent_history()
@@ -341,113 +436,57 @@ class StatisticsTab(QWidget):
 
             # Determine if this is a dark theme
             try:
-                r = int(primary_color.lstrip('#')[0:2], 16)
-                g = int(primary_color.lstrip('#')[2:4], 16)
-                b = int(primary_color.lstrip('#')[4:6], 16)
-                brightness = (r * 299 + g * 587 + b * 114) / 1000
-                is_dark = brightness < 128
+                is_dark = theme_manager.is_dark_color(primary_color)
             except Exception:
                 is_dark = False
 
-                if is_dark:
-                    msg_style = f"""
-                        QMessageBox {{
-                            background-color: {primary_color};
-                            color: #e9ecef;
-                        }}
-                        QMessageBox QLabel {{
-                            color: #e9ecef;
-                        }}
-                        QMessageBox QPushButton {{
-                            background-color: #495057;
-                            color: #e9ecef;
-                            border: 1px solid #6c757d;
-                            border-radius: 4px;
-                            padding: 6px 12px;
-                            min-width: 60px;
-                        }}
-                        QMessageBox QPushButton:hover {{
-                            background-color: #6c757d;
-                        }}
-                        QMessageBox QPushButton:pressed {{
-                            background-color: #343a40;
-                        }}
-                    """
-                else:
-                    msg_style = f"""
-                        QMessageBox {{
-                            background-color: {primary_color};
-                            color: #495057;
-                        }}
-                        QMessageBox QLabel {{
-                            color: #495057;
-                        }}
-                        QMessageBox QPushButton {{
-                            background-color: #e9ecef;
-                            color: #495057;
-                            border: 1px solid #dee2e6;
-                            border-radius: 4px;
-                            padding: 6px 12px;
-                            min-width: 60px;
-                        }}
-                        QMessageBox QPushButton:hover {{
-                            background-color: #f8f9fa;
-                        }}
-                        QMessageBox QPushButton:pressed {{
-                            background-color: #dee2e6;
-                        }}
-                    """
+            if is_dark:
+                msg_style = f"""
+                    QMessageBox {{
+                        background-color: {primary_color};
+                        color: #e9ecef;
+                    }}
+                    QMessageBox QLabel {{
+                        color: #e9ecef;
+                    }}
+                    QMessageBox QPushButton {{
+                        background-color: #495057;
+                        color: #e9ecef;
+                        border: 1px solid #6c757d;
+                        border-radius: 4px;
+                        padding: 6px 12px;
+                        min-width: 60px;
+                    }}
+                    QMessageBox QPushButton:hover {{
+                        background-color: #6c757d;
+                    }}
+                    QMessageBox QPushButton:pressed {{
+                        background-color: #343a40;
+                    }}
+                """
+            else:
+                msg_style = f"""
+                    QMessageBox {{
+                        background-color: {primary_color};
+                        color: #495057;
+                    }}
+                    QMessageBox QLabel {{
+                        color: #495057;
+                    }}
+                    QMessageBox QPushButton {{
+                        background-color: #e9ecef;
+                        color: #495057;
+                        border: 1px solid #dee2e6;
+                        border-radius: 4px;
+                        padding: 6px 12px;
+                        min-width: 60px;
+                    }}
+                    QMessageBox QPushButton:hover {{
+                        background-color: #f8f9fa;
+                    }}
+                    QMessageBox QPushButton:pressed {{
+                        background-color: #dee2e6;
+                    }}
+                """
 
-                msg_box.setStyleSheet(msg_style)
-
-    def _apply_label_theming(self, text_color):
-        """Apply text color theming to all labels in the statistics tab"""
-        try:
-            label_count = 0
-
-            # Apply to all QLabel widgets in the statistics tab
-            for label in self.findChildren(QLabel):
-                label_count += 1
-                current_style = label.styleSheet()
-
-                # Always apply the text color, overriding any existing color
-                if current_style:
-                    # Remove any existing color declarations and add new one
-                    import re
-                    # Remove existing color declarations
-                    new_style = re.sub(r'color:\s*[^;]+;?', '', current_style)
-                    # Clean up any double semicolons or trailing semicolons
-                    new_style = re.sub(r';;+', ';', new_style).strip(';')
-                    # Add the new color
-                    if new_style:
-                        new_style = f"{new_style}; color: {text_color};"
-                    else:
-                        new_style = f"color: {text_color};"
-                    label.setStyleSheet(new_style)
-                else:
-                    # No existing style, just set color
-                    label.setStyleSheet(f"color: {text_color};")
-
-            # Also apply to form labels (the field names in QFormLayout)
-            from PySide6.QtWidgets import QFormLayout
-            form_label_count = 0
-            for form_layout in self.findChildren(QFormLayout):
-                for i in range(form_layout.rowCount()):
-                    label_item = form_layout.itemAt(i, QFormLayout.ItemRole.LabelRole)
-                    if label_item and label_item.widget():
-                        label_widget = label_item.widget()
-                        if isinstance(label_widget, QLabel):
-                            form_label_count += 1
-                            # Force the color for form labels
-                            label_widget.setStyleSheet(f"color: {text_color}; font-weight: normal;")
-
-            # Also apply to our specific value labels to ensure they get themed
-            if hasattr(self, 'all_value_labels'):
-                value_label_count = 0
-                for value_label in self.all_value_labels:
-                    if value_label:
-                        value_label_count += 1
-                        value_label.setStyleSheet(f"color: {text_color}; font-weight: bold;")
-
-        except Exception as e:
-            print(f"Warning: Could not apply statistics label theming: {e}")
+            msg_box.setStyleSheet(msg_style)

@@ -8,6 +8,9 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
 
+from ..managers import get_theme_manager
+
+
 class ModernButton(QPushButton):
     """Beautiful modern button with hover effects"""
     
@@ -58,11 +61,8 @@ class ModernButton(QPushButton):
     def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
         """Apply theme colors to the button"""
         # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        is_dark = brightness < 128
+        theme_manager = get_theme_manager()
+        is_dark = theme_manager.is_dark_color(primary_color)
         
         if self.primary:
             if is_dark:
@@ -150,11 +150,8 @@ class ModernGroupBox(QGroupBox):
     def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
         """Apply theme colors to the group box"""
         # Determine if this is a dark theme
-        r = int(primary_color.lstrip('#')[0:2], 16)
-        g = int(primary_color.lstrip('#')[2:4], 16)
-        b = int(primary_color.lstrip('#')[4:6], 16)
-        brightness = (r * 299 + g * 587 + b * 114) / 1000
-        is_dark = brightness < 128
+        theme_manager = get_theme_manager()
+        is_dark = theme_manager.is_dark_color(primary_color)
         
         if is_dark:
             self.setStyleSheet(f"""
@@ -164,7 +161,7 @@ class ModernGroupBox(QGroupBox):
                     color: #e9ecef;
                     border: none;
                     border-radius: 0px;
-                    margin-top: 0px;
+                    margin-top: 28px;
                     padding-top: 0px;
                     background: transparent;
                 }}
@@ -184,7 +181,7 @@ class ModernGroupBox(QGroupBox):
                     color: #2c3e50;
                     border: none;
                     border-radius: 0px;
-                    margin-top: 0px;
+                    margin-top: 28px;
                     padding-top: 0px;
                     background: transparent;
                 }}
