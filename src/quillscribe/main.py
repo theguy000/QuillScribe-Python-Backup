@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher, Slot, Qt
 from PySide6.QtGui import (QIcon, QAction, QColor, QPalette, QPainter, QPen, QBrush,
                          QRadialGradient, QLinearGradient, QFont, QCursor,
-                         QPainterPath, QRegion, QShortcut, QKeySequence)
+                         QPainterPath, QRegion, QShortcut, QKeySequence, QPixmap)
 
 try:
     import ctypes  # type: ignore
