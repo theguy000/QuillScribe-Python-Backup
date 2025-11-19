@@ -485,18 +485,25 @@ class SettingsDialog(QDialog):
                 QPushButton#settings_cancel_button {{
                     background-color: transparent;
                     color: {colors['text_secondary']};
-                    border-radius: 999px;
+                    border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
                     border: 1px solid {colors['border']};
-                    padding: 6px 18px;
+                    padding: 6px 16px;
+                    min-height: 32px;
                     font-size: 13px;
-                    font-weight: 500;
+                    font-weight: 600;
+                    text-align: center;
+                    outline: none;
                 }}
                 QPushButton#settings_cancel_button:hover {{
                     background-color: {self._lighten_color(colors['secondary'], 0.04)};
                 }}
             """)
-            self.cancel_button.setIcon(get_icon('cancel', 14, QColor(120, 120, 130)))
-            self.cancel_button.setIconSize(QSize(14, 14))
+            self.cancel_button.setIcon(get_icon('cancel', 13, QColor(120, 120, 130)))
+            self.cancel_button.setIconSize(QSize(13, 13))
+            self.cancel_button.setFlat(False)
+            self.cancel_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            # Ensure icon is on the left with proper spacing
+            self.cancel_button.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         
         if hasattr(self, 'save_button'):
             # Save button - primary pill button similar to Tailwind design
@@ -505,17 +512,25 @@ class SettingsDialog(QDialog):
                     background-color: {colors['accent']};
                     color: #ffffff;
                     border: none;
-                    border-radius: 999px;
-                    padding: 6px 20px;
+                    border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
+                    padding: 6px 18px;
+                    min-height: 32px;
+                    min-width: 100px;
                     font-size: 13px;
-                    font-weight: 500;
+                    font-weight: 600;
+                    text-align: center;
+                    outline: none;
                 }}
                 QPushButton#settings_save_button:hover {{
                     background-color: {colors['accent_hover']};
                 }}
             """)
-            self.save_button.setIcon(get_icon('save', 14, QColor(255, 255, 255)))
-            self.save_button.setIconSize(QSize(14, 14))
+            self.save_button.setIcon(get_icon('save', 13, QColor(255, 255, 255)))
+            self.save_button.setIconSize(QSize(13, 13))
+            self.save_button.setFlat(False)
+            self.save_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+            # Ensure icon is on the left with proper spacing
+            self.save_button.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
 
         # Update icons in tab content - these need to be updated based on theme
         try:
