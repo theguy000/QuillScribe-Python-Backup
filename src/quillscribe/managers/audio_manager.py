@@ -41,6 +41,9 @@ class AudioManager(QObject):
         self.available_devices = []
         self._devices_enumerated = False
         
+        # Track currently selected device ID explicitly
+        self.current_input_device_id = None
+        
     def update_available_devices(self):
         """Update list of available audio input devices"""
         try:
@@ -70,6 +73,7 @@ class AudioManager(QObject):
     def set_input_device(self, device_id: Optional[int] = None):
         """Set the audio input device"""
         try:
+            self.current_input_device_id = device_id
             if device_id is not None:
                 sd.default.device[0] = device_id  # Input device
             else:
@@ -125,6 +129,7 @@ class AudioManager(QObject):
 
             # Start audio stream for monitoring only
             self.stream = sd.InputStream(
+                device=self.current_input_device_id,
                 callback=self.audio_callback,
                 channels=self.channels,
                 samplerate=self.sample_rate,

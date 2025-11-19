@@ -331,9 +331,16 @@ class AudioTab(QWidget):
             self.audio_manager.start_monitoring()
             # Connect signal using UniqueConnection to avoid duplicates and disconnect warnings
             try:
-                self.audio_manager.audio_level_changed.connect(self.update_level_meter_value, Qt.UniqueConnection)
+                # Check if already connected to avoid runtime warnings
+                if not hasattr(self, '_is_level_connected'):
+                    self._is_level_connected = False
+                
+                if not self._is_level_connected:
+                    self.audio_manager.audio_level_changed.connect(self.update_level_meter_value, Qt.UniqueConnection)
+                    self._is_level_connected = True
             except RuntimeError:
                 # Already connected
+                self._is_level_connected = True
                 pass
         except Exception as e:
             print(f"Error starting monitoring: {e}")
@@ -653,10 +660,14 @@ class AudioTab(QWidget):
                 self.device_monitor_timer.stop()
             if hasattr(self, 'level_timer'):
                 self.level_timer.stop()
-            try:
-                self.audio_manager.audio_level_changed.disconnect(self.update_level_meter_value)
-            except:
-                pass
+            
+            # Only disconnect if we know we are connected
+            if hasattr(self, '_is_level_connected') and self._is_level_connected:
+                try:
+                    self.audio_manager.audio_level_changed.disconnect(self.update_level_meter_value)
+                    self._is_level_connected = False
+                except Exception:
+                    pass
         except Exception as e:
             print(f"Error during AudioTab cleanup: {e}")
 

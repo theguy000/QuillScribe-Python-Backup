@@ -53,8 +53,15 @@ class SettingsDialog(QDialog):
 
         # Connect to theme manager for live theme updates BEFORE applying initial theme
         # This ensures the dialog receives the theme_changed signal during initialization
+        # Connect to theme manager for live theme updates BEFORE applying initial theme
+        # This ensures the dialog receives the theme_changed signal during initialization
         theme_manager = get_theme_manager()
-        theme_manager.theme_changed.connect(self._on_theme_changed)
+        self._is_theme_connected = False
+        try:
+            theme_manager.theme_changed.connect(self._on_theme_changed)
+            self._is_theme_connected = True
+        except Exception as e:
+            print(f"Error connecting theme signal: {e}")
 
         # Apply initial theme
         initial_theme = self.config_manager.get_setting("ui/theme", "white")
@@ -764,7 +771,9 @@ class SettingsDialog(QDialog):
             # Disconnect from theme manager to avoid calls on deleted objects
             try:
                 theme_manager = get_theme_manager()
-                theme_manager.theme_changed.disconnect(self._on_theme_changed)
+                if hasattr(self, '_is_theme_connected') and self._is_theme_connected:
+                    theme_manager.theme_changed.disconnect(self._on_theme_changed)
+                    self._is_theme_connected = False
             except Exception:
                 pass
         event.accept()
