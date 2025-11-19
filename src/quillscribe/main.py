@@ -12,8 +12,10 @@ from PySide6.QtWidgets import (
     QPushButton, QLabel, QGraphicsDropShadowEffect, QSizePolicy, QMessageBox,
     QSystemTrayIcon, QMenu
 )
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher, Slot
-from PySide6.QtGui import QPainter, QPen, QBrush, QColor, QFont, QIcon, QPixmap, QShortcut, QKeySequence
+from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher, Slot, Qt
+from PySide6.QtGui import (QIcon, QAction, QColor, QPalette, QPainter, QPen, QBrush,
+                         QRadialGradient, QLinearGradient, QFont, QCursor,
+                         QPainterPath, QRegion, QShortcut, QKeySequence)
 
 try:
     import ctypes  # type: ignore
@@ -254,7 +256,7 @@ from .frozen_compat import get_base_path
 
 
 class BreathingMicrophone(QWidget):
-    """Beautiful breathing microphone widget with smooth animations"""
+    """Beautiful breathing microphone widget with smooth Siri-style ribbon animations"""
 
     # Signal for when microphone is clicked
     clicked = Signal()
@@ -278,11 +280,24 @@ class BreathingMicrophone(QWidget):
         self.animation.setEasingCurve(QEasingCurve.Type.InOutSine)
         self.animation.setLoopCount(-1)
 
-        # Wave animation state for circular waveform while recording
-        self.wave_phase = 0.0
+        # Ribbon animation state (Siri-style)
+        # List of dicts: phase, speed_factor, color_alpha, amplitude_factor, color_hex
+        self.ribbon_waves = [
+            {"phase": 0.0, "speed": 1.0, "alpha": 40, "amp": 1.0, "color": "#00FFFF"},  # Cyan
+            {"phase": 2.0, "speed": 1.2, "alpha": 60, "amp": 0.8, "color": "#007AFF"},  # Blue
+            {"phase": 4.0, "speed": 0.8, "alpha": 30, "amp": 1.2, "color": "#AF52DE"},  # Purple
+        ]
+        
         self.wave_timer = QTimer(self)
-        self.wave_timer.setInterval(33)  # ~30 FPS
+        self.wave_timer.setInterval(16)  # ~60 FPS for smoother ribbons
         self.wave_timer.timeout.connect(self.advance_wave)
+
+        # Theme integration
+        self.current_theme_colors = {"primary": "#800080"}  # Default fallback
+        theme_manager = get_theme_manager()
+        theme_manager.theme_changed.connect(self.update_theme_colors)
+        # Initialize with current theme
+        self.update_theme_colors(theme_manager.get_current_theme(), theme_manager.is_dark_theme())
 
         # Drop shadow effect
         shadow = QGraphicsDropShadowEffect()
@@ -290,6 +305,13 @@ class BreathingMicrophone(QWidget):
         shadow.setColor(QColor(0, 0, 0, 50))
         shadow.setOffset(0, 5)
         self.setGraphicsEffect(shadow)
+
+    @Slot(str, bool)
+    def update_theme_colors(self, theme_name: str, is_dark: bool):
+        """Update internal color state when theme changes"""
+        theme_manager = get_theme_manager()
+        self.current_theme_colors = theme_manager.get_theme_colors(theme_name)
+        self.update()
 
     # Property for animation
     def getScaleFactor(self):
@@ -319,7 +341,7 @@ class BreathingMicrophone(QWidget):
         self.update()
 
     def start_recording_breathing(self):
-        """Enable circular waveform while recording; mic remains static."""
+        """Enable ribbon animation while recording; mic remains static."""
         self.is_recording = True
         self.animation.stop()
         self.scale_factor = 1.0
@@ -327,7 +349,7 @@ class BreathingMicrophone(QWidget):
         self.update()  # Force visual refresh
 
     def stop_recording(self):
-        """Stop recording and clear waveform (mic stays static)."""
+        """Stop recording and clear animation (mic stays static)."""
         self.is_recording = False
         self.wave_timer.stop()
         self.animation.stop()
@@ -340,15 +362,27 @@ class BreathingMicrophone(QWidget):
         level = max(0.0, min(1.0, level))
         self.level_smoothed = (0.85 * self.level_smoothed) + (0.15 * level)
         self.audio_level = self.level_smoothed
-        # Intentionally avoid tying scale to audio level to prevent goofy movement
 
     def advance_wave(self):
-        """Advance waveform phase for smooth motion while recording."""
-        # Speed lightly influenced by amplified level
+        """Advance ribbon phases for organic motion."""
+        # Base speed
+        base_speed = 0.05
+        # Audio reactivity: faster motion with louder audio
         amplified_level = min(1.0, self.audio_level * self.animation_strength)
-        speed = 0.15 + (amplified_level * 0.5)
-        self.wave_phase = (self.wave_phase + speed) % (2 * math.pi)
+        reactivity = amplified_level * 0.1
+        
+        for wave in self.ribbon_waves:
+            # Each wave moves at its own speed plus shared reactivity
+            speed = (base_speed * wave["speed"]) + reactivity
+            wave["phase"] = (wave["phase"] + speed) % (2 * math.pi)
+            
         self.update()
+
+    def mouseReleaseEvent(self, event):
+        """Handle mouse click to toggle recording."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -360,34 +394,80 @@ class BreathingMicrophone(QWidget):
         base_radius = min(self.width(), self.height()) // 3
         radius = int(base_radius * self.scale_factor)
 
-        # Create gradient background
+        # Determine colors based on state
         if self.is_recording:
-            # Recording state - brand purple hues
-            outer_color = QColor(128, 0, 128, 30)  # Purple, subtle
-            middle_color = QColor(128, 0, 128, 60)
-            inner_color = QColor(128, 0, 128, 100)
+            # Use theme primary color for mic only
             mic_color = QColor(255, 255, 255)
         else:
-            # Idle state - elegant grey gradient
-            outer_color = QColor(128, 128, 128, 20)
-            middle_color = QColor(100, 100, 100, 40)
-            inner_color = QColor(80, 80, 80, 80)
+            # Idle state - elegant grey
+            base_color = QColor(128, 128, 128)
             mic_color = QColor(220, 220, 220)
 
-        # Draw concentric circles for depth
-        painter.setBrush(QBrush(outer_color))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center_x - radius - 20, center_y - radius - 20,
-                          (radius + 20) * 2, (radius + 20) * 2)
+        # Draw Siri-style ribbons if recording
+        if self.is_recording and self.show_waveform:
+            amplified_level = min(1.0, self.audio_level * self.animation_strength)
+            
+            # Draw multiple overlapping ribbons
+            for i, wave in enumerate(self.ribbon_waves):
+                path = QPainterPath()
+                
+                # Dynamic radius based on audio level and wave properties
+                # Breathing effect: base size + audio reaction + wave variation
+                wave_amp = wave["amp"] * (10 + (amplified_level * 20))
+                current_radius = radius + 10 + (amplified_level * 15)
+                
+                # Create a "blob" or organic circle shape
+                points = 90  # Increased points for smoother curves
+                for j in range(points + 1):
+                    angle = (j / points) * 2 * math.pi
+                    
+                    # Refined math for "shimmering circle" instead of "fan"
+                    # Use multiple lower-amplitude sine waves for subtle complexity
+                    # Base wave (slow rotation) + Detail wave (faster ripple)
+                    # FIXED: Used integer phase multipliers (2 instead of 1.5) to prevent "snapping" on loop
+                    r_mod = (math.sin(angle * 3 + wave["phase"]) * 0.5 + 
+                             math.sin(angle * 6 - wave["phase"] * 2) * 0.2)
+                    
+                    # Scale modulation by amplitude but keep it subtle relative to radius
+                    r = current_radius + (r_mod * wave_amp * 0.6)
+                    
+                    x = center_x + r * math.cos(angle)
+                    y = center_y + r * math.sin(angle)
+                    
+                    if j == 0:
+                        path.moveTo(x, y)
+                    else:
+                        path.lineTo(x, y)
+                
+                path.closeSubpath()
+                
+                # Fill with specific wave color and varying opacity
+                color = QColor(wave["color"])
+                # Modulate alpha with audio level for "glowing" pulse
+                pulse = 0.8 + (0.2 * math.sin(wave["phase"] * 2))
+                # significantly increased base alpha for visibility
+                alpha = int(wave["alpha"] * 2.5 * (1.0 + amplified_level) * pulse)
+                color.setAlpha(min(200, alpha))  # Cap at 200 to keep some transparency
+                
+                painter.setBrush(QBrush(color))
+                
+                # Add a thin stroke for better definition
+                stroke_color = QColor(wave["color"])
+                stroke_color.setAlpha(min(255, int(alpha * 1.2)))
+                painter.setPen(QPen(stroke_color, 1.5, Qt.PenStyle.SolidLine))
+                
+                painter.drawPath(path)
 
-        painter.setBrush(QBrush(middle_color))
-        painter.drawEllipse(center_x - radius - 10, center_y - radius - 10,
-                          (radius + 10) * 2, (radius + 10) * 2)
+        # Draw static background circles if not recording or as base
+        if not self.is_recording:
+            outer_color = QColor(base_color)
+            outer_color.setAlpha(20)
+            painter.setBrush(QBrush(outer_color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(center_x - radius - 10, center_y - radius - 10,
+                              (radius + 10) * 2, (radius + 10) * 2)
 
-        painter.setBrush(QBrush(inner_color))
-        painter.drawEllipse(center_x - radius, center_y - radius, radius * 2, radius * 2)
-
-        # Draw microphone icon
+        # Draw microphone icon (always on top)
         painter.setPen(QPen(mic_color, 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
         painter.setBrush(QBrush(mic_color))
 
@@ -403,59 +483,6 @@ class BreathingMicrophone(QWidget):
         stand_y = mic_y + mic_height
         painter.drawLine(center_x, stand_y, center_x, stand_y + 15)
         painter.drawLine(center_x - 8, stand_y + 15, center_x + 8, stand_y + 15)
-
-        # Circular waveform around mic while recording
-        if self.is_recording and self.show_waveform:
-            num_bars = 64
-            inner_offset = 10
-            base_ring_radius = radius + inner_offset
-            # Visual parameters responsive to amplified level
-            amplified_level = min(1.0, self.audio_level * self.animation_strength)
-            max_bar_length = 14 + int(10 * amplified_level)
-            # Ensure waveform fits fully inside the widget (no clipping)
-            available_half = min(self.width(), self.height()) // 2 - 2
-            max_possible_len = max(0, available_half - base_ring_radius)
-            effective_max_bar_length = min(max_bar_length, max_possible_len)
-            # If too small, reduce min length as well
-            min_bar_length = 3 if effective_max_bar_length >= 3 else max(0, effective_max_bar_length // 2)
-            # Soft glow ring behind waveform (brand purple)
-            glow_alpha = int(90 * amplified_level)
-            if glow_alpha > 0:
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.setPen(QPen(QColor(128, 0, 128, glow_alpha), 8, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-                painter.drawEllipse(center_x - (base_ring_radius + effective_max_bar_length),
-                                    center_y - (base_ring_radius + effective_max_bar_length),
-                                    2 * (base_ring_radius + effective_max_bar_length),
-                                    2 * (base_ring_radius + effective_max_bar_length))
-            # Bars
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-
-            for i in range(num_bars):
-                theta = (2 * math.pi * i) / num_bars
-                # Wave pattern around circle; amplitude scales with amplified audio level
-                wave = 0.5 * (1.0 + math.sin(self.wave_phase + theta * 2.0))  # 0..1
-                # Apply animation strength amplification, but cap at 1.0 to prevent overshooting
-                amplified_level = min(1.0, self.audio_level * self.animation_strength)
-                length = min_bar_length + (effective_max_bar_length - min_bar_length) * amplified_level * wave
-
-                start_r = base_ring_radius
-                end_r = base_ring_radius + length
-
-                x1 = center_x + int(start_r * math.cos(theta))
-                y1 = center_y + int(start_r * math.sin(theta))
-                x2 = center_x + int(end_r * math.cos(theta))
-                y2 = center_y + int(end_r * math.sin(theta))
-                # Per-bar alpha and width for nicer depth (using amplified level)
-                bar_alpha = 40 + int(60 * wave * amplified_level)
-                bar_width = 2 + int(2 * amplified_level)
-                painter.setPen(QPen(QColor(128, 0, 128, bar_alpha), bar_width, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-                painter.drawLine(x1, y1, x2, y2)
-
-    def mousePressEvent(self, event):
-        """Handle mouse press events to make microphone clickable"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit()
-        super().mousePressEvent(event)
 
 
 class ModernButton(QPushButton):
