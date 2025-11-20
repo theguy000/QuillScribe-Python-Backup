@@ -29,7 +29,7 @@ from .modern_widgets import (
 
 
 class SettingsDialog(QDialog):
-    """Beautiful settings dialog with tabbed interface"""
+    """Beautiful settings dialog with sidebar interface"""
 
     # Signal emitted when settings are saved
     settings_saved = Signal()
@@ -53,8 +53,6 @@ class SettingsDialog(QDialog):
 
         # Connect to theme manager for live theme updates BEFORE applying initial theme
         # This ensures the dialog receives the theme_changed signal during initialization
-        # Connect to theme manager for live theme updates BEFORE applying initial theme
-        # This ensures the dialog receives the theme_changed signal during initialization
         theme_manager = get_theme_manager()
         self._is_theme_connected = False
         try:
@@ -72,52 +70,26 @@ class SettingsDialog(QDialog):
         self.setFixedSize(900, 640)
         self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        # Main layout is now Horizontal: Sidebar | Content Area
+        main_layout = QHBoxLayout(self)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Top header bar
-        header = QWidget()
-        header.setObjectName("settings_header")
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(16, 10, 16, 10)
-        header_layout.setSpacing(8)
-
-        title_container = QVBoxLayout()
-        title_container.setContentsMargins(0, 0, 0, 0)
-        title_label = QLabel("QuillScribe Settings")
-        title_label.setObjectName("settings_title")
-        subtitle_label = QLabel("Tune QuillScribe to match how you work.")
-        subtitle_label.setObjectName("settings_subtitle")
-        title_container.addWidget(title_label)
-        title_container.addWidget(subtitle_label)
-        header_layout.addLayout(title_container)
-        header_layout.addStretch()
-
-        self.header_close_button = QPushButton()
-        self.header_close_button.setObjectName("settings_header_close")
-        self.header_close_button.setText("")
-        self.header_close_button.setFixedSize(28, 28)
-        self.header_close_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.header_close_button.clicked.connect(self.reject)
-        header_layout.addWidget(self.header_close_button)
-
-        layout.addWidget(header)
-
-        # Main content area with sidebar and content
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(0)
-        content_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Left sidebar navigation
+        # --- Left Sidebar ---
         self.sidebar = QWidget()
-        self.sidebar.setFixedWidth(200)
+        self.sidebar.setFixedWidth(220) # Slightly wider for better spacing
         self.sidebar.setObjectName("sidebar")
         sidebar_layout = QVBoxLayout(self.sidebar)
-        sidebar_layout.setSpacing(4)
-        sidebar_layout.setContentsMargins(8, 8, 8, 8)
+        sidebar_layout.setSpacing(8)
+        sidebar_layout.setContentsMargins(12, 24, 12, 24)
 
-        # Create navigation buttons
+        # Sidebar Title
+        title_label = QLabel("QuillScribe")
+        title_label.setObjectName("sidebar_title")
+        title_label.setStyleSheet("font-size: 20px; font-weight: 700; padding-left: 8px; margin-bottom: 16px;")
+        sidebar_layout.addWidget(title_label)
+
+        # Navigation Buttons
         self.nav_buttons = []
         nav_items = [
             ("Audio", "audio"),
@@ -130,33 +102,71 @@ class SettingsDialog(QDialog):
         for idx, (text, icon_name) in enumerate(nav_items):
             btn = QPushButton(text)
             btn.setIcon(get_icon(icon_name, 16))
-            btn.setIconSize(QSize(16, 16))
+            btn.setIconSize(QSize(18, 18))
             btn.setCheckable(True)
             btn.setObjectName(f"nav_btn_{idx}")
             btn.clicked.connect(lambda checked, i=idx: self.switch_page(i))
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setFixedHeight(40)
+            btn.setFixedHeight(42) # Taller buttons
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             sidebar_layout.addWidget(btn)
             self.nav_buttons.append(btn)
 
         sidebar_layout.addStretch()
-        content_layout.addWidget(self.sidebar)
+        
+        # Version/Info at bottom of sidebar
+        version_label = QLabel("v1.0.0")
+        version_label.setObjectName("version_label")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        version_label.setStyleSheet("color: #6c757d; font-size: 11px;")
+        sidebar_layout.addWidget(version_label)
 
-        # Right content area with stacked widget
+        main_layout.addWidget(self.sidebar)
+
+        # --- Right Content Area ---
+        content_container = QWidget()
+        content_container.setObjectName("content_container")
+        content_layout = QVBoxLayout(content_container)
+        content_layout.setSpacing(0)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 1. Content Header
+        header = QWidget()
+        header.setObjectName("settings_header")
+        header.setFixedHeight(60) # Fixed height header
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(32, 0, 24, 0) # Align with content
+        header_layout.setSpacing(16)
+
+        self.page_title = QLabel("Settings")
+        self.page_title.setObjectName("page_title")
+        self.page_title.setStyleSheet("font-size: 18px; font-weight: 600;")
+        header_layout.addWidget(self.page_title)
+        
+        header_layout.addStretch()
+
+        self.header_close_button = QPushButton()
+        self.header_close_button.setObjectName("settings_header_close")
+        self.header_close_button.setText("")
+        self.header_close_button.setFixedSize(28, 28)
+        self.header_close_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.header_close_button.clicked.connect(self.reject)
+        header_layout.addWidget(self.header_close_button)
+
+        content_layout.addWidget(header)
+
+        # 2. Main Content Stack
         self.content_stack = QWidget()
         self.content_stack.setObjectName("content_stack")
         stack_layout = QVBoxLayout(self.content_stack)
-        # Minimal margins so tab content aligns closely with dialog edges
         stack_layout.setContentsMargins(0, 0, 0, 0)
         stack_layout.setSpacing(0)
 
-        # Create stacked widget to hold all pages
-        from PySide6.QtWidgets import QStackedWidget
+        # Create stacked widget
         self.stacked_widget = QStackedWidget()
         self.stacked_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # Create tabs - pass audio manager to audio tab for shared state
+        # Create tabs
         audio_manager = getattr(self.parent(), 'audio_manager', None) if self.parent() else None
         self.audio_tab = AudioTab(self.config_manager, audio_manager)
         self.whisper_tab = WhisperTab(self.config_manager)
@@ -179,16 +189,14 @@ class SettingsDialog(QDialog):
         self.stacked_widget.addWidget(self.statistics_scroll)
 
         stack_layout.addWidget(self.stacked_widget)
-        content_layout.addWidget(self.content_stack, 1)
+        content_layout.addWidget(self.content_stack, 1) # Give it all remaining space
 
-        layout.addLayout(content_layout)
-
-        # Footer action bar
+        # 3. Footer Action Bar
         footer = QWidget()
         footer.setObjectName("settings_footer")
         footer_layout = QHBoxLayout(footer)
-        footer_layout.setContentsMargins(16, 8, 16, 12)
-        footer_layout.setSpacing(8)
+        footer_layout.setContentsMargins(32, 16, 32, 24)
+        footer_layout.setSpacing(12)
         footer_layout.addStretch()
 
         self.cancel_button = QPushButton("Cancel")
@@ -202,11 +210,16 @@ class SettingsDialog(QDialog):
         footer_layout.addWidget(self.cancel_button)
         footer_layout.addWidget(self.save_button)
 
-        layout.addWidget(footer)
+        content_layout.addWidget(footer)
+
+        main_layout.addWidget(content_container, 1) # Content takes remaining width
 
         # Connect buttons
         self.cancel_button.clicked.connect(self.reject)
         self.save_button.clicked.connect(self.save_and_close)
+
+        # Set initial page
+        self.switch_page(0)
 
     def _on_theme_changed(self, theme_name: str, is_dark: bool):
         """Slot: handle theme_changed signal to update this dialog's theme."""
@@ -228,6 +241,11 @@ class SettingsDialog(QDialog):
         # Update button states
         for i, btn in enumerate(self.nav_buttons):
             btn.setChecked(i == index)
+        
+        # Update header title
+        titles = ["Audio Settings", "Whisper AI", "Output Settings", "UI Customization", "Statistics"]
+        if 0 <= index < len(titles):
+            self.page_title.setText(titles[index])
 
     def _create_scroll_area(self, widget):
         """Create a scroll area with custom themed scrollbars for the given widget"""
@@ -275,19 +293,6 @@ class SettingsDialog(QDialog):
     def apply_theme(self, theme_name):
         """
         Apply the selected theme to the dialog background and all group boxes.
-        
-        This method is called:
-        1. During dialog initialization with the saved theme
-        2. Automatically via theme_changed signal when theme is changed anywhere
-        3. This ensures immediate, live theme updates across all settings tabs
-        
-        The method updates:
-        - Dialog background gradients
-        - All group boxes, modern widgets (comboboxes, switches, etc.)
-        - Text colors for labels and help text
-        - Icons throughout the dialog
-        - Sidebar navigation
-        - Scrollbar styling
         """
         # Prevent recursion during theme application
         if self._applying_theme:
@@ -308,31 +313,43 @@ class SettingsDialog(QDialog):
             self.setUpdatesEnabled(False)
 
             colors = self._get_theme_colors(theme_name)
+            is_dark = self._is_dark_color(colors["primary"])
 
-            # Overall dialog background closer to light Tailwind surface
+            # Overall dialog background
             self.setStyleSheet(f"""
                 QDialog {{
                     background-color: {colors["secondary"]};
                     color: {colors["text_primary"]};
                     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 }}
+            """)
+
+            # Apply theme to sidebar navigation
+            self.apply_sidebar_theme(theme_name)
+
+            # Apply theme to Content Header & Footer
+            header_bg = colors["secondary"] # Match content bg
+            border_color = colors["border"]
+            
+            self.findChild(QWidget, "settings_header").setStyleSheet(f"""
                 QWidget#settings_header {{
-                    background-color: {self._lighten_color(colors["secondary"], 0.02)};
-                    border-bottom: 1px solid {colors["border"]};
+                    background-color: {header_bg};
+                    border-bottom: 1px solid {border_color};
                 }}
-                QLabel#settings_title {{
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: {colors["text_primary"]};
-                }}
-                QLabel#settings_subtitle {{
-                    font-size: 12px;
-                    color: {colors["text_muted"]};
-                }}
+            """)
+            
+            self.findChild(QWidget, "settings_footer").setStyleSheet(f"""
                 QWidget#settings_footer {{
-                    background-color: {self._lighten_color(colors["secondary"], 0.02)};
-                    border-top: 1px solid {colors["border"]};
+                    background-color: {header_bg};
+                    border-top: 1px solid {border_color};
                 }}
+            """)
+            
+            # Update titles
+            self.page_title.setStyleSheet(f"color: {colors['text_primary']}; font-size: 18px; font-weight: 600;")
+            
+            # Close button
+            self.header_close_button.setStyleSheet(f"""
                 QPushButton#settings_header_close {{
                     border-radius: 14px;
                     border: none;
@@ -342,12 +359,12 @@ class SettingsDialog(QDialog):
                     background-color: {self._darken_color(colors["secondary"], 0.06)};
                 }}
             """)
+            self.header_close_button.setIcon(get_icon('cancel', 14, QColor(colors['text_secondary'])))
 
             # Apply to all group boxes in all tabs
             self._apply_theme_to_group_boxes(colors)
 
             # Apply theme to all modern widgets
-            is_dark = self._is_dark_color(colors["primary"])
             # ComboBox needs accent/border injection
             for combo in self.findChildren(ModernComboBox):
                 combo.apply_theme(is_dark, colors["accent"], colors["border"])
@@ -371,16 +388,12 @@ class SettingsDialog(QDialog):
                 self._update_api_key_toggle_icon()
 
             # Update important form labels for dark/light (specific styling for form labels)
-            is_dark = self._is_dark_color(colors["primary"])
             label_primary = "#ffffff" if is_dark else "#495057"
             muted = "#e0e0e0" if is_dark else "#6c757d"
             for lbl in self.findChildren(QLabel):
                 name = lbl.objectName()
                 if name in {"form_label", "theme_label", "shortcut_label"}:
                     lbl.setStyleSheet(f"QLabel {{ color: {label_primary}; font-size: 13px; font-weight: 500; background-color: transparent; }}")
-
-            # Apply theme to sidebar navigation
-            self.apply_sidebar_theme(theme_name)
 
             # Apply theme to scrollbars and their backgrounds
             scroll_areas = []
@@ -472,6 +485,7 @@ class SettingsDialog(QDialog):
         # Ensure colors are available in this method since it references them
         theme_manager = get_theme_manager()
         colors = self._get_theme_colors(theme_manager.get_current_theme())
+        
         # Update sidebar navigation icons
         if hasattr(self, 'nav_buttons'):
             nav_icons = [
@@ -685,29 +699,36 @@ class SettingsDialog(QDialog):
 
         # Create appropriate accent colors for sidebar
         if is_dark:
-            sidebar_bg = self._darken_color(colors["primary"], 0.15)
-            active_bg = self._lighten_color(colors["primary"], 0.2)
-            hover_bg = self._lighten_color(colors["primary"], 0.1)
-            separator_color = self._lighten_color(colors["primary"], 0.15)
+            sidebar_bg = self._darken_color(colors["primary"], 0.08) # Slightly darker than content
+            active_bg = self._lighten_color(colors["primary"], 0.15)
+            hover_bg = self._lighten_color(colors["primary"], 0.08)
+            text_color = "#e0e0e0"
+            title_color = "#ffffff"
         else:
-            sidebar_bg = self._darken_color(colors["primary"], 0.04)
-            active_bg = "#4A90E2"  # Accent color for active
-            hover_bg = self._darken_color(colors["primary"], 0.08)
-            separator_color = self._darken_color(colors["primary"], 0.08)
+            sidebar_bg = "#f8f9fa" # Light gray sidebar
+            active_bg = "#e9ecef" # Slightly darker active
+            hover_bg = "#f1f3f4"
+            text_color = "#495057"
+            title_color = "#212529"
 
-        # Style the sidebar container to match Tailwind-style nav (no borders)
+        # Style the sidebar container
         self.sidebar.setStyleSheet(f"""
             QWidget#sidebar {{
                 background-color: {sidebar_bg};
-                border: none;
+                border-right: 1px solid {colors["border"]};
+            }}
+            QLabel#sidebar_title {{
+                color: {title_color};
+            }}
+            QLabel#version_label {{
+                color: {colors["text_muted"]};
             }}
         """)
 
-        # Style the content area as a clean surface (no borders)
-        self.content_stack.setStyleSheet(f"""
-            QWidget#content_stack {{
+        # Style the content area container
+        self.findChild(QWidget, "content_container").setStyleSheet(f"""
+            QWidget#content_container {{
                 background-color: {colors["secondary"]};
-                border: none;
             }}
         """)
 
@@ -736,14 +757,14 @@ class SettingsDialog(QDialog):
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;
-                    color: {colors["text_secondary"]};
+                    color: {text_color};
                     border: none;
-                    border-radius: 999px;
-                    padding: 8px 12px;
+                    border-radius: 6px;
+                    padding: 8px 16px;
                     text-align: left;
-                    font-size: 13px;
+                    font-size: 14px;
                     font-weight: 500;
-                    margin: 2px 4px;
+                    margin-bottom: 2px;
                 }}
                 QPushButton:hover {{
                     background-color: {hover_bg};
@@ -751,11 +772,8 @@ class SettingsDialog(QDialog):
                 }}
                 QPushButton:checked {{
                     background-color: {active_bg};
-                    color: {"#ffffff" if not is_dark else colors["text_primary"]};
+                    color: {colors["text_primary"]};
                     font-weight: 600;
-                }}
-                QPushButton:checked:hover {{
-                    background-color: {active_bg};
                 }}
             """)
 
