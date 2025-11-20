@@ -44,36 +44,49 @@ class WhisperTab(QWidget):
         layout.setContentsMargins(24, 24, 24, 24)
         layout.setSpacing(24)
 
-        # 1. Header / Mode Selection (Tabs)
-        self.mode_selector = ModernTabBar(["Cloud API", "Local Device"])
+        # 2. Mode Selection (Tabs) - Updated names
+        self.mode_selector = ModernTabBar(["Cloud Compute", "Local Inference"])
         self.mode_selector.tabChanged.connect(self.on_mode_changed)
         
         layout.addWidget(self.mode_selector)
 
-        # 2. Content Area (Stacked Widget)
+        # 3. Content Area (Stacked Widget)
         self.content_stack = QStackedWidget()
         
-        # --- Page 0: API Settings ---
+        # --- Page 0: API Settings (Cloud Compute) ---
         self.api_page = QWidget()
-        api_page_layout = QVBoxLayout(self.api_page)
-        api_page_layout.setContentsMargins(0, 10, 0, 0)
-        api_page_layout.setSpacing(24)
+        # Use HBox for 2-column layout
+        api_page_main_layout = QHBoxLayout(self.api_page)
+        api_page_main_layout.setContentsMargins(0, 10, 0, 0)
+        api_page_main_layout.setSpacing(40) # Gap between columns
         
-        # API Key Section
-        api_key_container = QWidget()
-        api_key_layout = QVBoxLayout(api_key_container)
-        api_key_layout.setContentsMargins(0, 0, 0, 0)
-        api_key_layout.setSpacing(8)
+        # Left Column: API Endpoint Configuration
+        left_col = QWidget()
+        left_col_layout = QVBoxLayout(left_col)
+        left_col_layout.setContentsMargins(0, 0, 0, 0)
+        left_col_layout.setSpacing(24)
+        left_col_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        # API Section
+        api_section = QWidget()
+        api_section_layout = QVBoxLayout(api_section)
+        api_section_layout.setContentsMargins(0, 0, 0, 0)
+        api_section_layout.setSpacing(16)
         
         # Header
-        api_header = QLabel("API Configuration")
-        api_header.setStyleSheet("font-size: 14px; font-weight: 600;")
-        api_key_layout.addWidget(api_header)
+        api_header = QLabel("API Endpoint Configuration")
+        api_header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        api_section_layout.addWidget(api_header)
         
-        # API Key Field
+        # API Key Field Container
+        key_container = QWidget()
+        key_layout = QVBoxLayout(key_container)
+        key_layout.setContentsMargins(0, 0, 0, 0)
+        key_layout.setSpacing(8)
+        
         key_label = QLabel("OpenAI API Key")
-        key_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
-        api_key_layout.addWidget(key_label)
+        key_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
+        key_layout.addWidget(key_label)
         
         key_input_row = QHBoxLayout()
         key_input_row.setSpacing(8)
@@ -89,60 +102,50 @@ class WhisperTab(QWidget):
         key_input_row.addWidget(self.api_key_edit)
         key_input_row.addWidget(self.api_key_toggle_btn)
         
-        api_key_layout.addLayout(key_input_row)
+        key_layout.addLayout(key_input_row)
         
         # Helper text
-        api_help = QLabel("Get your API key from: <a href='https://platform.openai.com/api-keys' style='color: #4A90E2;'>platform.openai.com</a>")
+        api_help = QLabel("Acquire key: <a href='https://platform.openai.com/api-keys' style='color: #4A90E2;'>platform.openai.com</a>")
         api_help.setOpenExternalLinks(True)
-        api_help.setStyleSheet("font-size: 11px; color: #6c757d;")
-        api_key_layout.addWidget(api_help)
+        api_help.setStyleSheet("font-size: 12px; color: #6c757d; margin-top: 4px;")
+        key_layout.addWidget(api_help)
         
-        api_page_layout.addWidget(api_key_container)
+        api_section_layout.addWidget(key_container)
+        left_col_layout.addWidget(api_section)
         
-        # Model & Language Section
-        model_container = QWidget()
-        model_layout = QVBoxLayout(model_container)
-        model_layout.setContentsMargins(0, 0, 0, 0)
-        model_layout.setSpacing(8)
+        # Right Column: Transcription Parameters
+        right_col = QWidget()
+        right_col_layout = QVBoxLayout(right_col)
+        right_col_layout.setContentsMargins(0, 0, 0, 0)
+        right_col_layout.setSpacing(24)
+        right_col_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        
+        # Params Section
+        params_section = QWidget()
+        params_layout = QVBoxLayout(params_section)
+        params_layout.setContentsMargins(0, 0, 0, 0)
+        params_layout.setSpacing(16)
         
         # Header
-        model_header = QLabel("Transcription Settings")
-        model_header.setStyleSheet("font-size: 14px; font-weight: 600; margin-top: 16px;")
-        model_layout.addWidget(model_header)
+        params_header = QLabel("Transcription Parameters")
+        params_header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        params_layout.addWidget(params_header)
         
-        # Side-by-Side Dropdowns
-        dropdowns_row = QHBoxLayout()
-        dropdowns_row.setSpacing(16)
+        # Model Field
+        model_field = QWidget()
+        model_field_layout = QVBoxLayout(model_field)
+        model_field_layout.setContentsMargins(0, 0, 0, 0)
+        model_field_layout.setSpacing(8)
         
-        # Left: Model
-        model_col = QVBoxLayout()
-        model_col.setSpacing(6)
-        model_label = QLabel("Model")
-        model_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+        model_label = QLabel("Inference Model")
+        model_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
         
         self.api_model_combo = ModernComboBox()
         self.populate_api_model_combo()
         self.api_model_combo.currentIndexChanged.connect(self.on_api_model_changed)
         
-        model_col.addWidget(model_label)
-        model_col.addWidget(self.api_model_combo)
-        dropdowns_row.addLayout(model_col)
-        
-        # Right: Language
-        lang_col = QVBoxLayout()
-        lang_col.setSpacing(6)
-        lang_label = QLabel("Language")
-        lang_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
-        
-        self.api_language_combo = ModernComboBox()
-        self.populate_api_language_combo()
-        self.api_language_combo.currentIndexChanged.connect(self.on_api_language_changed)
-        
-        lang_col.addWidget(lang_label)
-        lang_col.addWidget(self.api_language_combo)
-        dropdowns_row.addLayout(lang_col)
-        
-        model_layout.addLayout(dropdowns_row)
+        model_field_layout.addWidget(model_label)
+        model_field_layout.addWidget(self.api_model_combo)
         
         # Pricing Badge
         self.api_pricing_info = QLabel()
@@ -156,14 +159,38 @@ class WhisperTab(QWidget):
             padding: 4px 8px;
             margin-top: 4px;
         """)
-        model_layout.addWidget(self.api_pricing_info)
+        model_field_layout.addWidget(self.api_pricing_info)
         
-        api_page_layout.addWidget(model_container)
-        api_page_layout.addStretch()
+        params_layout.addWidget(model_field)
+        
+        # Language Field
+        lang_field = QWidget()
+        lang_field_layout = QVBoxLayout(lang_field)
+        lang_field_layout.setContentsMargins(0, 0, 0, 0)
+        lang_field_layout.setSpacing(8)
+        
+        lang_label = QLabel("Target Language")
+        lang_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
+        
+        self.api_language_combo = ModernComboBox()
+        self.populate_api_language_combo()
+        self.api_language_combo.currentIndexChanged.connect(self.on_api_language_changed)
+        
+        lang_field_layout.addWidget(lang_label)
+        lang_field_layout.addWidget(self.api_language_combo)
+        
+        params_layout.addWidget(lang_field)
+        
+        right_col_layout.addWidget(params_section)
+        
+        # Add columns to main page layout
+        # Use 50/50 split
+        api_page_main_layout.addWidget(left_col, 1)
+        api_page_main_layout.addWidget(right_col, 1)
         
         self.content_stack.addWidget(self.api_page)
         
-        # --- Page 1: Local Settings ---
+        # --- Page 1: Local Settings (Local Inference) ---
         self.local_page = QWidget()
         local_page_layout = QVBoxLayout(self.local_page)
         local_page_layout.setContentsMargins(0, 10, 0, 0)
@@ -190,11 +217,11 @@ class WhisperTab(QWidget):
             local_container = QWidget()
             local_layout = QVBoxLayout(local_container)
             local_layout.setContentsMargins(0, 0, 0, 0)
-            local_layout.setSpacing(8)
+            local_layout.setSpacing(16)
             
             # Header
             local_header = QLabel("Model Selection")
-            local_header.setStyleSheet("font-size: 14px; font-weight: 600;")
+            local_header.setStyleSheet("font-size: 16px; font-weight: 600;")
             local_layout.addWidget(local_header)
             
             # Side-by-Side Dropdowns
@@ -203,9 +230,9 @@ class WhisperTab(QWidget):
             
             # Left: Category
             cat_col = QVBoxLayout()
-            cat_col.setSpacing(6)
+            cat_col.setSpacing(8)
             cat_label = QLabel("Category")
-            cat_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+            cat_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
             
             self.category_combo = ModernComboBox()
             self.populate_category_combo()
@@ -217,9 +244,9 @@ class WhisperTab(QWidget):
             
             # Right: Model
             lmodel_col = QVBoxLayout()
-            lmodel_col.setSpacing(6)
+            lmodel_col.setSpacing(8)
             lmodel_label = QLabel("Model")
-            lmodel_label.setStyleSheet("color: #6c757d; font-size: 12px; font-weight: 500;")
+            lmodel_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
             
             self.model_combo = ModernComboBox()
             self.populate_model_combo()
@@ -233,7 +260,7 @@ class WhisperTab(QWidget):
             
             # Info text
             info_label = QLabel("Larger models are more accurate but require more RAM and run slower.")
-            info_label.setStyleSheet("color: #6c757d; font-size: 11px; margin-top: 4px;")
+            info_label.setStyleSheet("color: #6c757d; font-size: 12px; margin-top: 4px;")
             local_layout.addWidget(info_label)
             
             local_page_layout.addWidget(local_container)

@@ -932,6 +932,7 @@ class ModernSegmentedControl(QWidget):
 class ModernTabBar(QWidget):
     """
     Modern tab bar with text buttons and animated underline.
+    Matches the "Command Center" design style.
     """
     
     tabChanged = Signal(int)
@@ -945,8 +946,9 @@ class ModernTabBar(QWidget):
         # Layout
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(0) # No spacing for coherent look
+        # HTML uses space-x-8 which is ~32px
+        self._layout.setSpacing(32)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         
         # Button Group
         self._group = QButtonGroup(self)
@@ -957,8 +959,9 @@ class ModernTabBar(QWidget):
             btn = QPushButton(text)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-            btn.setFixedHeight(32)
+            # Remove Fixed Policy to allow auto-sizing based on text
+            btn.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+            # btn.setFixedHeight(32) # Removed fixed height, let padding define it
             
             if i == 0:
                 btn.setChecked(True)
@@ -968,10 +971,8 @@ class ModernTabBar(QWidget):
             self._buttons.append(btn)
             
         # Underline (Indicator)
-        # We'll draw this in paintEvent or use a separate widget. 
-        # For simplicity and smooth animation, let's use a separate widget that moves.
         self._indicator = QWidget(self)
-        self._indicator.setFixedHeight(3)
+        self._indicator.setFixedHeight(2) # 2px height matches border-b-2
         self._indicator.hide() # Hidden initially, shown in resizeEvent
         
         # Animation
@@ -1011,7 +1012,8 @@ class ModernTabBar(QWidget):
         btn = self._buttons[self._current_index]
         # Position indicator at bottom of button
         rect = btn.geometry()
-        target_rect = QRect(rect.x(), self.height() - 3, rect.width(), 3)
+        # Indicator should match button width and sit at the very bottom
+        target_rect = QRect(rect.x(), self.height() - 2, rect.width(), 2)
         
         self._indicator.setGeometry(target_rect)
         self._indicator.show()
@@ -1022,7 +1024,7 @@ class ModernTabBar(QWidget):
             
         btn = self._buttons[self._current_index]
         rect = btn.geometry()
-        target_rect = QRect(rect.x(), self.height() - 3, rect.width(), 3)
+        target_rect = QRect(rect.x(), self.height() - 2, rect.width(), 2)
         
         self._anim.stop()
         self._anim.setStartValue(self._indicator.geometry())
@@ -1031,36 +1033,49 @@ class ModernTabBar(QWidget):
 
     def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
         if is_dark:
-            text_color = "#b0b0b0"
-            active_color = "#ffffff"
-            hover_color = "#e0e0e0"
+            text_color = "#b0b0b0"   # Secondary text
+            active_color = accent    # Primary text (accent)
+            hover_color = "#ffffff"  # Hover text
+            border_color = "#555555" # Container border
         else:
-            text_color = "#444746"
-            active_color = "#1a73e8"
-            hover_color = "#1f1f1f"
+            text_color = "#6c757d"   # Secondary text
+            active_color = accent    # Primary text (accent)
+            hover_color = "#212529"  # Hover text
+            border_color = "#dee2e6" # Container border
             
+        # Container styling: Add bottom border to the whole tab bar
+        self.setStyleSheet(f"""
+            ModernTabBar {{
+                border-bottom: 1px solid {border_color};
+            }}
+        """)
+
         # Indicator color
-        self._indicator.setStyleSheet(f"background-color: {accent}; border-radius: 1px;")
+        self._indicator.setStyleSheet(f"background-color: {accent}; border-radius: 0px;")
         
         # Button styles
+        # Matches HTML: py-3 (12px vertical)
+        # px-1 was requested but caused clipping, so increased to 12px for safety
         for btn in self._buttons:
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent;
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 0px;
                     color: {text_color};
-                    font-family: 'Segoe UI', sans-serif;
+                    font-family: 'Inter', 'Segoe UI', sans-serif;
                     font-size: 14px;
-                    font-weight: 600;
-                    padding: 0 8px;
+                    font-weight: 500;
+                    padding: 12px 12px;
+                    margin-bottom: 1px; /* Space for the container border */
                 }}
                 QPushButton:hover {{
                     color: {hover_color};
-                    background-color: {'rgba(255, 255, 255, 0.04)' if is_dark else 'rgba(0, 0, 0, 0.03)'};
+                    background-color: transparent;
                 }}
                 QPushButton:checked {{
                     color: {active_color};
-                    background-color: {'rgba(255, 255, 255, 0.08)' if is_dark else 'rgba(0, 0, 0, 0.05)'};
+                    background-color: transparent;
+                    font-weight: 500;
                 }}
             """)
