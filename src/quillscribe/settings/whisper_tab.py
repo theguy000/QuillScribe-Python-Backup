@@ -280,7 +280,11 @@ class WhisperTab(QWidget):
     def _on_theme_changed(self, is_dark: bool):
         """Apply theme changes to custom widgets"""
         if hasattr(self, 'mode_selector'):
-            self.mode_selector.apply_theme(is_dark)
+            # Get theme colors to pass accent color
+            theme_manager = get_theme_manager()
+            colors = theme_manager.get_theme_colors()
+            accent = colors["accent"]
+            self.mode_selector.apply_theme(is_dark, accent)
         self._update_api_key_toggle_icon()
 
     def on_mode_changed(self, index: int):
