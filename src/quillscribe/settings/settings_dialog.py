@@ -402,12 +402,12 @@ class SettingsDialog(QDialog):
             # Apply theme to all modern widgets
             # ComboBox needs accent/border injection
             for combo in self.findChildren(ModernComboBox):
-                combo.apply_theme(is_dark, colors["accent"], colors["border"])
+                combo.apply_theme(is_dark, colors)
             # Other widgets keep existing signature
             for widget in self.findChildren(ModernLineEdit):
-                widget.apply_theme(is_dark)
+                widget.apply_theme(is_dark, colors)
             for widget in self.findChildren(ModernKeySequenceEdit):
-                widget.apply_theme(is_dark)
+                widget.apply_theme(is_dark, colors)
             theme_manager.apply_text_theming_to_widget(self, theme_name)
 
             # Apply theme to Audio Tab specific elements
@@ -689,6 +689,12 @@ class SettingsDialog(QDialog):
         is_dark = theme_manager.is_dark_theme()
 
         if is_dark:
+            # Calculate widget specific colors
+            # Use secondary (darker) as base for widgets
+            widget_bg = secondary_color
+            # Hover should be slightly lighter than secondary, but not as light/different as primary
+            widget_hover = theme_manager.lighten_color(secondary_color, 0.05)
+            
             return {
                 "primary": primary_color,
                 "secondary": secondary_color,
@@ -698,7 +704,12 @@ class SettingsDialog(QDialog):
                 "border": "#555555",
                 "border_light": "#666666",
                 "accent": "#4A90E2",
-                "accent_hover": "#5BA0F2"
+                "accent_hover": "#5BA0F2",
+                # Widget specific overrides
+                "widget_bg": widget_bg,
+                "widget_hover": widget_hover,
+                "popup_bg": secondary_color, # Match button bg
+                "popup_item_hover": theme_manager.lighten_color(secondary_color, 0.08)
             }
         else:
             return {
@@ -710,7 +721,12 @@ class SettingsDialog(QDialog):
                 "border": "#dee2e6",
                 "border_light": "#adb5bd",
                 "accent": "#4A90E2",
-                "accent_hover": "#357ABD"
+                "accent_hover": "#357ABD",
+                # Widget specific overrides
+                "widget_bg": secondary_color, # Light grey usually
+                "widget_hover": theme_manager.darken_color(secondary_color, 0.05),
+                "popup_bg": "#ffffff",
+                "popup_item_hover": secondary_color
             }
 
     def apply_sidebar_theme(self, theme_name):

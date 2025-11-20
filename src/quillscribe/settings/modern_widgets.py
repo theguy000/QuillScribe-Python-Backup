@@ -38,43 +38,60 @@ class ModernComboBox(QComboBox):
         self.setIconSize(QSize(14, 14))
         self.apply_theme(is_dark=False)
 
-    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2", border: str | None = None):
+    def apply_theme(self, is_dark: bool, colors: dict = None):
         # Material Design Button + Precision Popup Style
         
-        # Dynamic colors based on theme
-        # User requested "active" (resting) color to be the old hover color
-        # and hover color to be "better" (more distinct)
-        
-        if is_dark:
-            bg = "#333333"        # Old hover color (Surface)
-            text_color = "#ffffff"
-            border_color = "#555555"
-            hover_bg = "#404040"  # Lighter surface for hover
-            hover_border = "#777777"
+        # Use provided colors or fallback to defaults
+        if colors:
+            bg = colors.get("secondary", "#f8f9fa")
+            text_color = colors.get("text_primary", "#2c3e50")
+            border_color = colors.get("border", "#e9ecef")
+            hover_bg = colors.get("widget_hover", colors.get("secondary", "#f8f9fa")) # Use specific hover color
+            hover_border = colors.get("border_light", "#dee2e6")
+            accent = colors.get("accent", "#4A90E2")
             
-            popup_bg = "#2c2c2c"  # Keep popup bg dark
-            popup_border = "#555555"
-            item_hover_bg = "#333333"
-            item_hover_border = "#777777"
+            popup_bg = colors.get("popup_bg", colors.get("primary", "#ffffff")) # Use specific popup bg
+            popup_border = colors.get("border", "#e9ecef")
+            item_hover_bg = colors.get("accent", "#4A90E2")
+            item_hover_border = colors.get("accent", "#4A90E2")
             
-            selection_bg = "#1a3c5e"
-            selection_text = "#4A90E2"
-            selection_border = "#4A90E2"
+            selection_bg = colors.get("accent", "#4A90E2")
+            selection_text = "#ffffff"
+            selection_border = colors.get("accent", "#4A90E2")
         else:
-            bg = "#f8f9fa"        # Old hover color (Light grey)
-            text_color = "#2c3e50"
-            border_color = "#e9ecef"
-            hover_bg = "#e9ecef"  # Darker grey for hover
-            hover_border = "#dee2e6"
-            
-            popup_bg = "#ffffff"
-            popup_border = "#e9ecef"
-            item_hover_bg = "#f8f9fa"
-            item_hover_border = "#adb5bd"
-            
-            selection_bg = "#f1f8ff"
-            selection_text = "#4A90E2"
-            selection_border = "#4A90E2"
+            # Fallback legacy logic
+            if is_dark:
+                bg = "#333333"
+                text_color = "#ffffff"
+                border_color = "#555555"
+                hover_bg = "#404040"
+                hover_border = "#777777"
+                accent = "#4A90E2"
+                
+                popup_bg = "#2c2c2c"
+                popup_border = "#555555"
+                item_hover_bg = "#4A90E2"
+                item_hover_border = "#4A90E2"
+                
+                selection_bg = "#4A90E2"
+                selection_text = "#ffffff"
+                selection_border = "#4A90E2"
+            else:
+                bg = "#f8f9fa"
+                text_color = "#2c3e50"
+                border_color = "#e9ecef"
+                hover_bg = "#e9ecef"
+                hover_border = "#dee2e6"
+                accent = "#4A90E2"
+                
+                popup_bg = "#ffffff"
+                popup_border = "#e9ecef"
+                item_hover_bg = "#4A90E2"
+                item_hover_border = "#4A90E2"
+                
+                selection_bg = "#4A90E2"
+                selection_text = "#ffffff"
+                selection_border = "#4A90E2"
 
         # Get arrow icon path
         arrow_icon = icon_manager.get_icon_path('chevron-down-white' if is_dark else 'chevron-down')
@@ -117,9 +134,7 @@ class ModernComboBox(QComboBox):
                 image: url({arrow_icon});
                 width: 14px;
                 height: 14px;
-                margin-right: 10px; /* Center horizontally in the 32px box */
-                margin-top: 1px; /* Slight visual adjustment */
-                border: none; /* Remove CSS triangle borders */
+                background: transparent;
             }}
 
             /* Precision Popup Style */
@@ -132,6 +147,14 @@ class ModernComboBox(QComboBox):
                 padding: 0px;
                 selection-background-color: transparent; /* We handle selection manually */
             }}
+            
+            /* Explicitly target QListView to override system defaults */
+            QComboBox QListView {{
+                background-color: {popup_bg};
+                outline: none;
+                selection-background-color: transparent;
+            }}
+
             QComboBox QAbstractItemView::item {{
                 height: 40px;
                 padding-left: 16px;
@@ -142,6 +165,7 @@ class ModernComboBox(QComboBox):
             QComboBox QAbstractItemView::item:hover {{
                 background-color: {item_hover_bg};
                 border-left: 3px solid {item_hover_border};
+                color: #ffffff;
             }}
             QComboBox QAbstractItemView::item:selected {{
                 background-color: {selection_bg};
@@ -150,10 +174,17 @@ class ModernComboBox(QComboBox):
                 outline: none;
             }}
             
-            /* Scrollbar Styling */
-            QScrollBar:vertical {{
-                width: 6px;
-                background: transparent;
+            /* Duplicate for QListView specific targeting */
+            QComboBox QListView::item:selected {{
+                background-color: {selection_bg};
+                border-left: 3px solid {selection_border};
+                color: {selection_text};
+                outline: none;
+            }}
+            QComboBox QListView::item:hover {{
+                background-color: {item_hover_bg};
+                border-left: 3px solid {item_hover_border};
+                color: #ffffff;
             }}
             QScrollBar::handle:vertical {{
                 background: {'#555555' if is_dark else '#ced4da'};
@@ -185,61 +216,62 @@ class ModernLineEdit(QLineEdit):
         self.setPlaceholderText(placeholder)
         self.apply_theme(is_dark=False)
 
-    def apply_theme(self, is_dark: bool):
-        if is_dark:
-            stylesheet = """
-                QLineEdit {
-                    border: 2px solid #555555;
-                    border-radius: 8px;
-                    padding: 0px 12px;
-                    font-family: 'Segoe UI', sans-serif;
-                    font-size: 13px;
-                    background-color: #2c2c2c;
-                    color: #ffffff;
-                    min-height: 32px;
-                    max-height: 32px;
-                    outline: none;
-                }
-                QLineEdit:hover {
-                    border-color: #777777;
-                }
-                QLineEdit:focus {
-                    border-color: #4A90E2;
-                }
-                QLineEdit:disabled {
-                    color: #6c757d;
-                    background-color: #1a1a1a;
-                    border-style: dashed;
-                    border-color: #404040;
-                }
-            """
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            bg = colors.get("primary", "#ffffff")
+            text_color = colors.get("text_primary", "#212529")
+            border_color = colors.get("border", "#dee2e6")
+            hover_border = colors.get("border_light", "#adb5bd")
+            accent = colors.get("accent", "#4A90E2")
+            disabled_bg = colors.get("secondary", "#f1f3f4")
+            disabled_text = colors.get("text_muted", "#868e96")
+            disabled_border = colors.get("border", "#ced4da")
         else:
-            stylesheet = """
-                QLineEdit {
-                    border: 2px solid #dee2e6;
-                    border-radius: 8px;
-                    padding: 0px 12px;
-                    font-family: 'Segoe UI', sans-serif;
-                    font-size: 13px;
-                    background-color: white;
-                    color: #212529;
-                    min-height: 32px;
-                    max-height: 32px;
-                    outline: none;
-                }
-                QLineEdit:hover {
-                    border-color: #adb5bd;
-                }
-                QLineEdit:focus {
-                    border-color: #4A90E2;
-                }
-                QLineEdit:disabled {
-                    color: #868e96;
-                    background-color: #f1f3f4;
-                    border-style: dashed;
-                    border-color: #ced4da;
-                }
-            """
+            if is_dark:
+                bg = "#2c2c2c"
+                text_color = "#ffffff"
+                border_color = "#555555"
+                hover_border = "#777777"
+                accent = "#4A90E2"
+                disabled_bg = "#1a1a1a"
+                disabled_text = "#6c757d"
+                disabled_border = "#404040"
+            else:
+                bg = "white"
+                text_color = "#212529"
+                border_color = "#dee2e6"
+                hover_border = "#adb5bd"
+                accent = "#4A90E2"
+                disabled_bg = "#f1f3f4"
+                disabled_text = "#868e96"
+                disabled_border = "#ced4da"
+
+        stylesheet = f"""
+            QLineEdit {{
+                border: 2px solid {border_color};
+                border-radius: 8px;
+                padding: 0px 12px;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 13px;
+                background-color: {bg};
+                color: {text_color};
+                min-height: 32px;
+                max-height: 32px;
+                outline: none;
+            }}
+            QLineEdit:hover {{
+                border-color: {hover_border};
+            }}
+            QLineEdit:focus {{
+                border-color: {accent};
+            }}
+            QLineEdit:disabled {{
+                color: {disabled_text};
+                background-color: {disabled_bg};
+                border-style: dashed;
+                border-color: {disabled_border};
+            }}
+        """
         self.setStyleSheet(stylesheet)
 
 
@@ -259,49 +291,47 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
         # Set placeholder text to help users
         self.clear()
 
-    def apply_theme(self, is_dark: bool):
-        if is_dark:
-            self.setStyleSheet("""
-                QKeySequenceEdit {
-                    border: 2px solid #555555;
-                    border-radius: 6px;
-                    padding: 0px 8px;
-                    font-size: 13px;
-                    background-color: #2c2c2c;
-                    color: #f0f0f0;
-                    min-height: 32px;
-                    max-height: 32px;
-                    outline: none;
-                }
-                QKeySequenceEdit:hover {
-                    border-color: #777777;
-                }
-                QKeySequenceEdit:focus {
-                    border-color: #4A90E2;
-                    border-width: 3px;
-                }
-            """)
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            bg = colors.get("primary", "#ffffff")
+            text_color = colors.get("text_primary", "#212529")
+            border_color = colors.get("border", "#dee2e6")
+            hover_border = colors.get("border_light", "#adb5bd")
+            accent = colors.get("accent", "#4A90E2")
         else:
-            self.setStyleSheet("""
-                QKeySequenceEdit {
-                    border: 2px solid #dee2e6;
-                    border-radius: 6px;
-                    padding: 0px 8px;
-                    font-size: 13px;
-                    background-color: white;
-                    color: black;
-                    min-height: 32px;
-                    max-height: 32px;
-                    outline: none;
-                }
-                QKeySequenceEdit:hover {
-                    border-color: #adb5bd;
-                }
-                QKeySequenceEdit:focus {
-                    border-color: #4A90E2;
-                    border-width: 3px;
-                }
-            """)
+            if is_dark:
+                bg = "#2c2c2c"
+                text_color = "#f0f0f0"
+                border_color = "#555555"
+                hover_border = "#777777"
+                accent = "#4A90E2"
+            else:
+                bg = "white"
+                text_color = "black"
+                border_color = "#dee2e6"
+                hover_border = "#adb5bd"
+                accent = "#4A90E2"
+
+        self.setStyleSheet(f"""
+            QKeySequenceEdit {{
+                border: 2px solid {border_color};
+                border-radius: 6px;
+                padding: 0px 8px;
+                font-size: 13px;
+                background-color: {bg};
+                color: {text_color};
+                min-height: 32px;
+                max-height: 32px;
+                outline: none;
+            }}
+            QKeySequenceEdit:hover {{
+                border-color: {hover_border};
+            }}
+            QKeySequenceEdit:focus {{
+                border-color: {accent};
+                border-width: 3px;
+            }}
+        """)
 
     def _on_sequence_changed(self, sequence):
         """Debug callback for when key sequence changes"""
