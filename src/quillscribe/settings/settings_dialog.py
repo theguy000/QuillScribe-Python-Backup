@@ -230,11 +230,11 @@ class SettingsDialog(QDialog):
         footer_layout.setSpacing(12)
         footer_layout.addStretch()
 
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton("Discard")
         self.cancel_button.setObjectName("settings_cancel_button")
         self.cancel_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        self.save_button = QPushButton("Save Settings")
+        self.save_button = QPushButton("Apply Changes")
         self.save_button.setObjectName("settings_save_button")
         self.save_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
@@ -537,16 +537,24 @@ class SettingsDialog(QDialog):
                     btn.setIcon(get_icon(icon_name, size))
 
         # Update save and cancel button icons and styles based on theme
-        if hasattr(self, 'cancel_button'):
-            # Cancel button - light surface with subtle border
-            hover_bg = self._lighten_color(colors['secondary'], 0.04) if is_dark else self._darken_color(colors['secondary'], 0.05)
+            # Discard button - filled button with contrast against footer
+            if is_dark:
+                # Make it visibly lighter than the footer background (secondary)
+                discard_bg = self._lighten_color(colors['secondary'], 0.08)
+                discard_hover = self._lighten_color(discard_bg, 0.05)
+                discard_text = colors['text_primary']
+            else:
+                discard_bg = self._darken_color(colors['secondary'], 0.05)
+                discard_hover = self._darken_color(discard_bg, 0.05)
+                discard_text = colors['text_secondary']
+
             self.cancel_button.setStyleSheet(f"""
                 QPushButton#settings_cancel_button {{
-                    background-color: transparent;
-                    color: {colors['text_secondary']};
-                    border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
-                    border: 1px solid {colors['border']};
-                    padding: 4px 12px;
+                    background-color: {discard_bg};
+                    color: {discard_text};
+                    border-radius: 12px;
+                    border: none;
+                    padding: 6px 20px;
                     min-height: 28px;
                     font-size: 13px;
                     font-weight: 600;
@@ -554,7 +562,7 @@ class SettingsDialog(QDialog):
                     outline: none;
                 }}
                 QPushButton#settings_cancel_button:hover {{
-                    background-color: {hover_bg};
+                    background-color: {discard_hover};
                 }}
             """)
             self.cancel_button.setFlat(False)
@@ -567,8 +575,8 @@ class SettingsDialog(QDialog):
                     background-color: {colors['accent']};
                     color: #ffffff;
                     border: none;
-                    border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
-                    padding: 4px 14px;
+                    border-radius: 12px;
+                    padding: 6px 20px;
                     min-height: 28px;
                     min-width: 90px;
                     font-size: 13px;
@@ -703,8 +711,8 @@ class SettingsDialog(QDialog):
                 "text_muted": "#b0b0b0",
                 "border": "#555555",
                 "border_light": "#666666",
-                "accent": "#4A90E2",
-                "accent_hover": "#5BA0F2",
+                "accent": colors.get("accent", "#8B5CF6"),
+                "accent_hover": colors.get("accent_hover", "#7C3AED"),
                 # Widget specific overrides
                 "widget_bg": widget_bg,
                 "widget_hover": widget_hover,
@@ -720,8 +728,8 @@ class SettingsDialog(QDialog):
                 "text_muted": "#6c757d",
                 "border": "#dee2e6",
                 "border_light": "#adb5bd",
-                "accent": "#4A90E2",
-                "accent_hover": "#357ABD",
+                "accent": colors.get("accent", "#4A90E2"),
+                "accent_hover": colors.get("accent_hover", "#357ABD"),
                 # Widget specific overrides
                 "widget_bg": secondary_color, # Light grey usually
                 "widget_hover": theme_manager.darken_color(secondary_color, 0.05),

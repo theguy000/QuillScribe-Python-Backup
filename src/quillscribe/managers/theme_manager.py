@@ -37,18 +37,18 @@ class ThemeManager(QObject):
 
         # Theme color definitions
         self.THEMES = {
-            "white": {"primary": "#ffffff", "secondary": "#f8f9fa"},
-            "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa"},
-            "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe"},
-            "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc"},
-            "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7"},
-            "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9"},
+            "white": {"primary": "#ffffff", "secondary": "#f8f9fa", "accent": "#4A90E2", "accent_hover": "#357ABD"},
+            "warm_gray": {"primary": "#f5f5f5", "secondary": "#fafafa", "accent": "#607D8B", "accent_hover": "#546E7A"},
+            "soft_beige": {"primary": "#f8f6f0", "secondary": "#fefefe", "accent": "#8D6E63", "accent_hover": "#795548"},
+            "blue_gray": {"primary": "#f0f2f5", "secondary": "#f8fafc", "accent": "#5C6BC0", "accent_hover": "#3F51B5"},
+            "warm_taupe": {"primary": "#f7f3f0", "secondary": "#faf9f7", "accent": "#A1887F", "accent_hover": "#8D6E63"},
+            "soft_sage": {"primary": "#f7f9f6", "secondary": "#f8faf9", "accent": "#66BB6A", "accent_hover": "#4CAF50"},
             # Dark theme variations
-            "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e"},
-            "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a"},
-            "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736"},
-            "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015"},
-            "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212"}
+            "dark_charcoal": {"primary": "#2c2c2c", "secondary": "#1e1e1e", "accent": "#8B5CF6", "accent_hover": "#7C3AED"},
+            "dark_blue": {"primary": "#1a1f2e", "secondary": "#13182a", "accent": "#64B5F6", "accent_hover": "#42A5F5"},
+            "dark_purple": {"primary": "#2d1b3d", "secondary": "#241736", "accent": "#AB47BC", "accent_hover": "#9C27B0"},
+            "dark_forest": {"primary": "#1e2a1e", "secondary": "#152015", "accent": "#66BB6A", "accent_hover": "#4CAF50"},
+            "dark_burgundy": {"primary": "#2a1a1a", "secondary": "#1f1212", "accent": "#EF5350", "accent_hover": "#E53935"}
         }
 
         # Icon mappings for different widget types
