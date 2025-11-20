@@ -241,6 +241,12 @@ class BreathingMicrophone(QWidget):
         self.show_waveform = True
         self.level_smoothed = 0.0
         self.animation_strength = 3.0  # Default amplification factor
+        self._transition_progress = 0.0  # 0.0 = static, 1.0 = waveform
+
+        # Colors
+        self._idle_color = QColor(220, 220, 220)
+        self._recording_color = QColor(255, 255, 255)
+        self._mic_color = QColor(self._idle_color)
 
         # Make the widget clickable
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -250,6 +256,16 @@ class BreathingMicrophone(QWidget):
         self.animation.setDuration(1500)
         self.animation.setEasingCurve(QEasingCurve.Type.InOutSine)
         self.animation.setLoopCount(-1)
+
+        # Color animation
+        self.color_animation = QPropertyAnimation(self, b"micColor")
+        self.color_animation.setDuration(300)  # Smooth 300ms transition
+        self.color_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+
+        # Transition animation (static <-> waveform)
+        self.transition_animation = QPropertyAnimation(self, b"transitionProgress")
+        self.transition_animation.setDuration(400)  # Slightly slower for background
+        self.transition_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
         # Ribbon animation state (Siri-style)
         # List of dicts: phase, speed_factor, color_alpha, amplitude_factor, color_hex
@@ -295,6 +311,26 @@ class BreathingMicrophone(QWidget):
 
     scaleFactor = Property(float, getScaleFactor, setScaleFactor)
 
+    # Property for color animation
+    def getMicColor(self):
+        return self._mic_color
+
+    def setMicColor(self, color):
+        self._mic_color = QColor(color)
+        self.update()
+
+    micColor = Property(QColor, getMicColor, setMicColor)
+
+    # Property for transition animation
+    def getTransitionProgress(self):
+        return self._transition_progress
+
+    def setTransitionProgress(self, value):
+        self._transition_progress = float(value)
+        self.update()
+
+    transitionProgress = Property(float, getTransitionProgress, setTransitionProgress)
+
     def set_show_waveform(self, value: bool):
         """Enable/disable waveform rendering around the microphone"""
         self.show_waveform = bool(value)
@@ -317,13 +353,39 @@ class BreathingMicrophone(QWidget):
         self.animation.stop()
         self.scale_factor = 1.0
         self.wave_timer.start()
+        
+        # Animate color to recording state
+        self.color_animation.stop()
+        self.color_animation.setStartValue(self._mic_color)
+        self.color_animation.setEndValue(self._recording_color)
+        self.color_animation.start()
+
+        # Animate transition to waveform
+        self.transition_animation.stop()
+        self.transition_animation.setStartValue(self._transition_progress)
+        self.transition_animation.setEndValue(1.0)
+        self.transition_animation.start()
+        
         self.update()  # Force visual refresh
 
     def stop_recording(self):
         """Stop recording and clear animation (mic stays static)."""
         self.is_recording = False
-        self.wave_timer.stop()
+        # Don't stop wave timer immediately, let it run during fade out
         self.animation.stop()
+        
+        # Animate color to idle state
+        self.color_animation.stop()
+        self.color_animation.setStartValue(self._mic_color)
+        self.color_animation.setEndValue(self._idle_color)
+        self.color_animation.start()
+
+        # Animate transition to static
+        self.transition_animation.stop()
+        self.transition_animation.setStartValue(self._transition_progress)
+        self.transition_animation.setEndValue(0.0)
+        self.transition_animation.start()
+        
         self.update()  # Force visual refresh
 
     @Slot(float)
@@ -365,17 +427,12 @@ class BreathingMicrophone(QWidget):
         base_radius = min(self.width(), self.height()) // 3
         radius = int(base_radius * self.scale_factor)
 
-        # Determine colors based on state
-        if self.is_recording:
-            # Use theme primary color for mic only
-            mic_color = QColor(255, 255, 255)
-        else:
-            # Idle state - elegant grey
-            base_color = QColor(128, 128, 128)
-            mic_color = QColor(220, 220, 220)
+        # Base colors
+        base_color = QColor(128, 128, 128)
 
-        # Draw Siri-style ribbons if recording
-        if self.is_recording and self.show_waveform:
+        # Draw Siri-style ribbons (Waveform)
+        # We draw this if transition_progress > 0
+        if self.show_waveform and self._transition_progress > 0.01:
             amplified_level = min(1.0, self.audio_level * self.animation_strength)
             
             # Draw multiple overlapping ribbons
@@ -395,7 +452,6 @@ class BreathingMicrophone(QWidget):
                     # Refined math for "shimmering circle" instead of "fan"
                     # Use multiple lower-amplitude sine waves for subtle complexity
                     # Base wave (slow rotation) + Detail wave (faster ripple)
-                    # FIXED: Used integer phase multipliers (2 instead of 1.5) to prevent "snapping" on loop
                     r_mod = (math.sin(angle * 3 + wave["phase"]) * 0.5 + 
                              math.sin(angle * 6 - wave["phase"] * 2) * 0.2)
                     
@@ -417,7 +473,8 @@ class BreathingMicrophone(QWidget):
                 # Modulate alpha with audio level for "glowing" pulse
                 pulse = 0.8 + (0.2 * math.sin(wave["phase"] * 2))
                 # significantly increased base alpha for visibility
-                alpha = int(wave["alpha"] * 2.5 * (1.0 + amplified_level) * pulse)
+                # Scale alpha by transition_progress for fade in/out
+                alpha = int(wave["alpha"] * 2.5 * (1.0 + amplified_level) * pulse * self._transition_progress)
                 color.setAlpha(min(200, alpha))  # Cap at 200 to keep some transparency
                 
                 painter.setBrush(QBrush(color))
@@ -429,18 +486,22 @@ class BreathingMicrophone(QWidget):
                 
                 painter.drawPath(path)
 
-        # Draw static background circles if not recording or as base
-        if not self.is_recording:
+        # Draw static background circles
+        # Fade out as transition_progress increases
+        static_alpha_factor = 1.0 - self._transition_progress
+        if static_alpha_factor > 0.01:
             outer_color = QColor(base_color)
-            outer_color.setAlpha(20)
+            # Base alpha is 20, scale it down
+            outer_color.setAlpha(int(20 * static_alpha_factor))
             painter.setBrush(QBrush(outer_color))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(center_x - radius - 10, center_y - radius - 10,
                               (radius + 10) * 2, (radius + 10) * 2)
 
         # Draw microphone icon (always on top)
-        painter.setPen(QPen(mic_color, 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-        painter.setBrush(QBrush(mic_color))
+        # Use the animated color
+        painter.setPen(QPen(self._mic_color, 3, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        painter.setBrush(QBrush(self._mic_color))
 
         # Microphone body (capsule)
         mic_width = radius // 2
