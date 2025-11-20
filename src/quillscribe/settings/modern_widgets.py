@@ -105,7 +105,7 @@ class ModernComboBox(QComboBox):
             QComboBox {{
                 border: 1px solid {border_color};
                 border-radius: 12px;
-                padding: 0px 12px; /* Remove vertical padding, let flexbox center it */
+                padding: 0px 12px 3px 12px; /* Add bottom padding to center text */
                 min-height: 42px;
                 max-height: 42px;
                 background-color: {bg};
@@ -249,7 +249,7 @@ class ModernLineEdit(QLineEdit):
             QLineEdit {{
                 border: 1px solid {border_color};
                 border-radius: 12px;
-                padding: 0px 12px;
+                padding: 0px 12px 3px 12px;
                 font-family: 'Segoe UI', sans-serif;
                 font-size: 14px;
                 background-color: {bg};
@@ -315,7 +315,7 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
             QKeySequenceEdit {{
                 border: 1px solid {border_color};
                 border-radius: 12px;
-                padding: 0px 12px;
+                padding: 0px 12px 3px 12px;
                 font-size: 14px;
                 background-color: {bg};
                 color: {text_color};
