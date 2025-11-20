@@ -207,8 +207,8 @@ class SettingsDialog(QDialog):
         self.save_button.setObjectName("settings_save_button")
         self.save_button.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        footer_layout.addWidget(self.cancel_button)
-        footer_layout.addWidget(self.save_button)
+        footer_layout.addWidget(self.cancel_button, alignment=Qt.AlignmentFlag.AlignVCenter)
+        footer_layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignVCenter)
 
         content_layout.addWidget(footer)
 
@@ -511,8 +511,8 @@ class SettingsDialog(QDialog):
                     color: {colors['text_secondary']};
                     border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
                     border: 1px solid {colors['border']};
-                    padding: 6px 16px;
-                    min-height: 32px;
+                    padding: 4px 12px;
+                    min-height: 28px;
                     font-size: 13px;
                     font-weight: 600;
                     text-align: center;
@@ -522,12 +522,8 @@ class SettingsDialog(QDialog):
                     background-color: {hover_bg};
                 }}
             """)
-            self.cancel_button.setIcon(get_icon('cancel', 13, QColor(120, 120, 130)))
-            self.cancel_button.setIconSize(QSize(13, 13))
             self.cancel_button.setFlat(False)
             self.cancel_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-            # Ensure icon is on the left with proper spacing
-            self.cancel_button.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         
         if hasattr(self, 'save_button'):
             # Save button - primary pill button similar to Tailwind design
@@ -537,9 +533,9 @@ class SettingsDialog(QDialog):
                     color: #ffffff;
                     border: none;
                     border-radius: 6px; /* match Tailwind rounded-md (0.375rem) */
-                    padding: 6px 18px;
-                    min-height: 32px;
-                    min-width: 100px;
+                    padding: 4px 14px;
+                    min-height: 28px;
+                    min-width: 90px;
                     font-size: 13px;
                     font-weight: 600;
                     text-align: center;
@@ -549,12 +545,8 @@ class SettingsDialog(QDialog):
                     background-color: {colors['accent_hover']};
                 }}
             """)
-            self.save_button.setIcon(get_icon('save', 13, QColor(255, 255, 255)))
-            self.save_button.setIconSize(QSize(13, 13))
             self.save_button.setFlat(False)
             self.save_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-            # Ensure icon is on the left with proper spacing
-            self.save_button.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
 
         # Update icons in tab content - these need to be updated based on theme
         try:

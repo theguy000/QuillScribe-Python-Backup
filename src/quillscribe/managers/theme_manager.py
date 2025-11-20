@@ -300,10 +300,6 @@ class ThemeManager(QObject):
                 button.setIcon(get_themed_button_icon('close', 16, is_dark))
             elif 'minimize' in text:
                 button.setIcon(get_themed_button_icon('minimize', 16, is_dark))
-            elif 'cancel' in text:
-                button.setIcon(get_themed_button_icon('cancel', 16, is_dark))
-            elif 'save' in text:
-                button.setIcon(get_themed_button_icon('save', 16, is_dark))
 
     def get_scrollbar_colors(self, theme_name: Optional[str] = None) -> Dict[str, str]:
         """Get scrollbar colors for the specified or current theme"""

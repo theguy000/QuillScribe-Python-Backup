@@ -119,10 +119,8 @@ class UISettingsDialog(QDialog):
         buttons = QHBoxLayout()
         buttons.addStretch()
         save_btn = QPushButton("Save")
-        save_btn.setIcon(get_white_button_icon('save', 12))
-        save_btn.setIconSize(QSize(12, 12))
         save_btn.setStyleSheet(
-            "QPushButton { background: #4A90E2; color: white; border: none; border-radius: 6px; padding: 6px 10px; font-size: 12px; }"
+            "QPushButton { background: #4A90E2; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; min-width: 80px; min-height: 32px; }"
         )
         save_btn.clicked.connect(self.save_and_close)
         buttons.addWidget(save_btn)
