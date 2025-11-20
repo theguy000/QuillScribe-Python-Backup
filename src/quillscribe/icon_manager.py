@@ -20,10 +20,7 @@ class IconManager:
     ICONS = {
         # Main UI icons
         'microphone': 'mic.svg',
-        'sound': 'volume-2.svg',
-        'volume-2': 'volume-2.svg',  # Direct mapping for volume icon
         'audio': 'mic.svg',  # Use microphone icon for audio settings
-        'language': 'language.svg',  # Language selection icon
         'settings': 'settings.svg',
         'close': 'x.svg',  # Simple X icon for close buttons
         'minimize': 'minimize.svg',  # Simple horizontal line for minimize buttons
@@ -32,42 +29,14 @@ class IconManager:
         'clipboard': 'clipboard.svg',
         'eye': 'eye.svg',
         'eye-off': 'eye-off.svg',
-        'copy': 'clipboard.svg',
-        'paste': 'clipboard.svg',  # Could also use a separate paste icon if available
-
-        # Recording icons
-        'record': 'mic.svg',
-        'stop': 'square.svg',
-        'play': 'play.svg',
 
         # System icons
-        'silent': 'bell-off.svg',
-        'refresh': 'refresh-cw.svg',
-        'folder': 'folder.svg',
         'brain': 'brain.svg',
-        'key': 'key.svg',
         'dashboard': 'layout-dashboard.svg',
-        'trash': 'trash-2.svg',
-        'zap': 'zap.svg',
-        'category': 'category.svg',
-        'monitor': 'window-minimize.svg',  # Window icon for window manager
+        'refresh': 'refresh-cw.svg',
         'x': 'x.svg',  # X icon for exit/close actions
-        'block': 'x.svg',  # Block icon for blocklist functionality
-
-
-
-        # Action icons
-        'save': 'settings.svg',  # Use settings icon for save actions
-        'cancel': 'x.svg',  # Use X icon for cancel/close
-        'test': 'play.svg',  # Use play icon for test actions
-        'load': 'folder.svg',  # Use folder icon for load actions
 
         # UI mode icons
-        'api': 'zap.svg',  # Lightning for fast API
-        'local': 'brain.svg',  # Brain for local processing
-        'compact': 'minimize-2.svg',  # Minimize for compact mode
-        'keyboard': 'key.svg',  # Keyboard shortcut
-        'window': 'window-minimize.svg',  # Window minimize option
         'chevron-down': 'chevron-down.svg',  # Dropdown arrow
         'chevron-down-white': 'chevron-down-white.svg'
     }

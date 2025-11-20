@@ -359,7 +359,7 @@ class SettingsDialog(QDialog):
                     background-color: {self._darken_color(colors["secondary"], 0.06)};
                 }}
             """)
-            self.header_close_button.setIcon(get_icon('cancel', 14, QColor(colors['text_secondary'])))
+            self.header_close_button.setIcon(get_icon('close', 14, QColor(colors['text_secondary'])))
 
             # Apply to all group boxes in all tabs
             self._apply_theme_to_group_boxes(colors)
@@ -597,12 +597,6 @@ class SettingsDialog(QDialog):
                     if name == 'icon_api_key':
                         lbl.setPixmap((get_icon('key', 16, QColor(255, 255, 255)) if is_dark else get_icon('key', 16)).pixmap(16, 16))
                     elif name == 'icon_api_model':
-                        lbl.setPixmap((get_icon('brain', 16, QColor(255, 255, 255)) if is_dark else get_icon('brain', 16)).pixmap(16, 16))
-                    elif name == 'icon_api_language':
-                        lbl.setPixmap((get_icon('language', 16, QColor(255, 255, 255)) if is_dark else get_icon('language', 16)).pixmap(16, 16))
-                    elif name == 'icon_category':
-                        lbl.setPixmap((get_icon('category', 16, QColor(255, 255, 255)) if is_dark else get_icon('category', 16)).pixmap(16, 16))
-                    elif name == 'icon_model':
                         lbl.setPixmap((get_icon('brain', 16, QColor(255, 255, 255)) if is_dark else get_icon('brain', 16)).pixmap(16, 16))
 
             # Output tab icons are now handled automatically by theme manager
