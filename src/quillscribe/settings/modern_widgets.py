@@ -61,21 +61,21 @@ class ModernComboBox(QComboBox):
         else:
             # Fallback legacy logic
             if is_dark:
-                bg = "#333333"
-                text_color = "#ffffff"
-                border_color = "#555555"
-                hover_bg = "#404040"
-                hover_border = "#777777"
-                accent = "#4A90E2"
+                bg = "#3B2E57"  # input-dark
+                text_color = "#E2E8F0"  # text-dark-primary
+                border_color = "#4C3D70"  # border-dark
+                hover_bg = "#3B2E57"
+                hover_border = "#8B5CF6"  # primary
+                accent = "#8B5CF6"
                 
-                popup_bg = "#2c2c2c"
-                popup_border = "#555555"
-                item_hover_bg = "#4A90E2"
-                item_hover_border = "#4A90E2"
+                popup_bg = "#2A1F3D"  # surface-dark
+                popup_border = "#4C3D70"
+                item_hover_bg = "#8B5CF6"
+                item_hover_border = "#8B5CF6"
                 
-                selection_bg = "#4A90E2"
+                selection_bg = "#8B5CF6"
                 selection_text = "#ffffff"
-                selection_border = "#4A90E2"
+                selection_border = "#8B5CF6"
             else:
                 bg = "#f8f9fa"
                 text_color = "#2c3e50"
@@ -103,30 +103,29 @@ class ModernComboBox(QComboBox):
         stylesheet = f"""
             /* Material Design Button Style */
             QComboBox {{
-                border: none;
-                border-radius: 6px;
+                border: 1px solid {border_color};
+                border-radius: 12px;
                 padding: 0px 12px; /* Remove vertical padding, let flexbox center it */
-                min-height: 32px;
-                max-height: 32px;
+                min-height: 42px;
+                max-height: 42px;
                 background-color: {bg};
                 color: {text_color};
                 font-family: 'Segoe UI', sans-serif;
-                font-weight: 600;
-                font-size: 13px;
-                border-bottom: 2px solid {border_color};
+                font-weight: 500;
+                font-size: 14px;
                 text-align: left;
             }}
             QComboBox:hover {{
                 background-color: {hover_bg};
-                border-bottom: 2px solid {hover_border};
+                border: 1px solid {hover_border};
             }}
             QComboBox:focus {{
-                border-bottom: 2px solid {accent};
+                border: 2px solid {accent};
             }}
             QComboBox::drop-down {{
                 border: none;
                 width: 32px; /* Square drop-down area */
-                height: 30px; /* 32px - 2px border */
+                height: 40px; /* 42px - 2px border */
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
             }}
@@ -228,14 +227,14 @@ class ModernLineEdit(QLineEdit):
             disabled_border = colors.get("border", "#ced4da")
         else:
             if is_dark:
-                bg = "#2c2c2c"
-                text_color = "#ffffff"
-                border_color = "#555555"
-                hover_border = "#777777"
-                accent = "#4A90E2"
-                disabled_bg = "#1a1a1a"
+                bg = "#3B2E57"  # input-dark
+                text_color = "#E2E8F0"  # text-dark-primary
+                border_color = "#4C3D70"  # border-dark
+                hover_border = "#8B5CF6"  # primary
+                accent = "#8B5CF6"
+                disabled_bg = "#1A102A"
                 disabled_text = "#6c757d"
-                disabled_border = "#404040"
+                disabled_border = "#4C3D70"
             else:
                 bg = "white"
                 text_color = "#212529"
@@ -248,22 +247,22 @@ class ModernLineEdit(QLineEdit):
 
         stylesheet = f"""
             QLineEdit {{
-                border: 2px solid {border_color};
-                border-radius: 8px;
+                border: 1px solid {border_color};
+                border-radius: 12px;
                 padding: 0px 12px;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 13px;
+                font-size: 14px;
                 background-color: {bg};
                 color: {text_color};
-                min-height: 32px;
-                max-height: 32px;
+                min-height: 42px;
+                max-height: 42px;
                 outline: none;
             }}
             QLineEdit:hover {{
                 border-color: {hover_border};
             }}
             QLineEdit:focus {{
-                border-color: {accent};
+                border: 2px solid {accent};
             }}
             QLineEdit:disabled {{
                 color: {disabled_text};
@@ -300,11 +299,11 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
             accent = colors.get("accent", "#4A90E2")
         else:
             if is_dark:
-                bg = "#2c2c2c"
-                text_color = "#f0f0f0"
-                border_color = "#555555"
-                hover_border = "#777777"
-                accent = "#4A90E2"
+                bg = "#3B2E57"  # input-dark
+                text_color = "#E2E8F0"  # text-dark-primary
+                border_color = "#4C3D70"  # border-dark
+                hover_border = "#8B5CF6"  # primary
+                accent = "#8B5CF6"
             else:
                 bg = "white"
                 text_color = "black"
@@ -314,22 +313,21 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
 
         self.setStyleSheet(f"""
             QKeySequenceEdit {{
-                border: 2px solid {border_color};
-                border-radius: 6px;
-                padding: 0px 8px;
-                font-size: 13px;
+                border: 1px solid {border_color};
+                border-radius: 12px;
+                padding: 0px 12px;
+                font-size: 14px;
                 background-color: {bg};
                 color: {text_color};
-                min-height: 32px;
-                max-height: 32px;
+                min-height: 42px;
+                max-height: 42px;
                 outline: none;
             }}
             QKeySequenceEdit:hover {{
                 border-color: {hover_border};
             }}
             QKeySequenceEdit:focus {{
-                border-color: {accent};
-                border-width: 3px;
+                border: 2px solid {accent};
             }}
         """)
 
