@@ -336,9 +336,8 @@ class SettingsDialog(QDialog):
 
             # Update theme manager if theme is different
             if theme_manager.get_current_theme() != theme_name:
-                self._applying_theme = False
                 theme_manager.set_theme(theme_name)
-                return
+                # Continue with applying the theme rather than returning early
 
             # Batch UI updates for better performance
             self.setUpdatesEnabled(False)
