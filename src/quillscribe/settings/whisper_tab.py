@@ -49,6 +49,7 @@ class WhisperTab(QWidget):
         self.mode_selector.tabChanged.connect(self.on_mode_changed)
         
         layout.addWidget(self.mode_selector)
+        layout.addSpacing(8) # Add extra spacing to match design (mb-8)
 
         # 3. Content Area (Stacked Widget)
         self.content_stack = QStackedWidget()

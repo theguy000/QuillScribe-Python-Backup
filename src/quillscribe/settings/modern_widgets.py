@@ -969,6 +969,7 @@ class ModernTabBar(QWidget):
     
     def __init__(self, items: list[str], parent=None):
         super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._items = items
         self._buttons = []
         self._current_index = 0
@@ -1066,7 +1067,7 @@ class ModernTabBar(QWidget):
             text_color = "#b0b0b0"   # Secondary text
             active_color = accent    # Primary text (accent)
             hover_color = "#ffffff"  # Hover text
-            border_color = "#555555" # Container border
+            border_color = "#4C3D70" # Container border (Matches HTML border-dark)
         else:
             text_color = "#6c757d"   # Secondary text
             active_color = accent    # Primary text (accent)
