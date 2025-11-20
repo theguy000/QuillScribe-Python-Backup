@@ -727,9 +727,9 @@ class ModernSlider(QSlider):
 
         self.setStyleSheet(f"""
             QSlider {{
-                min-height: 40px;
-                max-height: 40px;
-                padding: 0px;
+                min-height: 44px;
+                max-height: 44px;
+                padding: 2px 0px;
                 border: none;
             }}
             QSlider::groove:horizontal {{
@@ -747,16 +747,21 @@ class ModernSlider(QSlider):
             }}
             QSlider::handle:horizontal {{
                 background: {handle_bg};
-                border: 1px solid {handle_border};
+                border: 2px solid {handle_border};
                 width: 24px;
                 height: 24px;
-                margin: -9px 0;
-                border-radius: 12px;
-                
+                margin: -11px 0;
+                border-radius: 14px;
+                subcontrol-position: center;
             }}
             QSlider::handle:horizontal:hover {{
-                border: 1px solid {accent};
+                border: 3px solid {accent};
                 background: #f8f9fa;
+                width: 20px;
+                height: 20px;
+                margin: -10px 0;
+                border-radius: 13px;
+                subcontrol-position: center;
             }}
         """)
 
