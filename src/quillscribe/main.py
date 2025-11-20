@@ -223,6 +223,7 @@ from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
 from .config_manager import ConfigManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
 from .frozen_compat import get_base_path
+from .custom_titlebar import CustomTitleBar
 
 
 class BreathingMicrophone(QWidget):
@@ -758,7 +759,7 @@ class QuillScribeMainWindow(QMainWindow):
             layout.setContentsMargins(0, 0, 0, 0)
 
             # Create and add custom titlebar
-            self.create_custom_titlebar()
+            self.custom_titlebar = CustomTitleBar(self, title="QuillScribe", show_minimize=True)
             layout.addWidget(self.custom_titlebar)
 
             # Main content area with original spacing
@@ -840,176 +841,7 @@ class QuillScribeMainWindow(QMainWindow):
             }
         """)
 
-    def create_custom_titlebar(self):
-        """Create a custom titlebar with perfectly centered title"""
-        self.custom_titlebar = QWidget()
-        self.custom_titlebar.setFixedHeight(32)
-        self.custom_titlebar.setStyleSheet("""
-            QWidget {
-                background: #f0f0f0;
-                border-bottom: 1px solid #d0d0d0;
-            }
-        """)
 
-        titlebar_layout = QHBoxLayout(self.custom_titlebar)
-        titlebar_layout.setContentsMargins(0, 0, 0, 0)
-        titlebar_layout.setSpacing(0)
-        titlebar_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-        # Left section: icon + spacer (fixed width to balance right section)
-        left_section = QWidget()
-        left_section.setFixedWidth(70)  # Reduced width for compact mode compatibility
-
-        left_layout = QHBoxLayout(left_section)
-        left_layout.setContentsMargins(8, 0, 0, 0)
-        left_layout.setSpacing(8)
-
-        # Window icon (ICO format only - guaranteed to be present)
-        icon_label = QLabel()
-        try:
-            from pathlib import Path
-            # Handle both development and frozen executable environments
-            base_path = get_base_path()
-            if base_path is not None:
-                # Running as frozen executable (Nuitka)
-                ico_path = base_path / "icons" / "app_logo.ico"
-            else:
-                # Running from source
-                ico_path = Path(__file__).parent / "icons" / "app_logo.ico"
-
-            if ico_path.exists():
-                pixmap = QPixmap(str(ico_path)).scaled(16, 16, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                if not pixmap.isNull():
-                    icon_label.setPixmap(pixmap)
-        except Exception:
-            pass
-
-        icon_label.setFixedSize(16, 16)
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_label.setStyleSheet("""
-            QLabel {
-                background: transparent;
-                border: none;
-                padding: 0px;
-                margin: 0px;
-                text-decoration: none;
-            }
-        """)
-        left_layout.addWidget(icon_label)
-        left_layout.addStretch()
-        titlebar_layout.addWidget(left_section)
-
-        # Center section: title (expandable)
-        center_section = QWidget()
-        center_layout = QHBoxLayout(center_section)
-        center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(0)
-
-        self.titlebar_title = QLabel("QuillScribe")
-        self.titlebar_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.titlebar_title.setStyleSheet("""
-            QLabel {
-                color: #2c3e50;
-                font-size: 13px;
-                font-weight: 500;
-                padding: 0px;
-                background: transparent;
-            }
-        """)
-        center_layout.addWidget(self.titlebar_title)
-        titlebar_layout.addWidget(center_section)
-
-        # Right section: window controls (fixed width to balance left section)
-        right_section = QWidget()
-        right_section.setFixedWidth(70)  # Reduced width for compact mode compatibility
-
-        right_layout = QHBoxLayout(right_section)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(0)
-        right_layout.addStretch()
-
-        # Minimize button
-        self.minimize_btn = QPushButton()
-        self.minimize_btn.setObjectName("minimize_btn")  # For theme manager identification
-        self.minimize_btn.setIcon(get_button_icon('minimize', 16))  # Set initial icon
-        self.minimize_btn.setIconSize(QSize(16, 16))
-        self.minimize_btn.setFixedSize(34, 32)  # Reduced width for compact mode
-        self.minimize_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.minimize_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                text-align: center;
-                margin: 0px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background: #e0e0e0;
-            }
-            QPushButton:pressed {
-                background: #d0d0d0;
-            }
-        """)
-        self.minimize_btn.clicked.connect(self.minimize_window)
-        right_layout.addWidget(self.minimize_btn)
-
-        # Close button
-        self.titlebar_close_btn = QPushButton()
-        self.titlebar_close_btn.setObjectName("titlebar_close_btn")  # For theme manager identification
-        self.titlebar_close_btn.setIcon(get_button_icon('close', 16))  # Set initial icon
-        self.titlebar_close_btn.setIconSize(QSize(16, 16))
-        self.titlebar_close_btn.setFixedSize(34, 32)  # Reduced width for compact mode
-        self.titlebar_close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.titlebar_close_btn.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                text-align: center;
-                margin: 0px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background: #e81123;
-            }
-            QPushButton:pressed {
-                background: #c50e1f;
-            }
-        """)
-        self.titlebar_close_btn.clicked.connect(self.close)
-        right_layout.addWidget(self.titlebar_close_btn)
-
-        titlebar_layout.addWidget(right_section)
-
-        # Make titlebar draggable
-        self.custom_titlebar.mousePressEvent = self.titlebar_mouse_press
-        self.custom_titlebar.mouseMoveEvent = self.titlebar_mouse_move
-        self.custom_titlebar.mouseReleaseEvent = self.titlebar_mouse_release
-        self._titlebar_drag_active = False
-        self._titlebar_drag_offset = None
-
-    def titlebar_mouse_press(self, event):
-        """Handle titlebar mouse press for dragging"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._titlebar_drag_active = True
-            try:
-                global_pos = event.globalPosition().toPoint()
-            except Exception:
-                global_pos = event.globalPos()
-            self._titlebar_drag_offset = global_pos - self.frameGeometry().topLeft()
-
-    def titlebar_mouse_move(self, event):
-        """Handle titlebar mouse move for dragging"""
-        if self._titlebar_drag_active and event.buttons() & Qt.MouseButton.LeftButton:
-            try:
-                global_pos = event.globalPosition().toPoint()
-            except Exception:
-                global_pos = event.globalPos()
-            self.move(global_pos - self._titlebar_drag_offset)
-
-    def titlebar_mouse_release(self, event):
-        """Handle titlebar mouse release"""
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._titlebar_drag_active = False
 
     def setup_connections(self):
         """Connect signals and slots"""
@@ -1653,81 +1485,7 @@ class QuillScribeMainWindow(QMainWindow):
 
             # Update custom titlebar colors
             if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
-                # Determine titlebar colors based on theme
-                if self.is_dark:
-                    titlebar_bg = "#3c3c3c"
-                    titlebar_border = "#555555"
-                    titlebar_text = "#ffffff"
-                    titlebar_btn_color = "#ffffff"
-                    titlebar_btn_hover = "#555555"
-                else:
-                    titlebar_bg = "#f0f0f0"
-                    titlebar_border = "#d0d0d0"
-                    titlebar_text = "#2c3e50"
-                    titlebar_btn_color = "#2c3e50"
-                    titlebar_btn_hover = "#e0e0e0"
-
-                self.custom_titlebar.setStyleSheet(f"""
-                QWidget {{
-                    background: {titlebar_bg};
-                    border-bottom: 1px solid {titlebar_border};
-                }}
-                QLabel {{
-                    background: transparent;
-                    border: none;
-                    padding: 0px;
-                    margin: 0px;
-                    text-decoration: none;
-                }}
-            """)
-
-            if hasattr(self, 'titlebar_title'):
-                self.titlebar_title.setStyleSheet(f"""
-                    QLabel {{
-                        color: {titlebar_text};
-                        font-size: 14px;
-                        font-weight: 400;
-                        padding: 0px 20px;
-                    }}
-                """)
-
-            if hasattr(self, 'minimize_btn'):
-                # Update icon color for theme
-                self.minimize_btn.setIcon(get_themed_button_icon('minimize', 16, self.is_dark))
-                self.minimize_btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background: transparent;
-                        border: none;
-                        text-align: center;
-                        margin: 0px;
-                        padding: 0px;
-                    }}
-                    QPushButton:hover {{
-                        background: {titlebar_btn_hover};
-                    }}
-                    QPushButton:pressed {{
-                        background: {titlebar_bg if self.is_dark else '#d0d0d0'};
-                    }}
-                """)
-
-            if hasattr(self, 'titlebar_close_btn'):
-                # Update icon color for theme
-                self.titlebar_close_btn.setIcon(get_themed_button_icon('close', 16, self.is_dark))
-                self.titlebar_close_btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background: transparent;
-                        border: none;
-                        text-align: center;
-                        margin: 0px;
-                        padding: 0px;
-                    }}
-                    QPushButton:hover {{
-                        background: #e81123;
-                    }}
-                    QPushButton:pressed {{
-                        background: #c50e1f;
-                    }}
-                """)
+                self.custom_titlebar.apply_theme(self.is_dark)
 
             if hasattr(self, 'status_label'):
                 font_size = "11px" if self.compact_mode else "14px"

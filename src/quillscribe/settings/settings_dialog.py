@@ -15,6 +15,7 @@ from PySide6.QtGui import QColor
 from ..config_manager import ConfigManager
 from ..managers import StatisticsManager, get_theme_manager
 from ..icon_manager import get_icon, get_white_button_icon, get_button_icon
+from ..custom_titlebar import CustomTitleBar
 from .audio_tab import AudioTab
 from .whisper_tab import WhisperTab
 from .output_tab import OutputTab
@@ -68,12 +69,38 @@ class SettingsDialog(QDialog):
     def setup_ui(self):
         self.setWindowTitle("QuillScribe Settings")
         self.setFixedSize(900, 640)
-        self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
 
-        # Main layout is now Horizontal: Sidebar | Content Area
-        main_layout = QHBoxLayout(self)
+        # Check if custom titlebar is enabled
+        custom_titlebar = bool(self.config_manager.get_setting("ui/custom_titlebar", True))
+
+        if custom_titlebar:
+            # Use frameless window for custom titlebar
+            self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.FramelessWindowHint)
+        else:
+            # Use standard dialog with system titlebar
+            self.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.WindowCloseButtonHint)
+
+        # Main layout is now Vertical: Titlebar (optional) | [Sidebar | Content]
+        main_layout = QVBoxLayout(self)
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Store whether custom titlebar is enabled
+        self.custom_titlebar_enabled = custom_titlebar
+
+        # Create custom titlebar if enabled
+        if custom_titlebar:
+            self.custom_titlebar = CustomTitleBar(self, title="QuillScribe Settings", show_minimize=True)
+            main_layout.addWidget(self.custom_titlebar)
+        else:
+            self.custom_titlebar = None
+
+        # Container for sidebar and content (below titlebar if custom)
+        content_container = QWidget()
+        content_layout = QHBoxLayout(content_container)
+        content_layout.setSpacing(0)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.addWidget(content_container)
 
         # --- Left Sidebar ---
         self.sidebar = QWidget()
@@ -121,14 +148,14 @@ class SettingsDialog(QDialog):
         version_label.setStyleSheet("color: #6c757d; font-size: 11px;")
         sidebar_layout.addWidget(version_label)
 
-        main_layout.addWidget(self.sidebar)
+        content_layout.addWidget(self.sidebar)
 
         # --- Right Content Area ---
-        content_container = QWidget()
-        content_container.setObjectName("content_container")
-        content_layout = QVBoxLayout(content_container)
-        content_layout.setSpacing(0)
-        content_layout.setContentsMargins(0, 0, 0, 0)
+        right_container = QWidget()
+        right_container.setObjectName("content_container")
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setSpacing(0)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Content Header
         header = QWidget()
@@ -145,15 +172,19 @@ class SettingsDialog(QDialog):
         
         header_layout.addStretch()
 
-        self.header_close_button = QPushButton()
-        self.header_close_button.setObjectName("settings_header_close")
-        self.header_close_button.setText("")
-        self.header_close_button.setFixedSize(28, 28)
-        self.header_close_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.header_close_button.clicked.connect(self.reject)
-        header_layout.addWidget(self.header_close_button)
+        # Only show close button in header if we don't have custom titlebar
+        if not custom_titlebar:
+            self.header_close_button = QPushButton()
+            self.header_close_button.setObjectName("settings_header_close")
+            self.header_close_button.setText("")
+            self.header_close_button.setFixedSize(28, 28)
+            self.header_close_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.header_close_button.clicked.connect(self.reject)
+            header_layout.addWidget(self.header_close_button)
+        else:
+            self.header_close_button = None
 
-        content_layout.addWidget(header)
+        right_layout.addWidget(header)
 
         # 2. Main Content Stack
         self.content_stack = QWidget()
@@ -189,7 +220,7 @@ class SettingsDialog(QDialog):
         self.stacked_widget.addWidget(self.statistics_scroll)
 
         stack_layout.addWidget(self.stacked_widget)
-        content_layout.addWidget(self.content_stack, 1) # Give it all remaining space
+        right_layout.addWidget(self.content_stack, 1) # Give it all remaining space
 
         # 3. Footer Action Bar
         footer = QWidget()
@@ -210,9 +241,9 @@ class SettingsDialog(QDialog):
         footer_layout.addWidget(self.cancel_button, alignment=Qt.AlignmentFlag.AlignVCenter)
         footer_layout.addWidget(self.save_button, alignment=Qt.AlignmentFlag.AlignVCenter)
 
-        content_layout.addWidget(footer)
+        right_layout.addWidget(footer)
 
-        main_layout.addWidget(content_container, 1) # Content takes remaining width
+        content_layout.addWidget(right_container, 1) # Content takes remaining width
 
         # Connect buttons
         self.cancel_button.clicked.connect(self.reject)
@@ -348,18 +379,23 @@ class SettingsDialog(QDialog):
             # Update titles
             self.page_title.setStyleSheet(f"color: {colors['text_primary']}; font-size: 18px; font-weight: 600;")
             
-            # Close button
-            self.header_close_button.setStyleSheet(f"""
-                QPushButton#settings_header_close {{
-                    border-radius: 14px;
-                    border: none;
-                    background-color: transparent;
-                }}
-                QPushButton#settings_header_close:hover {{
-                    background-color: {self._darken_color(colors["secondary"], 0.06)};
-                }}
-            """)
-            self.header_close_button.setIcon(get_icon('close', 14, QColor(colors['text_secondary'])))
+            # Close button in header (only if no custom titlebar)
+            if self.header_close_button:
+                self.header_close_button.setStyleSheet(f"""
+                    QPushButton#settings_header_close {{
+                        border-radius: 14px;
+                        border: none;
+                        background-color: transparent;
+                    }}
+                    QPushButton#settings_header_close:hover {{
+                        background-color: {self._darken_color(colors["secondary"], 0.06)};
+                    }}
+                """)
+                self.header_close_button.setIcon(get_icon('close', 14, QColor(colors['text_secondary'])))
+
+            # Update custom titlebar theme if present
+            if hasattr(self, 'custom_titlebar') and self.custom_titlebar is not None:
+                self.custom_titlebar.apply_theme(is_dark)
 
             # Apply to all group boxes in all tabs
             self._apply_theme_to_group_boxes(colors)
