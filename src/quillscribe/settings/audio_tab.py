@@ -9,14 +9,16 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPainter, QBrush
 
 from ..managers import AudioManager, get_theme_manager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
 from .ui_components import ModernGroupBox
 from .modern_buttons import ModernButton, ButtonVariant
-from .modern_widgets import ModernComboBox, ModernCheckBox, AnimatedToggleSwitch, ModernProgressBar
+from .modern_widgets import ModernComboBox, ModernCheckBox, AnimatedToggleSwitch, ModernProgressBar, SegmentedProgressBar
+
+
 
 
 class AudioTab(QWidget):
@@ -47,7 +49,7 @@ class AudioTab(QWidget):
 
         # Header row with Label
         header_layout = QHBoxLayout()
-        input_label = QLabel("Microphone")
+        input_label = QLabel("Primary Microphone")
         input_label.setStyleSheet("""
             font-size: 14px;
             font-weight: 600;
@@ -79,24 +81,22 @@ class AudioTab(QWidget):
         
         input_layout.addLayout(combo_row)
 
-        # Level Meter (Integrated, always visible or subtle)
-        self.level_bar = ModernProgressBar()
-        self.level_bar.setRange(0, 100)
-        self.level_bar.setValue(0)
-        self.level_bar.setFixedHeight(4) # Very slim
-        self.level_bar.setStyleSheet("""
-            QProgressBar {
-                border: none;
-                border-radius: 2px;
-                background-color: #e9ecef;
-                height: 4px;
-            }
-            QProgressBar::chunk {
-                background-color: #28a745;
-                border-radius: 2px;
-            }
-        """)
-        input_layout.addWidget(self.level_bar)
+        # Level Meter Row (Meter + Test Button)
+        meter_row = QHBoxLayout()
+        meter_row.setSpacing(12)
+
+        # Level Meter (Segmented)
+        self.level_bar = SegmentedProgressBar()
+        self.level_bar.setFixedHeight(24) # Match button height roughly or slightly smaller
+        meter_row.addWidget(self.level_bar, 1) # Stretch to fill available space
+        
+        # Test Microphone Button
+        self.test_mic_button = ModernButton("Test Microphone", variant=ButtonVariant.SECONDARY)
+        self.test_mic_button.setFixedSize(140, 32) # Increased width to prevent cutoff
+        self.test_mic_button.clicked.connect(self.on_test_mic_clicked)
+        meter_row.addWidget(self.test_mic_button)
+
+        input_layout.addLayout(meter_row)
         
         main_layout.addWidget(input_container)
 
@@ -187,7 +187,8 @@ class AudioTab(QWidget):
         main_layout.addStretch()
 
         # --- Timers & State ---
-        self.start_monitoring()
+        self._is_testing = False # Track testing state
+        # self.start_monitoring() # Don't start immediately, wait for Test button
 
         # Real-time device monitoring
         self.device_monitor_timer = QTimer()
@@ -260,21 +261,8 @@ class AudioTab(QWidget):
         else:
             self.refresh_button.setIcon(get_button_icon('refresh', 14))
 
-        # Update Level Bar Background
-        # Applied AFTER generic loop to preserve custom height
-        bar_bg = "#2c2c2c" if is_dark else "#e9ecef"
-        self.level_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: none;
-                border-radius: 2px;
-                background-color: {bar_bg};
-                height: 4px;
-            }}
-            QProgressBar::chunk {{
-                background-color: #28a745;
-                border-radius: 2px;
-            }}
-        """)
+        # Update Level Bar
+        self.level_bar.apply_theme(is_dark, colors)
 
     def start_monitoring(self):
         """Start continuous audio monitoring for the level meter"""
@@ -299,27 +287,31 @@ class AudioTab(QWidget):
 
     def update_level_meter_value(self, level: float):
         """Update the level meter value directly from signal"""
+        if not self._is_testing:
+            self.level_bar.setValue(0)
+            return
+
         # Convert level to percentage (0-100) with some boosting for visibility
         level_percent = min(100, int(level * 100 * 1.5)) 
         self.level_bar.setValue(level_percent)
-        
-        # Get current theme for background color
-        from ..managers import get_theme_manager
-        is_dark = get_theme_manager().is_dark_theme()
-        bar_bg = "#2c2c2c" if is_dark else "#e9ecef"
-        
-        # Dynamic color based on level
-        if level_percent > 80:
-            chunk_color = "#dc3545"
-        elif level_percent > 60:
-            chunk_color = "#ffc107"
-        else:
-            chunk_color = "#28a745"
 
-        self.level_bar.setStyleSheet(f"""
-            QProgressBar {{ border: none; border-radius: 2px; background-color: {bar_bg}; height: 4px; }}
-            QProgressBar::chunk {{ background-color: {chunk_color}; border-radius: 2px; }}
-        """)
+    def on_test_mic_clicked(self):
+        """Handle Test Microphone button click"""
+        self._is_testing = not self._is_testing
+        
+        if self._is_testing:
+            self.test_mic_button.setText("Stop Test")
+            self.start_monitoring()
+        else:
+            self.test_mic_button.setText("Test Microphone")
+            self.level_bar.setValue(0)
+            
+            # Stop monitoring to save resources, unless auto-select needs it
+            if not self.auto_select_checkbox.isChecked():
+                try:
+                    self.audio_manager.stop_monitoring()
+                except Exception:
+                    pass
 
 
 
@@ -333,7 +325,7 @@ class AudioTab(QWidget):
             # Restart monitoring with new device
             try:
                 self.audio_manager.stop_monitoring()
-                if device_id is not None:
+                if device_id is not None and (self._is_testing or self.auto_select_checkbox.isChecked()):
                     self.start_monitoring()
             except Exception as e:
                 print(f"Warning: Could not switch to new microphone: {e}")

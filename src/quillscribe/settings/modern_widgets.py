@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QPushButton, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, Property, Signal, QRect, QTimer
-from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QPen, QBrush, QPixmap
 from ..icon_manager import icon_manager
 
 # ModernGroupBox is now imported directly from ui_components and used as is
@@ -1105,3 +1105,136 @@ class ModernTabBar(QWidget):
                     font-weight: 500;
                 }}
             """)
+
+
+class SegmentedProgressBar(QWidget):
+    """
+    A progress bar that displays levels using discrete segments (blocks).
+    Mimics the visual style of physical audio meters.
+    Optimized with QPixmap caching for high-performance rendering.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMinimumHeight(24)
+        self.setMaximumHeight(32)
+        
+        self._value = 0
+        self._segment_count = 40
+        self._segment_spacing = 2
+        self._is_dark = False
+        
+        # Colors
+        self._active_color = QColor("#28a745")  # Green
+        self._inactive_color = QColor("#e9ecef") # Light gray
+        self._bg_color = Qt.GlobalColor.transparent
+        
+        # Cache
+        self._cache_valid = False
+        self._active_pixmap = None
+        self._inactive_pixmap = None
+
+    def setValue(self, value):
+        """Set progress value (0-100)"""
+        new_value = max(0, min(100, value))
+        if self._value != new_value:
+            self._value = new_value
+            self.update()
+
+    def setSegmentCount(self, count):
+        if self._segment_count != count:
+            self._segment_count = count
+            self._cache_valid = False
+            self.update()
+
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        self._is_dark = is_dark
+        if colors:
+            # Keep it green for audio meter convention, or use accent if preferred
+            self._active_color = QColor("#28a745") 
+            self._inactive_color = QColor(colors.get("border", "#404040" if is_dark else "#e9ecef"))
+        else:
+            self._inactive_color = QColor("#404040" if is_dark else "#e9ecef")
+            self._active_color = QColor("#28a745")
+            
+        self._cache_valid = False
+        self.update()
+
+    def resizeEvent(self, event):
+        self._cache_valid = False
+        super().resizeEvent(event)
+
+    def _rebuild_cache(self):
+        """Rebuilds the active and inactive pixmaps"""
+        w = self.width()
+        h = self.height()
+        
+        if w <= 0 or h <= 0:
+            return
+
+        # Create transparent pixmaps
+        self._active_pixmap = QPixmap(w, h)
+        self._active_pixmap.fill(Qt.GlobalColor.transparent)
+        
+        self._inactive_pixmap = QPixmap(w, h)
+        self._inactive_pixmap.fill(Qt.GlobalColor.transparent)
+        
+        # Painters
+        active_painter = QPainter(self._active_pixmap)
+        inactive_painter = QPainter(self._inactive_pixmap)
+        
+        # Setup painters
+        for p in [active_painter, inactive_painter]:
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setPen(Qt.PenStyle.NoPen)
+            
+        active_painter.setBrush(QBrush(self._active_color))
+        inactive_painter.setBrush(QBrush(self._inactive_color))
+        
+        # Calculate geometry
+        total_spacing = (self._segment_count - 1) * self._segment_spacing
+        available_width = w - total_spacing
+        segment_width = available_width / self._segment_count
+        
+        # Draw all segments
+        for i in range(self._segment_count):
+            x = i * (segment_width + self._segment_spacing)
+            
+            # Draw to both pixmaps (one full active, one full inactive)
+            active_painter.drawRoundedRect(x, 0, segment_width, h, 2, 2)
+            inactive_painter.drawRoundedRect(x, 0, segment_width, h, 2, 2)
+            
+        active_painter.end()
+        inactive_painter.end()
+        
+        self._cache_valid = True
+
+    def paintEvent(self, event):
+        if not self._cache_valid:
+            self._rebuild_cache()
+            
+        if not self._active_pixmap or not self._inactive_pixmap:
+            return
+            
+        painter = QPainter(self)
+        
+        # 1. Draw the full inactive bar (background)
+        painter.drawPixmap(0, 0, self._inactive_pixmap)
+        
+        # 2. Draw the active portion on top
+        if self._value > 0:
+            # Calculate width to draw based on segments
+            # We want to snap to segment boundaries
+            active_segments = int((self._value / 100.0) * self._segment_count)
+            
+            if active_segments > 0:
+                total_spacing = (self._segment_count - 1) * self._segment_spacing
+                available_width = self.width() - total_spacing
+                segment_width = available_width / self._segment_count
+                
+                # Calculate exact width to include the last active segment
+                # width = (N * seg_w) + ((N-1) * spacing)
+                draw_width = (active_segments * segment_width) + ((active_segments - 1) * self._segment_spacing)
+                
+                # Draw portion of active pixmap
+                painter.drawPixmap(0, 0, self._active_pixmap, 0, 0, int(draw_width) + 1, self.height())
+
