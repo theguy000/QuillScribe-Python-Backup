@@ -24,7 +24,6 @@ class IconManager:
         'settings': 'settings.svg',
         'close': 'x.svg',  # Simple X icon for close buttons
         'minimize': 'minimize.svg',  # Simple horizontal line for minimize buttons
-        'maximize': 'maximize.svg',  # Simple square icon for maximize buttons
 
         # Output/clipboard icons
         'clipboard': 'clipboard.svg',

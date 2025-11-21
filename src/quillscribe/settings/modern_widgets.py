@@ -106,8 +106,8 @@ class ModernComboBox(QComboBox):
                 border: 1px solid {border_color};
                 border-radius: 12px;
                 padding: 0px 12px 3px 12px; /* Add bottom padding to center text */
-                min-height: 42px;
-                max-height: 42px;
+                min-height: 32px;
+                max-height: 32px;
                 background-color: {bg};
                 color: {text_color};
                 font-family: 'Segoe UI', sans-serif;
@@ -125,7 +125,7 @@ class ModernComboBox(QComboBox):
             QComboBox::drop-down {{
                 border: none;
                 width: 32px; /* Square drop-down area */
-                height: 40px; /* 42px - 2px border */
+                height: 30px; /* 32px - 2px border */
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
             }}
@@ -254,8 +254,8 @@ class ModernLineEdit(QLineEdit):
                 font-size: 14px;
                 background-color: {bg};
                 color: {text_color};
-                min-height: 42px;
-                max-height: 42px;
+                min-height: 32px;
+                max-height: 32px;
                 outline: none;
             }}
             QLineEdit:hover {{
@@ -319,8 +319,8 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 font-size: 14px;
                 background-color: {bg};
                 color: {text_color};
-                min-height: 42px;
-                max-height: 42px;
+                min-height: 32px;
+                max-height: 32px;
                 outline: none;
             }}
             QKeySequenceEdit:hover {{
