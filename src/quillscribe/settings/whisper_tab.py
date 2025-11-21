@@ -77,7 +77,8 @@ class WhisperTab(QWidget):
         
         # Header
         api_header = QLabel("API Endpoint Configuration")
-        api_header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        api_header.setObjectName("section_label")
+        api_header.setStyleSheet("font-size: 14px; font-weight: 600;")
         api_section_layout.addWidget(api_header)
         
         # API Key Field Container
@@ -87,6 +88,7 @@ class WhisperTab(QWidget):
         key_layout.setSpacing(8)
         
         key_label = QLabel("OpenAI API Key")
+        key_label.setObjectName("setting_label")
         key_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
         key_layout.addWidget(key_label)
         
@@ -129,7 +131,8 @@ class WhisperTab(QWidget):
         
         # Header
         params_header = QLabel("Transcription Parameters")
-        params_header.setStyleSheet("font-size: 16px; font-weight: 600;")
+        params_header.setObjectName("section_label")
+        params_header.setStyleSheet("font-size: 14px; font-weight: 600;")
         params_layout.addWidget(params_header)
         
         # Model Field
@@ -139,6 +142,7 @@ class WhisperTab(QWidget):
         model_field_layout.setSpacing(8)
         
         model_label = QLabel("Inference Model")
+        model_label.setObjectName("setting_label")
         model_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
         
         self.api_model_combo = ModernComboBox()
@@ -171,6 +175,7 @@ class WhisperTab(QWidget):
         lang_field_layout.setSpacing(8)
         
         lang_label = QLabel("Target Language")
+        lang_label.setObjectName("setting_label")
         lang_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
         
         self.api_language_combo = ModernComboBox()
@@ -222,7 +227,8 @@ class WhisperTab(QWidget):
             
             # Header
             local_header = QLabel("Model Selection")
-            local_header.setStyleSheet("font-size: 16px; font-weight: 600;")
+            local_header.setObjectName("section_label")
+            local_header.setStyleSheet("font-size: 14px; font-weight: 600;")
             local_layout.addWidget(local_header)
             
             # Side-by-Side Dropdowns
@@ -233,6 +239,7 @@ class WhisperTab(QWidget):
             cat_col = QVBoxLayout()
             cat_col.setSpacing(8)
             cat_label = QLabel("Category")
+            cat_label.setObjectName("setting_label")
             cat_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
             
             self.category_combo = ModernComboBox()
@@ -247,6 +254,7 @@ class WhisperTab(QWidget):
             lmodel_col = QVBoxLayout()
             lmodel_col.setSpacing(8)
             lmodel_label = QLabel("Model")
+            lmodel_label.setObjectName("setting_label")
             lmodel_label.setStyleSheet("color: #6c757d; font-size: 13px; font-weight: 500;")
             
             self.model_combo = ModernComboBox()
@@ -618,16 +626,14 @@ class WhisperTab(QWidget):
             # Skip pricing info as it's handled above
             if label == getattr(self, 'api_pricing_info', None):
                 continue
-                
-            # Check if it's a header (bold/larger)
-            font = label.font()
-            is_header = font.weight() > 60 or font.pointSize() > 13 or "font-weight: 600" in label.styleSheet()
             
-            if is_header:
-                label.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {text_primary};")
-            else:
-                # Default to secondary text color for field labels
-                label.setStyleSheet(f"color: {text_secondary}; font-size: 13px; font-weight: 500;")
+            name = label.objectName()
+            if name == "section_label":
+                label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
+            elif name == "setting_label":
+                label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
+            elif name == "setting_desc":
+                label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
 
         # Unified theme application for child widgets
         from PySide6.QtWidgets import QWidget
