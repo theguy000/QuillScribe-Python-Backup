@@ -420,8 +420,11 @@ class UITab(QWidget):
         colors = theme_manager.get_theme_colors(theme_name)
         is_dark = theme_manager.is_dark_theme()
 
+        # Explicitly set background color to ensure no transparency issues
+        self.setStyleSheet(f"background-color: {colors['primary']};")
+
         # Update Separators
-        separator_color = "#404040" if is_dark else "#f0f0f0"
+        separator_color = colors.get("border", "#404040" if is_dark else "#f0f0f0")
         for sep in self.separators:
             sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
 
@@ -438,6 +441,20 @@ class UITab(QWidget):
                 label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
             elif name == "setting_desc":
                 label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+
+        # Unified theme application for child widgets
+        from PySide6.QtWidgets import QWidget
+        
+        # Iterate over all child widgets and apply theme if supported
+        for widget in self.findChildren(QWidget):
+            if hasattr(widget, 'apply_theme'):
+                try:
+                    widget.apply_theme(is_dark, colors)
+                except Exception as e:
+                    pass # Ignore errors for widgets that might have different signatures (though we aimed to unify them)
+
+        # Update animation controls
+        self._style_animation_controls(theme_name)
 
     def apply_animation_theme(self, theme_name: str | None = None):
         """Public hook so parent dialog can restyle animation controls on theme changes."""
@@ -472,7 +489,7 @@ class UITab(QWidget):
         self._current_primary = primary
         
         # Apply theme to ModernSlider
-        self.animation_strength_slider.apply_theme(is_dark, accent)
+        self.animation_strength_slider.apply_theme(is_dark, colors)
 
     @staticmethod
     def _blend_hex_colors(base_hex: str, blend_hex: str, factor: float) -> str:

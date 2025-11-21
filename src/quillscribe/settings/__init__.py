@@ -3,7 +3,8 @@ Settings Module
 Modular settings dialogs and tabs for QuillScribe
 """
 
-from .ui_components import ModernButton, ModernGroupBox
+from .ui_components import ModernGroupBox
+from .modern_buttons import ModernButton
 from .modern_widgets import (
     ModernComboBox,
     ModernLineEdit,

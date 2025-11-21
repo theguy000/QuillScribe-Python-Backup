@@ -13,7 +13,8 @@ from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
 
 from ..managers import StatisticsManager, get_theme_manager
-from .ui_components import ModernButton, ModernGroupBox
+from .ui_components import ModernGroupBox
+from .modern_buttons import ModernButton, ButtonVariant
 from .base_tab import BaseSettingsTab
 
 
@@ -55,22 +56,30 @@ class StatCard(QFrame):
     def set_value(self, value):
         self.value_label.setText(str(value))
         
-    def apply_theme(self, primary_color, secondary_color, text_color, is_dark):
+    def apply_theme(self, is_dark: bool, colors: dict):
         """Apply theme to the card"""
         theme_manager = get_theme_manager()
         
+        # Extract colors
+        primary_color = colors.get("primary", "#ffffff")
+        secondary_color = colors.get("secondary", "#f8f9fa")
+        text_primary = colors.get("text_primary", "#212529")
+        text_secondary = colors.get("text_secondary", "#6c757d")
+        
         if is_dark:
-            bg_color = theme_manager.lighten_color(secondary_color, 0.08)
-            border_color = "transparent"
-            value_color = text_color
-            title_color = "#adb5bd"
+            # Dark mode: Card bg should be slightly lighter than container (secondary)
+            bg_color = theme_manager.lighten_color(secondary_color, 0.05)
+            border_color = colors.get("border", "transparent")
+            value_color = "#ffffff"
+            title_color = text_secondary
             shadow_color = "#000000"
             shadow_opacity = 80
         else:
+            # Light mode: Card bg white, container is secondary (grayish)
             bg_color = "#ffffff"
-            border_color = "#e9ecef"
-            value_color = primary_color # Use primary color for value in light mode
-            title_color = "#6c757d"
+            border_color = colors.get("border", "#e9ecef")
+            value_color = colors.get("accent", "#212529") # Use accent or dark text
+            title_color = text_secondary
             shadow_color = "#000000"
             shadow_opacity = 20
             
@@ -119,18 +128,27 @@ class StatisticsTab(QWidget):
         # Connect to statistics updates
         self.statistics_manager.stats_updated.connect(self.load_statistics)
 
-    def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
+    def apply_theme(self, theme_name, is_dark=None, colors=None):
         """Apply theme colors to the statistics tab"""
-        # Determine if this is a dark theme
         theme_manager = get_theme_manager()
-        is_dark = theme_manager.is_dark_color(primary_color)
+        
+        if colors is None:
+            colors = theme_manager.get_theme_colors(theme_name)
+        
+        if is_dark is None:
+            is_dark = theme_manager.is_dark_theme()
+        
+        primary_color = colors.get("primary", "#ffffff")
+        secondary_color = colors.get("secondary", "#f8f9fa")
+        border_color = colors.get("border", "#dee2e6")
+        text_primary = colors.get("text_primary", "#212529")
 
         # Apply theme to history text area
         if is_dark:
             history_style = f"""
                 QTextEdit {{
                     background-color: {secondary_color};
-                    border: 1px solid #495057;
+                    border: 1px solid {border_color};
                     border-radius: 4px;
                     padding: 8px;
                     font-family: 'Consolas', 'Monaco', monospace;
@@ -142,7 +160,7 @@ class StatisticsTab(QWidget):
             history_style = f"""
                 QTextEdit {{
                     background-color: {secondary_color};
-                    border: 1px solid #dee2e6;
+                    border: 1px solid {border_color};
                     border-radius: 4px;
                     padding: 8px;
                     font-family: 'Consolas', 'Monaco', monospace;
@@ -154,41 +172,36 @@ class StatisticsTab(QWidget):
         if hasattr(self, 'history_list'):
             self.history_list.setStyleSheet(history_style)
 
-        # Apply theme to buttons using the correct signature for ModernButton
-        for button in [self.refresh_button, self.export_button, self.reset_button]:
-            if hasattr(button, 'apply_theme'):
-                button.apply_theme(primary_color, secondary_color)
-
         # Apply theme to all ModernGroupBox components
         from .ui_components import ModernGroupBox
         for group_box in self.findChildren(ModernGroupBox):
             if hasattr(group_box, 'apply_theme'):
-                group_box.apply_theme(primary_color, secondary_color)
+                group_box.apply_theme(is_dark, colors)
 
         # Apply background color and text color to the tab itself
-        # Use dark text for light themes, light text for dark themes
         text_color = "#e9ecef" if is_dark else "#212529"
         
         # Apply to the scroll area widget if it exists
         if hasattr(self, 'scroll_widget'):
             self.scroll_widget.setStyleSheet(f"""
                 QWidget#stats_scroll_widget {{
-                    background-color: {secondary_color};
+                    background-color: transparent;
+                }}
+                QLabel {{
                     color: {text_color};
                 }}
             """)
             
         self.setStyleSheet(f"""
             StatisticsTab {{
-                background-color: {secondary_color};
+                background-color: {colors['primary']};
             }}
         """)
         
         # Apply theme to all StatCards
         # We need to pass the correct text color for the title/value logic inside StatCard
-        # StatCard logic uses primary_color for value, so we pass that.
         for card in self.findChildren(StatCard):
-            card.apply_theme(primary_color, secondary_color, text_color, is_dark)
+            card.apply_theme(is_dark, colors)
     
     def setup_ui(self):
         """Setup the statistics tab UI"""
@@ -302,15 +315,15 @@ class StatisticsTab(QWidget):
         # Action buttons
         button_layout = QHBoxLayout()
         
-        self.refresh_button = ModernButton("Refresh")
+        self.refresh_button = ModernButton("Refresh", variant=ButtonVariant.SECONDARY)
         self.refresh_button.clicked.connect(self.load_statistics)
         button_layout.addWidget(self.refresh_button)
         
-        self.export_button = ModernButton("Export Statistics")
+        self.export_button = ModernButton("Export Statistics", variant=ButtonVariant.SECONDARY)
         self.export_button.clicked.connect(self.export_statistics)
         button_layout.addWidget(self.export_button)
         
-        self.reset_button = ModernButton("Reset Statistics")
+        self.reset_button = ModernButton("Reset Statistics", variant=ButtonVariant.DANGER)
         self.reset_button.clicked.connect(self.reset_statistics)
         button_layout.addWidget(self.reset_button)
         
@@ -469,7 +482,7 @@ class StatisticsTab(QWidget):
                     QMessageBox QPushButton {{
                         background-color: #495057;
                         color: #e9ecef;
-                        border: 1px solid #6c757d;
+                        border: 1px solid {colors.get("border", "#6c757d")};
                         border-radius: 4px;
                         padding: 6px 12px;
                         min-width: 60px;
@@ -493,7 +506,7 @@ class StatisticsTab(QWidget):
                     QMessageBox QPushButton {{
                         background-color: #e9ecef;
                         color: #495057;
-                        border: 1px solid #dee2e6;
+                        border: 1px solid {colors.get("border", "#dee2e6")};
                         border-radius: 4px;
                         padding: 6px 12px;
                         min-width: 60px;

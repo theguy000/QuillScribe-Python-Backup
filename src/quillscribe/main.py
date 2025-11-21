@@ -224,6 +224,7 @@ from .config_manager import ConfigManager
 from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
 from .frozen_compat import get_base_path
 from .custom_titlebar import CustomTitleBar
+from .settings.modern_buttons import ModernButton, ButtonVariant
 
 
 class BreathingMicrophone(QWidget):
@@ -517,97 +518,7 @@ class BreathingMicrophone(QWidget):
         painter.drawLine(center_x - 8, stand_y + 15, center_x + 8, stand_y + 15)
 
 
-class ModernButton(QPushButton):
-    """Beautiful modern button with hover effects"""
 
-    def __init__(self, text: str, primary: bool = False, parent=None):
-        super().__init__(text, parent)
-        self.primary = primary
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.apply_theme(is_dark=False, compact=False)
-
-        # Hover animation
-        self.animation = QPropertyAnimation(self, b"geometry")
-        self.animation.setDuration(150)
-        self.animation.setEasingCurve(QEasingCurve.Type.OutCubic)
-
-    def apply_theme(self, is_dark: bool, compact: bool = False):
-        if self.primary:
-            # Primary button (Record/Stop)
-            stylesheet = """
-                QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #4A90E2, stop:1 #357ABD);
-                    color: white;
-                    border: none;
-                    border-radius: 25px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    padding: 12px 24px;
-                    min-width: 120px;
-                }
-                QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #5BA0F2, stop:1 #4A90E2);
-                }
-                QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                        stop:0 #357ABD, stop:1 #2E6BA0);
-                }
-            """
-        else:
-            # Secondary button (Settings)
-            if compact:
-                font_size = "11px"
-                border_radius = "8px"
-                padding = "6px 10px"
-                min_width = "60px"
-            else:
-                font_size = "16px"
-                border_radius = "12px"
-                padding = "12px 24px"
-                min_width = "120px"
-
-            if is_dark:
-                stylesheet = f"""
-                    QPushButton {{
-                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3c3c3c, stop:1 #2c2c2c);
-                        color: #f0f0f0;
-                        border: 2px solid #555555;
-                        border-radius: {border_radius};
-                        font-size: {font_size};
-                        font-weight: 500;
-                        padding: {padding};
-                        min-width: {min_width};
-                        text-align: center;
-                    }}
-                    QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4c4c4c, stop:1 #3c3c3c); border-color: #777777; }}
-                    QPushButton:pressed {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2c2c2c, stop:1 #1c1c1c); }}
-                """
-            else:
-                stylesheet = f"""
-                    QPushButton {{
-                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8f9fa, stop:1 #e9ecef);
-                        color: #495057;
-                        border: 2px solid #dee2e6;
-                        border-radius: {border_radius};
-                        font-size: {font_size};
-                        font-weight: 500;
-                        padding: {padding};
-                        min-width: {min_width};
-                        text-align: center;
-                    }}
-                    QPushButton:hover {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f1f3f4); border-color: #adb5bd; color: #495057; }}
-                    QPushButton:pressed {{ background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e9ecef, stop:1 #dee2e6); }}
-                """
-        self.setStyleSheet(stylesheet)
-
-        # Drop shadow
-        shadow = QGraphicsDropShadowEffect()
-        shadow.setBlurRadius(10)
-        shadow.setColor(QColor(0, 0, 0, 30))
-        shadow.setOffset(0, 2)
-        self.setGraphicsEffect(shadow)
 
 
 class QuillScribeMainWindow(QMainWindow):
@@ -869,7 +780,7 @@ class QuillScribeMainWindow(QMainWindow):
         layout.addStretch()
 
         # Settings button only
-        self.settings_button = ModernButton("Settings", primary=False)
+        self.settings_button = ModernButton("Settings", variant=ButtonVariant.SECONDARY)
         self.settings_button.setIcon(get_button_icon('settings', 16))
         self.settings_button.setIconSize(QSize(16, 16))
         # Ensure button doesn't expand horizontally beyond its content
@@ -1520,7 +1431,7 @@ class QuillScribeMainWindow(QMainWindow):
             """)
 
             # Apply theme to settings button
-            self.settings_button.apply_theme(self.is_dark, self.compact_mode)
+            self.settings_button.apply_theme(self.is_dark, colors)
             self.settings_button.setIcon(get_themed_button_icon('settings', 16, self.is_dark))
 
             # Apply themed icons to all components
@@ -1601,7 +1512,10 @@ class QuillScribeMainWindow(QMainWindow):
             self.status_label.setVisible(False)
             self.status_label.setStyleSheet("QLabel { color: #6c757d; font-size: 11px; margin-top: 4px; }")
             # Shrink settings button
-            self.settings_button.apply_theme(self.is_dark, True)
+            self.settings_button.setFixedHeight(28)
+            theme_name = self.config_manager.get_setting("ui/theme", "white")
+            colors = self._get_theme_colors(theme_name)
+            self.settings_button.apply_theme(self.is_dark, colors)
             # Re-show to apply window flag changes
             self.show()
             # Reapply always-on-top if needed
@@ -1620,7 +1534,10 @@ class QuillScribeMainWindow(QMainWindow):
             self.status_label.setVisible(True)
             self.status_label.setStyleSheet("QLabel { color: #6c757d; font-size: 14px; margin-top: 10px; }")
             # Restore settings button default style
-            self.settings_button.apply_theme(self.is_dark, False)
+            self.settings_button.setFixedHeight(36)
+            theme_name = self.config_manager.get_setting("ui/theme", "white")
+            colors = self._get_theme_colors(theme_name)
+            self.settings_button.apply_theme(self.is_dark, colors)
             # Re-show to apply window flag changes
             self.show()
             # Reapply always-on-top if needed

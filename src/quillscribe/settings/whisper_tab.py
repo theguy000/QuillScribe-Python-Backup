@@ -14,7 +14,8 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..managers import WhisperManager, get_theme_manager
 from ..icon_manager import get_button_icon, get_themed_button_icon
-from .ui_components import ModernGroupBox, ModernButton
+from .ui_components import ModernGroupBox
+from .modern_buttons import ModernButton, ButtonVariant
 from .modern_widgets import (
     ModernComboBox, ModernLineEdit, ModernRadioButton,
     ModernTabBar
@@ -95,9 +96,8 @@ class WhisperTab(QWidget):
         self.api_key_edit = ModernLineEdit("sk-...")
         self.api_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
         
-        self.api_key_toggle_btn = QPushButton()
+        self.api_key_toggle_btn = ModernButton(variant=ButtonVariant.GHOST)
         self.api_key_toggle_btn.setFixedSize(32, 32)
-        self.api_key_toggle_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.api_key_toggle_btn.clicked.connect(self.toggle_api_key_visibility)
         
         key_input_row.addWidget(self.api_key_edit)
@@ -265,54 +265,30 @@ class WhisperTab(QWidget):
             local_layout.addWidget(info_label)
             
             local_page_layout.addWidget(local_container)
-            
+        
         local_page_layout.addStretch()
         self.content_stack.addWidget(self.local_page)
         
         layout.addWidget(self.content_stack)
 
-        # Connect theme changes
-        get_theme_manager().theme_changed.connect(self._on_theme_changed)
-        
-        # Initial theme application
-        self._on_theme_changed(get_theme_manager().is_dark_theme())
-        self._update_api_key_toggle_icon()
-
-    def _on_theme_changed(self, is_dark: bool):
-        """Apply theme changes to custom widgets"""
-        if hasattr(self, 'mode_selector'):
-            # Get theme colors to pass accent color
-            theme_manager = get_theme_manager()
-            colors = theme_manager.get_theme_colors()
-            accent = colors["accent"]
-            self.mode_selector.apply_theme(is_dark, accent)
-        self._update_api_key_toggle_icon()
-
-    def on_mode_changed(self, index: int):
-        """Handle mode selection change"""
-        self.content_stack.setCurrentIndex(index)
-        
-        mode = "api" if index == 0 else "local"
-        self.whisper_manager.set_mode(mode)
-        
-        if mode == "api":
-            # Refresh API model combo when switching to API mode
-            if hasattr(self, 'api_model_combo'):
-                self.populate_api_model_combo()
-        else:
-            pass # Local mode logic if needed
-
     def load_settings(self):
         """Load Whisper settings from config"""
         mode = self.config_manager.get_setting("whisper/mode", "api")
+        
+        # Initialize manager with correct mode
+        self.whisper_manager.set_mode(mode)
+        
         if mode == "api":
             self.mode_selector.set_current_index(0)
+            # Ensure API model combo is populated
+            if hasattr(self, 'api_model_combo'):
+                self.populate_api_model_combo()
         else:
             self.mode_selector.set_current_index(1)
 
         api_key = self.config_manager.get_setting("whisper/api_key", "")
         self.api_key_edit.setText(api_key)
-
+            
         # Load selected API model
         selected_api_model = self.config_manager.get_setting("whisper/api_model", "gpt-4o-transcribe")
         if hasattr(self, 'api_model_combo'):
@@ -438,6 +414,19 @@ class WhisperTab(QWidget):
             # If no previous selection or it's not available, select first model
             self.model_combo.setCurrentIndex(0)
 
+    def on_mode_changed(self, index: int):
+        """Handle mode selection change (Cloud vs Local)"""
+        self.content_stack.setCurrentIndex(index)
+        
+        mode = "api" if index == 0 else "local"
+        self.config_manager.set_setting("whisper/mode", mode)
+        self.whisper_manager.set_mode(mode)
+        
+        if mode == "api":
+            # Refresh API model combo when switching to API mode
+            if hasattr(self, 'api_model_combo'):
+                self.populate_api_model_combo()
+
     def on_category_changed(self, category: str):
         """Handle category dropdown selection change"""
         # Update the model dropdown to show models from selected category
@@ -522,7 +511,7 @@ class WhisperTab(QWidget):
         is_dark = theme_manager.is_dark_theme()
 
         # Apply theme-based styling to the button
-        self._apply_toggle_button_theme(is_dark)
+        # self._apply_toggle_button_theme(is_dark) # Handled by ModernButton.apply_theme
 
         if self.api_key_edit.echoMode() == QLineEdit.EchoMode.Password:
             # Key is hidden, show eye-off icon
@@ -535,29 +524,7 @@ class WhisperTab(QWidget):
 
     def _apply_toggle_button_theme(self, is_dark: bool):
         """Apply theme-based styling to the API key toggle button"""
-        if is_dark:
-            # Dark theme colors
-            hover_bg = "#495057"  # Darker gray for hover
-            pressed_bg = "#343a40"  # Even darker for pressed
-        else:
-            # Light theme colors
-            hover_bg = "#e9ecef"  # Light gray for hover
-            pressed_bg = "#dee2e6"  # Slightly darker for pressed
-
-        self.api_key_toggle_btn.setStyleSheet(f"""
-            QPushButton {{
-                background: transparent;
-                border: none;
-                border-radius: 4px;
-                padding: 4px;
-            }}
-            QPushButton:hover {{
-                background: {hover_bg};
-            }}
-            QPushButton:pressed {{
-                background: {pressed_bg};
-            }}
-        """)
+        pass
 
     def toggle_api_key_visibility(self):
         """Toggle API key visibility between password and normal mode"""
@@ -572,18 +539,102 @@ class WhisperTab(QWidget):
         self._update_api_key_toggle_icon()
 
     def update_pricing_display(self, model_name: str):
-        """Update pricing display based on selected model"""
-        # Get model-specific pricing
-        pricing_info = self.get_model_pricing(model_name)
-        self.api_pricing_info.setText(pricing_info)
+        """Update the pricing info badge based on the selected model"""
+        pricing_map = {
+            "gpt-4o-transcribe": "$0.006 / min",
+            "gpt-4o-mini-transcribe": "$0.002 / min"
+        }
+        price = pricing_map.get(model_name, "Variable Pricing")
+        if hasattr(self, 'api_pricing_info'):
+            self.api_pricing_info.setText(f"Pricing: {price}")
+            
+            # Use theme colors for pricing info (success/green variant)
+            from ..managers import get_theme_manager
+            theme_manager = get_theme_manager()
+            is_dark = theme_manager.is_dark_theme()
 
-    def get_model_pricing(self, model_name: str) -> str:
-        """Get pricing information for a specific model"""
-        if model_name == "gpt-4o-mini-transcribe":
-            # GPT-4o Transcribe Mini is half the price of regular GPT-4o Transcribe
-            return "Pricing: ~$0.003 per minute of audio (~$0.18/hour)"
-        elif model_name == "gpt-4o-transcribe":
-            return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
-        else:
-            # Default pricing for unknown models
-            return "Pricing: ~$0.006 per minute of audio (~$0.36/hour)"
+            if is_dark:
+                bg_color = "#1e3a2a" # Dark green bg
+                border_color = "#2e5c3e" # Dark green border
+                text_color = "#4ade80" # Bright green text
+            else:
+                bg_color = "#f8fff9"
+                border_color = "#d4edda"
+                text_color = "#28a745"
+
+            self.api_pricing_info.setStyleSheet(f"""
+                color: {text_color};
+                font-size: 11px;
+                font-weight: 600;
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                padding: 4px 8px;
+                margin-top: 4px;
+            """)
+
+    def apply_theme(self, theme_name):
+        """Apply theme to tab specific elements"""
+        from ..managers import get_theme_manager
+        theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
+        is_dark = theme_manager.is_dark_theme()
+
+        # Explicitly set background color
+        self.setStyleSheet(f"background-color: {colors['primary']};")
+
+        # Update API Key Toggle Button
+        self._update_api_key_toggle_icon()
+
+        # Update Pricing Info
+        if hasattr(self, 'api_pricing_info'):
+             # Use theme colors for pricing info (success/green variant)
+            if is_dark:
+                bg_color = "#1e3a2a" # Dark green bg
+                border_color = "#2e5c3e" # Dark green border
+                text_color = "#4ade80" # Bright green text
+            else:
+                bg_color = "#f8fff9"
+                border_color = "#d4edda"
+                text_color = "#28a745"
+
+            self.api_pricing_info.setStyleSheet(f"""
+                color: {text_color};
+                font-size: 11px;
+                font-weight: 600;
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 4px;
+                padding: 4px 8px;
+                margin-top: 4px;
+            """)
+
+        # Update all labels
+        from PySide6.QtWidgets import QLabel
+        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
+        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
+        
+        for label in self.findChildren(QLabel):
+            # Skip pricing info as it's handled above
+            if label == getattr(self, 'api_pricing_info', None):
+                continue
+                
+            # Check if it's a header (bold/larger)
+            font = label.font()
+            is_header = font.weight() > 60 or font.pointSize() > 13 or "font-weight: 600" in label.styleSheet()
+            
+            if is_header:
+                label.setStyleSheet(f"font-size: 16px; font-weight: 600; color: {text_primary};")
+            else:
+                # Default to secondary text color for field labels
+                label.setStyleSheet(f"color: {text_secondary}; font-size: 13px; font-weight: 500;")
+
+        # Unified theme application for child widgets
+        from PySide6.QtWidgets import QWidget
+        
+        for widget in self.findChildren(QWidget):
+            if hasattr(widget, 'apply_theme'):
+                try:
+                    widget.apply_theme(is_dark, colors)
+                except Exception:
+                    pass

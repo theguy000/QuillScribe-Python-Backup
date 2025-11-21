@@ -394,67 +394,53 @@ class ModernRadioButton(QRadioButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False)
 
-    def apply_theme(self, is_dark: bool):
-        if is_dark:
-            stylesheet = """
-                QRadioButton {
-                    font-size: 13px;
-                    color: #b0b0b0;
-                    spacing: 8px;
-                    outline: none;
-                }
-                QRadioButton:checked {
-                    color: #ffffff; /* selected text stronger */
-                    font-weight: 500;
-                }
-                QRadioButton::indicator {
-                    width: 16px;
-                    height: 16px;
-                }
-                QRadioButton::indicator:unchecked {
-                    border: 2px solid #555555; /* greyed out */
-                    border-radius: 8px;
-                    background-color: #2c2c2c;
-                }
-                QRadioButton::indicator:unchecked:hover {
-                    border-color: #4A90E2;
-                }
-                QRadioButton::indicator:checked {
-                    border: 2px solid #4A90E2;
-                    border-radius: 8px;
-                    background-color: #4A90E2;
-                }
-            """
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            text_color = colors.get("text_primary", "#b0b0b0" if is_dark else "#495057")
+            border_color = colors.get("border", "#555555" if is_dark else "#dee2e6")
+            accent = colors.get("accent", "#4A90E2")
+            hover_border = colors.get("accent", "#4A90E2")
         else:
-            stylesheet = """
-                QRadioButton {
-                    font-size: 13px;
-                    color: #495057;
-                    spacing: 8px;
-                    outline: none;
-                }
-                QRadioButton:checked {
-                    color: #2c3e50;
-                    font-weight: 500;
-                }
-                QRadioButton::indicator {
-                    width: 16px;
-                    height: 16px;
-                }
-                QRadioButton::indicator:unchecked {
-                    border: 2px solid #dee2e6;
-                    border-radius: 8px;
-                    background-color: white;
-                }
-                QRadioButton::indicator:unchecked:hover {
-                    border-color: #4A90E2;
-                }
-                QRadioButton::indicator:checked {
-                    border: 2px solid #4A90E2;
-                    border-radius: 8px;
-                    background-color: #4A90E2;
-                }
-            """
+            if is_dark:
+                text_color = "#b0b0b0"
+                border_color = "#555555"
+                accent = "#4A90E2"
+                hover_border = "#4A90E2"
+            else:
+                text_color = "#495057"
+                border_color = "#dee2e6"
+                accent = "#4A90E2"
+                hover_border = "#4A90E2"
+
+        stylesheet = f"""
+            QRadioButton {{
+                font-size: 13px;
+                color: {text_color};
+                spacing: 8px;
+                outline: none;
+            }}
+            QRadioButton:checked {{
+                color: {text_color}; /* selected text stronger */
+                font-weight: 500;
+            }}
+            QRadioButton::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+            QRadioButton::indicator:unchecked {{
+                border: 2px solid {border_color}; /* greyed out */
+                border-radius: 8px;
+                background-color: {'#2c2c2c' if is_dark else 'white'};
+            }}
+            QRadioButton::indicator:unchecked:hover {{
+                border-color: {hover_border};
+            }}
+            QRadioButton::indicator:checked {{
+                border: 2px solid {accent};
+                border-radius: 8px;
+                background-color: {accent};
+            }}
+        """
         self.setStyleSheet(stylesheet)
 
 
@@ -466,62 +452,52 @@ class ModernCheckBox(QCheckBox):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False)
 
-    def apply_theme(self, is_dark: bool):
-        if is_dark:
-            stylesheet = """
-                QCheckBox {
-                    font-size: 13px;
-                    color: #f0f0f0;
-                    spacing: 8px;
-                    outline: none;
-                }
-                QCheckBox::indicator {
-                    width: 16px;
-                    height: 16px;
-                }
-                QCheckBox::indicator:unchecked {
-                    border: 2px solid #555555;
-                    border-radius: 4px;
-                    background-color: #2c2c2c;
-                }
-                QCheckBox::indicator:unchecked:hover {
-                    border-color: #4A90E2;
-                }
-                QCheckBox::indicator:checked {
-                    border: 2px solid #4A90E2;
-                    border-radius: 4px;
-                    background-color: #4A90E2;
-                }
-                QCheckBox::indicator:checked:hover {
-                    border-color: #5BA0F2;
-                }
-            """
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            text_color = colors.get("text_primary", "#f0f0f0" if is_dark else "#495057")
+            border_color = colors.get("border", "#555555" if is_dark else "#dee2e6")
+            accent = colors.get("accent", "#4A90E2")
+            hover_border = colors.get("accent", "#4A90E2")
         else:
-            stylesheet = """
-                QCheckBox {
-                    font-size: 13px;
-                    color: #495057;
-                    spacing: 8px;
-                    outline: none;
-                }
-                QCheckBox::indicator {
-                    width: 16px;
-                    height: 16px;
-                }
-                QCheckBox::indicator:unchecked {
-                    border: 2px solid #dee2e6;
-                    border-radius: 4px;
-                    background-color: white;
-                }
-                QCheckBox::indicator:unchecked:hover {
-                    border-color: #4A90E2;
-                }
-                QCheckBox::indicator:checked {
-                    border: 2px solid #4A90E2;
-                    border-radius: 4px;
-                    background-color: #4A90E2;
-                }
-            """
+            if is_dark:
+                text_color = "#f0f0f0"
+                border_color = "#555555"
+                accent = "#4A90E2"
+                hover_border = "#4A90E2"
+            else:
+                text_color = "#495057"
+                border_color = "#dee2e6"
+                accent = "#4A90E2"
+                hover_border = "#4A90E2"
+
+        stylesheet = f"""
+            QCheckBox {{
+                font-size: 13px;
+                color: {text_color};
+                spacing: 8px;
+                outline: none;
+            }}
+            QCheckBox::indicator {{
+                width: 16px;
+                height: 16px;
+            }}
+            QCheckBox::indicator:unchecked {{
+                border: 2px solid {border_color};
+                border-radius: 4px;
+                background-color: {'#2c2c2c' if is_dark else 'white'};
+            }}
+            QCheckBox::indicator:unchecked:hover {{
+                border-color: {hover_border};
+            }}
+            QCheckBox::indicator:checked {{
+                border: 2px solid {accent};
+                border-radius: 4px;
+                background-color: {accent};
+            }}
+            QCheckBox::indicator:checked:hover {{
+                border-color: {accent};
+            }}
+        """
         self.setStyleSheet(stylesheet)
 
 
@@ -631,15 +607,24 @@ class AnimatedToggleSwitch(QCheckBox):
     # Qt Property for animation system
     circle_position = Property(int, _get_circle_position, _set_circle_position)
 
-    def apply_theme(self, is_dark: bool):
+    def apply_theme(self, is_dark: bool, colors: dict = None):
         """
         Apply theme colors to the toggle switch.
 
         Args:
             is_dark: True for dark theme, False for light theme
+            colors: Dictionary of theme colors
         """
+        # Update internal colors
+        if colors:
+            self._colors['checked_track'] = QColor(colors.get("accent", "#4A90E2"))
+            self._colors['unchecked_track_light'] = QColor(colors.get("border", "#dee2e6"))
+            self._colors['unchecked_track_dark'] = QColor(colors.get("border", "#555555"))
+            # We can add more theme-aware colors here if needed
+        
         # Only update if theme actually changed (optimization)
-        if self._is_dark != is_dark:
+        # Or if colors are provided (force update)
+        if self._is_dark != is_dark or colors:
             self._is_dark = is_dark
             self.update()
 
@@ -743,15 +728,22 @@ class ModernSlider(QSlider):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.apply_theme(is_dark=False)
 
-    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
-        if is_dark:
-            groove_bg = "#555555"
-            handle_border = "#777777"
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            accent = colors.get("accent", "#4A90E2")
+            groove_bg = colors.get("border", "#dee2e6" if not is_dark else "#555555")
+            handle_border = colors.get("border_light", "#adb5bd" if not is_dark else "#777777")
             handle_bg = "#ffffff"
         else:
-            groove_bg = "#dee2e6"
-            handle_border = "#adb5bd"
-            handle_bg = "#ffffff"
+            accent = "#4A90E2"
+            if is_dark:
+                groove_bg = "#555555"
+                handle_border = "#777777"
+                handle_bg = "#ffffff"
+            else:
+                groove_bg = "#dee2e6"
+                handle_border = "#adb5bd"
+                handle_bg = "#ffffff"
 
         self.setStyleSheet(f"""
             QSlider {{
@@ -1060,17 +1052,22 @@ class ModernTabBar(QWidget):
         self._anim.setEndValue(target_rect)
         self._anim.start()
 
-    def apply_theme(self, is_dark: bool, accent: str = "#4A90E2"):
+    def apply_theme(self, is_dark: bool, colors: dict = None):
+        if colors:
+            accent = colors.get("accent", "#4A90E2")
+            border_color = colors.get("border", "#dee2e6" if not is_dark else "#4C3D70")
+        else:
+            accent = "#4A90E2"
+            border_color = "#4C3D70" if is_dark else "#dee2e6"
+
         if is_dark:
             text_color = "#b0b0b0"   # Secondary text
             active_color = accent    # Primary text (accent)
             hover_color = "#ffffff"  # Hover text
-            border_color = "#4C3D70" # Container border (Matches HTML border-dark)
         else:
             text_color = "#6c757d"   # Secondary text
             active_color = accent    # Primary text (accent)
             hover_color = "#212529"  # Hover text
-            border_color = "#dee2e6" # Container border
             
         # Container styling: Add bottom border to the whole tab bar
         self.setStyleSheet(f"""

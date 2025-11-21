@@ -14,7 +14,8 @@ from PySide6.QtGui import QColor
 from ..managers import AudioManager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
-from .ui_components import ModernGroupBox, ModernButton
+from .ui_components import ModernGroupBox
+from .modern_buttons import ModernButton, ButtonVariant
 from .modern_widgets import ModernComboBox, ModernCheckBox, AnimatedToggleSwitch, ModernProgressBar
 
 
@@ -68,25 +69,11 @@ class AudioTab(QWidget):
         combo_row.addWidget(self.mic_combo, 1) # Stretch factor 1
 
         # Refresh button (Icon only, subtle)
-        self.refresh_button = QPushButton()
+        self.refresh_button = ModernButton(variant=ButtonVariant.GHOST)
         self.refresh_button.setObjectName("refresh_button")
         self.refresh_button.setIcon(get_button_icon('refresh', 14))
         self.refresh_button.setFixedSize(32, 32) # Matches combo height
-        self.refresh_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.refresh_button.setToolTip("Refresh Device List")
-        self.refresh_button.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background: #e9ecef;
-            }
-            QPushButton:pressed {
-                background: #dee2e6;
-            }
-        """)
         self.refresh_button.clicked.connect(self.refresh_devices)
         combo_row.addWidget(self.refresh_button)
         
@@ -139,7 +126,7 @@ class AudioTab(QWidget):
         auto_select_row.addStretch()
 
         # Detect Now Button (No icon, larger size)
-        self.detect_now_button = ModernButton("Detect Now", primary=False)
+        self.detect_now_button = ModernButton("Detect Now", variant=ButtonVariant.SECONDARY)
         self.detect_now_button.setMinimumWidth(110) # Ensure text fits
         self.detect_now_button.setFixedHeight(32)
         self.detect_now_button.clicked.connect(self.detect_active_microphone_now)
@@ -188,7 +175,7 @@ class AudioTab(QWidget):
         blocklist_row.addLayout(blocklist_info)
         blocklist_row.addStretch()
 
-        self.blocklist_button = ModernButton("Manage", primary=False)
+        self.blocklist_button = ModernButton("Manage", variant=ButtonVariant.SECONDARY)
         self.blocklist_button.setMinimumWidth(100) # Ensure text fits
         self.blocklist_button.setFixedHeight(32)
         self.blocklist_button.clicked.connect(self.show_blocklist_dialog)
@@ -232,15 +219,18 @@ class AudioTab(QWidget):
         colors = theme_manager.get_theme_colors(theme_name)
         is_dark = theme_manager.is_dark_theme()
 
+        # Explicitly set background color
+        self.setStyleSheet(f"background-color: {colors['primary']};")
+
         # Update Separators
-        separator_color = "#404040" if is_dark else "#f0f0f0"
+        separator_color = colors.get("border", "#404040" if is_dark else "#f0f0f0")
         for sep in self.separators:
             sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
 
         # Update Labels
-        text_primary = "#ffffff" if is_dark else "#212529"
-        text_secondary = "#e0e0e0" if is_dark else "#495057"
-        text_muted = "#b0b0b0" if is_dark else "#6c757d"
+        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
+        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
+        text_muted = colors.get("text_muted", "#b0b0b0" if is_dark else "#6c757d")
 
         for label in self.findChildren(QLabel):
             name = label.objectName()
@@ -251,65 +241,28 @@ class AudioTab(QWidget):
             elif name == "setting_desc":
                 label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
 
-        # Update Buttons (Detect Now & Manage) with reduced padding for 32px height
-        btn_bg = colors["secondary"] if is_dark else "#f8f9fa"
-        btn_border = "#495057" if is_dark else "#dee2e6"
-        btn_text = "#e9ecef" if is_dark else "#495057"
-        btn_hover = "#495057" if is_dark else "#e9ecef"
+        # Unified theme application for child widgets
+        from PySide6.QtWidgets import QWidget
         
-        button_style = f"""
-            QPushButton {{
-                background: {btn_bg};
-                color: {btn_text};
-                border: 1px solid {btn_border};
-                border-radius: 6px;
-                padding: 4px 12px; /* Reduced padding */
-                font-size: 13px;
-                font-weight: 500;
-            }}
-            QPushButton:hover {{
-                background: {btn_hover};
-            }}
-            QPushButton:pressed {{
-                background: {btn_bg};
-            }}
-        """
-        self.detect_now_button.setStyleSheet(button_style)
-        self.blocklist_button.setStyleSheet(button_style)
+        for widget in self.findChildren(QWidget):
+            if hasattr(widget, 'apply_theme'):
+                try:
+                    widget.apply_theme(is_dark, colors)
+                except Exception:
+                    pass
+
+        # Update Buttons (Detect Now & Manage)
+        # ModernButton handles its own styling via apply_theme
+        pass
 
         # Update Refresh Button
         if is_dark:
             self.refresh_button.setIcon(get_white_button_icon('refresh', 14))
-            self.refresh_button.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    border: 1px solid #555555;
-                    border-radius: 4px;
-                }
-                QPushButton:hover {
-                    background: #333333;
-                }
-                QPushButton:pressed {
-                    background: #222222;
-                }
-            """)
         else:
             self.refresh_button.setIcon(get_button_icon('refresh', 14))
-            self.refresh_button.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    border: 1px solid #dee2e6;
-                    border-radius: 4px;
-                }
-                QPushButton:hover {
-                    background: #e9ecef;
-                }
-                QPushButton:pressed {
-                    background: #dee2e6;
-                }
-            """)
 
         # Update Level Bar Background
+        # Applied AFTER generic loop to preserve custom height
         bar_bg = "#2c2c2c" if is_dark else "#e9ecef"
         self.level_bar.setStyleSheet(f"""
             QProgressBar {{

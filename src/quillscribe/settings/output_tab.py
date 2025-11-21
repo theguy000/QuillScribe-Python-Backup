@@ -196,16 +196,19 @@ class OutputTab(QWidget):
         colors = theme_manager.get_theme_colors(theme_name)
         is_dark = theme_manager.is_dark_theme()
 
+        # Explicitly set background color
+        self.setStyleSheet(f"background-color: {colors['primary']};")
+
         # Update Separators
-        separator_color = "#404040" if is_dark else "#f0f0f0"
+        separator_color = colors.get("border", "#404040" if is_dark else "#f0f0f0")
         for sep in self.separators:
             sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
 
         # Update Labels
-        text_primary = "#ffffff" if is_dark else "#212529"
-        text_secondary = "#e0e0e0" if is_dark else "#495057"
-        text_muted = "#b0b0b0" if is_dark else "#6c757d"
-        text_warning = "#ffc107" if is_dark else "#856404"
+        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
+        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
+        text_muted = colors.get("text_muted", "#b0b0b0" if is_dark else "#6c757d")
+        warning_color = "#ffc107" if is_dark else "#856404"
 
         for label in self.findChildren(QLabel):
             name = label.objectName()
@@ -216,4 +219,67 @@ class OutputTab(QWidget):
             elif name == "setting_desc":
                 label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
             elif name == "setting_note":
-                label.setStyleSheet(f"color: {text_warning}; font-size: 11px; font-style: italic; margin-top: 8px;")
+                label.setStyleSheet(f"color: {warning_color}; font-size: 11px; font-style: italic; margin-top: 4px; margin-left: 52px;")
+
+        # Unified theme application for child widgets
+        from PySide6.QtWidgets import QWidget
+        
+        for widget in self.findChildren(QWidget):
+            if hasattr(widget, 'apply_theme'):
+                try:
+                    widget.apply_theme(is_dark, colors)
+                except Exception:
+                    pass
+
+
+        # Save auto-clear delay (validate input)
+        try:
+            delay_value = int(self.auto_clear_delay.text())
+            # Ensure delay is between 1 and 999 seconds
+            delay_value = max(1, min(999, delay_value))
+            self.config_manager.set_setting("output/auto_clear_delay", delay_value)
+        except ValueError:
+            # If invalid input, use default of 5 seconds
+            self.config_manager.set_setting("output/auto_clear_delay", 5)
+
+    def apply_theme(self, theme_name):
+        """Apply theme to tab specific elements"""
+        from ..managers import get_theme_manager
+        theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
+        is_dark = theme_manager.is_dark_theme()
+
+        # Explicitly set background color
+        self.setStyleSheet(f"background-color: {colors['primary']};")
+
+        # Update Separators
+        separator_color = colors.get("border", "#404040" if is_dark else "#f0f0f0")
+        for sep in self.separators:
+            sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
+
+        # Update Labels
+        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
+        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
+        text_muted = colors.get("text_muted", "#b0b0b0" if is_dark else "#6c757d")
+        warning_color = "#ffc107" if is_dark else "#856404"
+
+        for label in self.findChildren(QLabel):
+            name = label.objectName()
+            if name == "section_label":
+                label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
+            elif name == "setting_label":
+                label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
+            elif name == "setting_desc":
+                label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+            elif name == "setting_note":
+                label.setStyleSheet(f"color: {warning_color}; font-size: 11px; font-style: italic; margin-top: 4px; margin-left: 52px;")
+
+        # Unified theme application for child widgets
+        from PySide6.QtWidgets import QWidget
+        
+        for widget in self.findChildren(QWidget):
+            if hasattr(widget, 'apply_theme'):
+                try:
+                    widget.apply_theme(is_dark, colors)
+                except Exception:
+                    pass

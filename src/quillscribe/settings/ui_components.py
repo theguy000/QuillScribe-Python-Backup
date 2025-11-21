@@ -11,140 +11,7 @@ from PySide6.QtGui import QFont
 from ..managers import get_theme_manager
 
 
-class ModernButton(QPushButton):
-    """Beautiful modern button with hover effects"""
-    
-    def __init__(self, text: str, primary: bool = False, parent=None):
-        super().__init__(text, parent)
-        self.primary = primary
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.apply_default_theme()
-    
-    def apply_default_theme(self):
-        """Apply default button theme"""
-        if self.primary:
-            self.setStyleSheet("""
-                QPushButton {
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 6px;
-                    padding: 8px 16px;
-                    font-size: 13px;
-                    font-weight: 500;
-                }
-                QPushButton:hover {
-                    background: #0056b3;
-                }
-                QPushButton:pressed {
-                    background: #004085;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                QPushButton {
-                    background: #f8f9fa;
-                    color: #495057;
-                    border: 1px solid #dee2e6;
-                    border-radius: 6px;
-                    padding: 8px 16px;
-                    font-size: 13px;
-                }
-                QPushButton:hover {
-                    background: #e9ecef;
-                    border-color: #adb5bd;
-                }
-                QPushButton:pressed {
-                    background: #dee2e6;
-                }
-            """)
 
-    def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
-        """Apply theme colors to the button"""
-        # Determine if this is a dark theme
-        theme_manager = get_theme_manager()
-        is_dark = theme_manager.is_dark_color(primary_color)
-        
-        if self.primary:
-            if is_dark:
-                self.setStyleSheet("""
-                    QPushButton {
-                        background: #0d6efd;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        padding: 10px 20px;
-                        font-family: 'Segoe UI', sans-serif;
-                        font-size: 13px;
-                        font-weight: 600;
-                    }
-                    QPushButton:hover {
-                        background: #0b5ed7;
-                    }
-                    QPushButton:pressed {
-                        background: #0a58ca;
-                    }
-                """)
-            else:
-                self.setStyleSheet("""
-                    QPushButton {
-                        background: #007bff;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        padding: 10px 20px;
-                        font-family: 'Segoe UI', sans-serif;
-                        font-size: 13px;
-                        font-weight: 600;
-                    }
-                    QPushButton:hover {
-                        background: #0056b3;
-                    }
-                    QPushButton:pressed {
-                        background: #004085;
-                    }
-                """)
-        else:
-            if is_dark:
-                self.setStyleSheet(f"""
-                    QPushButton {{
-                        background: {secondary_color};
-                        color: #e9ecef;
-                        border: 1px solid #495057;
-                        border-radius: 8px;
-                        padding: 10px 20px;
-                        font-family: 'Segoe UI', sans-serif;
-                        font-size: 13px;
-                        font-weight: 500;
-                    }}
-                    QPushButton:hover {{
-                        background: #495057;
-                        border-color: #6c757d;
-                    }}
-                    QPushButton:pressed {{
-                        background: #343a40;
-                    }}
-                """)
-            else:
-                self.setStyleSheet(f"""
-                    QPushButton {{
-                        background: {secondary_color};
-                        color: #495057;
-                        border: 1px solid #dee2e6;
-                        border-radius: 8px;
-                        padding: 10px 20px;
-                        font-family: 'Segoe UI', sans-serif;
-                        font-size: 13px;
-                        font-weight: 500;
-                    }}
-                    QPushButton:hover {{
-                        background: #e9ecef;
-                        border-color: #adb5bd;
-                    }}
-                    QPushButton:pressed {{
-                        background: #dee2e6;
-                    }}
-                """)
 
 
 class ModernGroupBox(QGroupBox):
@@ -154,12 +21,8 @@ class ModernGroupBox(QGroupBox):
         super().__init__(title, parent)
         self.apply_default_theme()
 
-    def apply_theme(self, primary_color="#ffffff", secondary_color="#f8f9fa"):
+    def apply_theme(self, is_dark: bool, colors: dict):
         """Apply theme colors to the group box"""
-        # Determine if this is a dark theme
-        theme_manager = get_theme_manager()
-        is_dark = theme_manager.is_dark_color(primary_color)
-        
         if is_dark:
             self.setStyleSheet(f"""
                 QGroupBox {{
@@ -205,4 +68,30 @@ class ModernGroupBox(QGroupBox):
 
     def apply_default_theme(self):
         """Apply default group box theme"""
-        self.apply_theme()
+        # Default to light theme
+        self.apply_theme(False, {})
+
+
+def apply_theme_recursively(widget, is_dark: bool, colors: dict):
+    """
+    Recursively apply theme to a widget and its children.
+    Only calls apply_theme on widgets that have the method.
+    """
+    from PySide6.QtWidgets import QWidget
+    
+    # Apply to self if possible
+    if hasattr(widget, 'apply_theme'):
+        try:
+            widget.apply_theme(is_dark, colors)
+        except Exception as e:
+            # print(f"Error applying theme to {widget}: {e}")
+            pass
+            
+    # Apply to children
+    for child in widget.findChildren(QWidget):
+        if hasattr(child, 'apply_theme'):
+            try:
+                child.apply_theme(is_dark, colors)
+            except Exception as e:
+                # print(f"Error applying theme to child {child}: {e}")
+                pass
