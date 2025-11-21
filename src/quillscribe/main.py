@@ -244,10 +244,12 @@ class BreathingMicrophone(QWidget):
         self.animation_strength = 3.0  # Default amplification factor
         self._transition_progress = 0.0  # 0.0 = static, 1.0 = waveform
 
-        # Colors
-        self._idle_color = QColor(220, 220, 220)
-        self._recording_color = QColor(255, 255, 255)
+        # Colors - Initialized from theme
+        self._idle_color = QColor("#DCDCDC")  # Default fallback
+        self._recording_color = QColor("#FFFFFF")
         self._mic_color = QColor(self._idle_color)
+        self._bg_circle_color = QColor("#808080") # Default fallback for circles
+        self._bg_alpha = 50  # Default alpha for background circles
 
         # Make the widget clickable
         self.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -298,7 +300,27 @@ class BreathingMicrophone(QWidget):
     def update_theme_colors(self, theme_name: str, is_dark: bool):
         """Update internal color state when theme changes"""
         theme_manager = get_theme_manager()
-        self.current_theme_colors = theme_manager.get_theme_colors(theme_name)
+        colors = theme_manager.get_theme_colors(theme_name)
+        self.current_theme_colors = colors
+        
+        # Determine accent color with fallback based on theme mode
+        default_accent = "#8B5CF6" if is_dark else "#4A90E2"
+        accent = colors.get("accent", default_accent)
+        
+        # Update colors
+        self._idle_color = QColor(accent)
+        self._recording_color = QColor("#FFFFFF") # White when recording
+        # Use accent color for background circles for a nice glow effect
+        self._bg_circle_color = QColor(accent)
+        
+        # Pre-calculate alpha for paintEvent to avoid logic in draw loop
+        # Dark theme needs less alpha for subtlety, light theme needs more
+        self._bg_alpha = 40 if is_dark else 50
+
+        # Update current mic color if not recording
+        if not self.is_recording:
+            self._mic_color = self._idle_color
+            
         self.update()
 
     # Property for animation
@@ -429,7 +451,7 @@ class BreathingMicrophone(QWidget):
         radius = int(base_radius * self.scale_factor)
 
         # Base colors
-        base_color = QColor(128, 128, 128)
+        base_color = self._bg_circle_color
 
         # Draw Siri-style ribbons (Waveform)
         # We draw this if transition_progress > 0
@@ -492,8 +514,8 @@ class BreathingMicrophone(QWidget):
         static_alpha_factor = 1.0 - self._transition_progress
         if static_alpha_factor > 0.01:
             outer_color = QColor(base_color)
-            # Base alpha is 20, scale it down
-            outer_color.setAlpha(int(20 * static_alpha_factor))
+            # Use pre-calculated alpha
+            outer_color.setAlpha(int(self._bg_alpha * static_alpha_factor))
             painter.setBrush(QBrush(outer_color))
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(center_x - radius - 10, center_y - radius - 10,
