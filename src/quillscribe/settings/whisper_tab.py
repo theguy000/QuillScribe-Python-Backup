@@ -638,3 +638,21 @@ class WhisperTab(QWidget):
                     widget.apply_theme(is_dark, colors)
                 except Exception:
                     pass
+
+        # Update API Key Toggle Button Style (Override ModernButton default)
+        accent = colors.get("accent")
+        accent_hover = colors.get("accent_hover")
+
+        self.api_key_toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 8px;
+            }}
+            QPushButton:hover {{
+                background-color: {accent};
+            }}
+            QPushButton:pressed {{
+                background-color: {accent_hover};
+            }}
+        """)

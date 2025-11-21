@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize, QTimer
 from PySide6.QtGui import QColor
 
-from ..managers import AudioManager
+from ..managers import AudioManager, get_theme_manager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
 from .ui_components import ModernGroupBox
@@ -187,10 +187,6 @@ class AudioTab(QWidget):
         main_layout.addStretch()
 
         # --- Timers & State ---
-        # Refresh timer for level meter
-        self.level_timer = QTimer()
-        self.level_timer.timeout.connect(self.update_level_meter)
-        
         self.start_monitoring()
 
         # Real-time device monitoring
@@ -214,7 +210,6 @@ class AudioTab(QWidget):
 
     def apply_theme(self, theme_name):
         """Apply theme to tab specific elements"""
-        from ..managers import get_theme_manager
         theme_manager = get_theme_manager()
         colors = theme_manager.get_theme_colors(theme_name)
         is_dark = theme_manager.is_dark_theme()
@@ -256,6 +251,10 @@ class AudioTab(QWidget):
         pass
 
         # Update Refresh Button
+        # Rely on ModernButton's built-in theming for consistency
+        # If specific overrides are needed, apply them here, but avoid full re-styling
+        pass
+
         if is_dark:
             self.refresh_button.setIcon(get_white_button_icon('refresh', 14))
         else:
@@ -322,9 +321,7 @@ class AudioTab(QWidget):
             QProgressBar::chunk {{ background-color: {chunk_color}; border-radius: 2px; }}
         """)
 
-    def update_level_meter(self):
-        """Legacy slot - kept for compatibility if needed, but we use direct signal now"""
-        pass
+
 
     def on_device_changed(self, index):
         """Handle microphone device selection change"""
@@ -341,20 +338,26 @@ class AudioTab(QWidget):
             except Exception as e:
                 print(f"Warning: Could not switch to new microphone: {e}")
 
-    def refresh_devices(self):
+    def refresh_devices(self, devices=None):
         """Refresh the list of available microphones"""
+        # Handle signal argument (False) from clicked connection
+        if isinstance(devices, bool):
+            devices = None
+
         # Store current selection
         current_device_id = self.mic_combo.currentData() if self.mic_combo.count() > 0 else None
 
-        # Update device list in audio manager
-        self.audio_manager.update_available_devices()
-
-        # Block signals to prevent intermediate selection changes during repopulation
-        self.mic_combo.blockSignals(True)
         try:
+            # Update device list in audio manager if not provided
+            if devices is None:
+                self.audio_manager.update_available_devices()
+                devices = self.audio_manager.get_available_devices()
+
+            # Block signals to prevent intermediate selection changes during repopulation
+            self.mic_combo.blockSignals(True)
+            
             # Clear and repopulate combo box
             self.mic_combo.clear()
-            devices = self.audio_manager.get_available_devices()
 
             # Get blocklist from config
             blocklist = self.config_manager.get_setting("audio/microphone_blocklist", [])
@@ -404,6 +407,8 @@ class AudioTab(QWidget):
             # This prevents infinite refresh loops caused by filtering
             self.last_device_list = [device['id'] for device in devices]
             
+        except Exception as e:
+            print(f"Error refreshing devices: {e}")
         finally:
             self.mic_combo.blockSignals(False)
 
@@ -425,8 +430,8 @@ class AudioTab(QWidget):
 
             if current_device_ids != self.last_device_list:
                 # Only refresh if the list content actually changed
-                # (Simple ID check might be enough, but let's be safe)
-                self.refresh_devices()
+                # Pass the already fetched devices to avoid double-fetching
+                self.refresh_devices(current_devices)
 
             # Auto-select logic
             if self.auto_select_checkbox.isChecked():
@@ -611,8 +616,6 @@ class AudioTab(QWidget):
         try:
             if hasattr(self, 'device_monitor_timer'):
                 self.device_monitor_timer.stop()
-            if hasattr(self, 'level_timer'):
-                self.level_timer.stop()
             
             # Only disconnect if we know we are connected
             if hasattr(self, '_is_level_connected') and self._is_level_connected:
