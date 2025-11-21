@@ -45,9 +45,9 @@ class ModernComboBox(QComboBox):
         if colors:
             bg = colors.get("secondary", "#f8f9fa")
             text_color = colors.get("text_primary", "#2c3e50")
-            border_color = colors.get("border", "#e9ecef")
+            border_color = colors.get("accent", "#4A90E2")  # Use focus color as default border
             hover_bg = colors.get("widget_hover", colors.get("secondary", "#f8f9fa")) # Use specific hover color
-            hover_border = colors.get("border_light", "#dee2e6")
+            hover_border = colors.get("accent", "#4A90E2")  # Use focus color (no separate hover)
             accent = colors.get("accent", "#4A90E2")
             
             popup_bg = colors.get("popup_bg", colors.get("primary", "#ffffff")) # Use specific popup bg
@@ -79,9 +79,9 @@ class ModernComboBox(QComboBox):
             else:
                 bg = "#f8f9fa"
                 text_color = "#2c3e50"
-                border_color = "#e9ecef"
+                border_color = "#4A90E2"  # Use focus color as default border
                 hover_bg = "#e9ecef"
-                hover_border = "#dee2e6"
+                hover_border = "#4A90E2"  # Use focus color (no separate hover)
                 accent = "#4A90E2"
                 
                 popup_bg = "#ffffff"
@@ -219,8 +219,8 @@ class ModernLineEdit(QLineEdit):
         if colors:
             bg = colors.get("primary", "#ffffff")
             text_color = colors.get("text_primary", "#212529")
-            border_color = colors.get("border", "#dee2e6")
-            hover_border = colors.get("border_light", "#adb5bd")
+            border_color = colors.get("accent", "#4A90E2")
+            hover_border = colors.get("accent", "#4A90E2")
             accent = colors.get("accent", "#4A90E2")
             disabled_bg = colors.get("secondary", "#f1f3f4")
             disabled_text = colors.get("text_muted", "#868e96")
@@ -229,8 +229,8 @@ class ModernLineEdit(QLineEdit):
             if is_dark:
                 bg = "#3B2E57"  # input-dark
                 text_color = "#E2E8F0"  # text-dark-primary
-                border_color = "#4C3D70"  # border-dark
-                hover_border = "#8B5CF6"  # primary
+                border_color = "#8B5CF6"  # Use focus color as default border
+                hover_border = "#8B5CF6"  # Use focus color (no separate hover)
                 accent = "#8B5CF6"
                 disabled_bg = "#1A102A"
                 disabled_text = "#6c757d"
@@ -238,8 +238,8 @@ class ModernLineEdit(QLineEdit):
             else:
                 bg = "white"
                 text_color = "#212529"
-                border_color = "#dee2e6"
-                hover_border = "#adb5bd"
+                border_color = "#4A90E2"  # Use focus color as default border
+                hover_border = "#4A90E2"  # Use focus color (no separate hover)
                 accent = "#4A90E2"
                 disabled_bg = "#f1f3f4"
                 disabled_text = "#868e96"
@@ -294,21 +294,21 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
         if colors:
             bg = colors.get("primary", "#ffffff")
             text_color = colors.get("text_primary", "#212529")
-            border_color = colors.get("border", "#dee2e6")
-            hover_border = colors.get("border_light", "#adb5bd")
+            border_color = colors.get("accent", "#4A90E2")  # Use focus color as default border
+            hover_border = colors.get("accent", "#4A90E2")  # Use focus color (no separate hover)
             accent = colors.get("accent", "#4A90E2")
         else:
             if is_dark:
                 bg = "#3B2E57"  # input-dark
                 text_color = "#E2E8F0"  # text-dark-primary
-                border_color = "#4C3D70"  # border-dark
-                hover_border = "#8B5CF6"  # primary
+                border_color = "#8B5CF6"  # Use focus color as default border
+                hover_border = "#8B5CF6"  # Use focus color (no separate hover)
                 accent = "#8B5CF6"
             else:
                 bg = "white"
                 text_color = "black"
-                border_color = "#dee2e6"
-                hover_border = "#adb5bd"
+                border_color = "#4A90E2"  # Use focus color as default border
+                hover_border = "#4A90E2"  # Use focus color (no separate hover)
                 accent = "#4A90E2"
 
         self.setStyleSheet(f"""
