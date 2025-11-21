@@ -120,7 +120,7 @@ class ModernComboBox(QComboBox):
                 border: 1px solid {hover_border};
             }}
             QComboBox:focus {{
-                border: 2px solid {accent};
+                border: 1px solid {accent};
             }}
             QComboBox::drop-down {{
                 border: none;
@@ -262,7 +262,7 @@ class ModernLineEdit(QLineEdit):
                 border-color: {hover_border};
             }}
             QLineEdit:focus {{
-                border: 2px solid {accent};
+                border: 1px solid {accent};
             }}
             QLineEdit:disabled {{
                 color: {disabled_text};
@@ -327,7 +327,7 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 border-color: {hover_border};
             }}
             QKeySequenceEdit:focus {{
-                border: 2px solid {accent};
+                border: 1px solid {accent};
             }}
         """)
 
