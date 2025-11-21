@@ -291,6 +291,9 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
         self.clear()
 
     def apply_theme(self, is_dark: bool, colors: dict = None):
+        self._is_dark = is_dark
+        self._current_colors = colors
+
         if colors:
             bg = colors.get("primary", "#ffffff")
             text_color = colors.get("text_primary", "#212529")
@@ -339,25 +342,43 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
         """Override focus in event to show helper text"""
         super().focusInEvent(event)
         # Show visual indication that it's recording
-        current_stylesheet = self.styleSheet()
-        if "background-color: #2c2c2c" in current_stylesheet: # Dark mode
-            self.setStyleSheet(current_stylesheet.replace(
-                "border-color: #4A90E2;",
-                "border-color: #28a745; background-color: #1a3c22;"
-            ))
-        else: # Light mode
-            self.setStyleSheet(current_stylesheet.replace(
-                "border-color: #4A90E2;",
-                "border-color: #28a745; background-color: #f8fff9;"
-            ))
+        
+        # Use stored colors if available, otherwise fallback
+        colors = getattr(self, '_current_colors', {})
+        is_dark = getattr(self, '_is_dark', False)
+        
+        # Get base styles
+        text_color = colors.get("text_primary", "#E2E8F0" if is_dark else "#212529")
+        
+        # Define recording state colors
+        if is_dark:
+            rec_border = "#28a745"
+            rec_bg = "#1a3c22"
+        else:
+            rec_border = "#28a745"
+            rec_bg = "#f8fff9"
+            
+        self.setStyleSheet(f"""
+            QKeySequenceEdit {{
+                border: 1px solid {rec_border};
+                border-radius: 12px;
+                padding: 0px 12px 3px 12px;
+                font-size: 14px;
+                background-color: {rec_bg};
+                color: {text_color};
+                min-height: 32px;
+                max-height: 32px;
+                outline: none;
+            }}
+        """)
 
     def focusOutEvent(self, event):
         """Override focus out event to reset styling"""
         super().focusOutEvent(event)
         # Reset to normal styling by re-applying theme
-        current_stylesheet = self.styleSheet()
-        is_dark = "background-color: #1a3c22" in current_stylesheet or "background-color: #2c2c2c" in current_stylesheet
-        self.apply_theme(is_dark)
+        is_dark = getattr(self, '_is_dark', False)
+        colors = getattr(self, '_current_colors', None)
+        self.apply_theme(is_dark, colors)
 
     @staticmethod
     def qt_to_windows_shortcut(qt_sequence: str) -> str:

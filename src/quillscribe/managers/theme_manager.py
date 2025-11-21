@@ -136,14 +136,64 @@ class ThemeManager(QObject):
         return self._is_dark
 
     def get_theme_colors(self, theme_name: Optional[str] = None) -> Dict[str, str]:
-        """Get theme colors for the specified or current theme"""
+        """Get comprehensive theme colors including derived values"""
         if theme_name is None:
             theme_name = self._current_theme
 
         if theme_name not in self.THEMES:
             theme_name = "white"
 
-        return self.THEMES[theme_name]
+        base_colors = self.THEMES[theme_name]
+        primary_color = base_colors["primary"]
+        secondary_color = base_colors["secondary"]
+        
+        # Determine if dark based on primary color
+        is_dark = self.is_dark_color(primary_color)
+        
+        # Get border color from theme or fallback
+        border_color = base_colors.get("border", "#555555" if is_dark else "#dee2e6")
+
+        # Create a copy to avoid modifying the original definition
+        colors = base_colors.copy()
+
+        if is_dark:
+            # Calculate widget specific colors
+            # Use secondary (darker) as base for widgets
+            widget_bg = secondary_color
+            # Hover should be slightly lighter than secondary
+            widget_hover = self.lighten_color(secondary_color, 0.05)
+            
+            colors.update({
+                "text_primary": "#ffffff",
+                "text_secondary": "#e0e0e0",
+                "text_muted": "#b0b0b0",
+                "border": border_color,
+                "border_light": self.lighten_color(border_color, 0.1),
+                "accent": base_colors.get("accent", "#8B5CF6"),
+                "accent_hover": base_colors.get("accent_hover", "#7C3AED"),
+                # Widget specific overrides
+                "widget_bg": widget_bg,
+                "widget_hover": widget_hover,
+                "popup_bg": secondary_color,
+                "popup_item_hover": self.lighten_color(secondary_color, 0.08)
+            })
+        else:
+            colors.update({
+                "text_primary": "#2c3e50",
+                "text_secondary": "#495057",
+                "text_muted": "#6c757d",
+                "border": border_color,
+                "border_light": self.darken_color(border_color, 0.1),
+                "accent": base_colors.get("accent", "#4A90E2"),
+                "accent_hover": base_colors.get("accent_hover", "#357ABD"),
+                # Widget specific overrides
+                "widget_bg": secondary_color,
+                "widget_hover": self.darken_color(secondary_color, 0.05),
+                "popup_bg": "#ffffff",
+                "popup_item_hover": secondary_color
+            })
+            
+        return colors
 
     def apply_icons_to_widget(self, widget: QWidget, is_dark: Optional[bool] = None):
         """Apply themed icons to a widget and all its children"""

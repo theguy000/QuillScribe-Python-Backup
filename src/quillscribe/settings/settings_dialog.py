@@ -341,7 +341,7 @@ class SettingsDialog(QDialog):
             # Batch UI updates for better performance
             self.setUpdatesEnabled(False)
 
-            colors = self._get_theme_colors(theme_name)
+            colors = theme_manager.get_theme_colors(theme_name)
             is_dark = theme_manager.is_dark_theme()
 
             # Overall dialog background
@@ -588,63 +588,10 @@ class SettingsDialog(QDialog):
         except Exception as e:
             print(f"Error updating icon theme: {e}")
 
-    def _get_theme_colors(self, theme_name):
-        """Get comprehensive color scheme for a theme from centralized ThemeManager"""
-        theme_manager = get_theme_manager()
-        colors = theme_manager.get_theme_colors(theme_name)
-        primary_color = colors["primary"]
-        secondary_color = colors["secondary"]
-        is_dark = theme_manager.is_dark_theme()
-
-        # Get border color from theme or fallback
-        border_color = colors.get("border", "#555555" if is_dark else "#dee2e6")
-
-        if is_dark:
-            # Calculate widget specific colors
-            # Use secondary (darker) as base for widgets
-            widget_bg = secondary_color
-            # Hover should be slightly lighter than secondary, but not as light/different as primary
-            widget_hover = theme_manager.lighten_color(secondary_color, 0.05)
-            
-            return {
-                "primary": primary_color,
-                "secondary": secondary_color,
-                "text_primary": "#ffffff",
-                "text_secondary": "#e0e0e0",
-                "text_muted": "#b0b0b0",
-                "border": border_color,
-                "border_light": theme_manager.lighten_color(border_color, 0.1),
-                "accent": colors.get("accent", "#8B5CF6"),
-                "accent_hover": colors.get("accent_hover", "#7C3AED"),
-                # Widget specific overrides
-                "widget_bg": widget_bg,
-                "widget_hover": widget_hover,
-                "popup_bg": secondary_color, # Match button bg
-                "popup_item_hover": theme_manager.lighten_color(secondary_color, 0.08)
-            }
-        else:
-            return {
-                "primary": primary_color,
-                "secondary": secondary_color,
-                "text_primary": "#2c3e50",
-                "text_secondary": "#495057",
-                "text_muted": "#6c757d",
-                "border": border_color,
-                "border_light": theme_manager.darken_color(border_color, 0.1),
-                "accent": colors.get("accent", "#4A90E2"),
-                "accent_hover": colors.get("accent_hover", "#357ABD"),
-                # Widget specific overrides
-                "widget_bg": secondary_color, # Light grey usually
-                "widget_hover": theme_manager.darken_color(secondary_color, 0.05),
-                "popup_bg": "#ffffff",
-                "popup_item_hover": secondary_color
-            }
-
     def apply_sidebar_theme(self, theme_name, is_dark=None):
         """Apply theme-aware styling to sidebar navigation"""
-        colors = self._get_theme_colors(theme_name)
-        
         theme_manager = get_theme_manager()
+        colors = theme_manager.get_theme_colors(theme_name)
         
         if is_dark is None:
              # Fallback if not provided
