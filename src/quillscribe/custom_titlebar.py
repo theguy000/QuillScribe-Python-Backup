@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QPixmap
 from pathlib import Path
 
-from .icon_manager import get_icon
+from .icon_manager import get_icon, get_themed_icon
 from .frozen_compat import get_base_path
 
 
@@ -193,14 +193,14 @@ class CustomTitleBar(QWidget):
 
         if self.minimize_btn:
             self.minimize_btn.setStyleSheet(button_style)
-            self.minimize_btn.setIcon(get_icon('minimize', 16))
+            self.minimize_btn.setIcon(get_themed_icon('minimize', 16, is_dark))
 
         if self.maximize_btn:
             self.maximize_btn.setStyleSheet(button_style)
-            self.maximize_btn.setIcon(get_icon('maximize', 16))
+            self.maximize_btn.setIcon(get_themed_icon('maximize', 16, is_dark))
 
         self.close_btn.setStyleSheet(close_button_style)
-        self.close_btn.setIcon(get_icon('close', 16))
+        self.close_btn.setIcon(get_themed_icon('close', 16, is_dark))
 
     def _on_minimize(self):
         """Handle minimize button click"""
