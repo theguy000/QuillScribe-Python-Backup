@@ -644,9 +644,10 @@ class SettingsDialog(QDialog):
         """Apply theme-aware styling to sidebar navigation"""
         colors = self._get_theme_colors(theme_name)
         
+        theme_manager = get_theme_manager()
+        
         if is_dark is None:
              # Fallback if not provided
-             theme_manager = get_theme_manager()
              is_dark = theme_manager.is_dark_theme()
 
         # Create appropriate accent colors for sidebar
