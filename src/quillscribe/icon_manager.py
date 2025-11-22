@@ -19,11 +19,11 @@ class IconManager:
     # Icon mappings for consistent usage throughout the app
     ICONS = {
         # Main UI icons
-        'microphone': 'mic.svg',
-        'audio': 'mic.svg',  # Use microphone icon for audio settings
+        'microphone': 'microphone.svg',
+        'audio': 'microphone.svg',  # Use microphone icon for audio settings
         'settings': 'settings.svg',
         'close': 'x.svg',  # Simple X icon for close buttons
-        'minimize': 'minimize.svg',  # Simple horizontal line for minimize buttons
+        'minimize': 'minus.svg',  # Simple horizontal line for minimize buttons
 
         # Output/clipboard icons
         'clipboard': 'clipboard.svg',
@@ -33,7 +33,7 @@ class IconManager:
         # System icons
         'brain': 'brain.svg',
         'dashboard': 'layout-dashboard.svg',
-        'refresh': 'refresh-cw.svg',
+        'refresh': 'refresh.svg',
         'x': 'x.svg',  # X icon for exit/close actions
 
         # UI mode icons

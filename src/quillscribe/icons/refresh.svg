@@ -1,8 +1,8 @@
 <!--
-tags: [move, next, swipe, bottom]
 category: Arrows
+tags: [synchronization, reload, restart, spinner, loader, ajax, update, arrows]
 version: "1.0"
-unicode: "ea5f"
+unicode: "eb13"
 -->
 <svg
   xmlns="http://www.w3.org/2000/svg"
@@ -15,5 +15,6 @@ unicode: "ea5f"
   stroke-linecap="round"
   stroke-linejoin="round"
 >
-  <path d="M6 9l6 6l6 -6" />
+  <path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" />
+  <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" />
 </svg>

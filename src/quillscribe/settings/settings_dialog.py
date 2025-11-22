@@ -661,7 +661,7 @@ class SettingsDialog(QDialog):
                     border-radius: 6px;
                     padding: 8px 16px;
                     text-align: left;
-                    font-size: 14px;
+                    font-size: 15px;
                     font-weight: 500;
                     margin-bottom: 2px;
                 }}
