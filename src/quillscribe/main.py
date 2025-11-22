@@ -4,35 +4,28 @@ Beautiful voice-to-text transcription with minimal, elegant UI
 """
 
 import sys
-import math
 import time
-from typing import Optional
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QLabel, QGraphicsDropShadowEffect, QSizePolicy, QMessageBox,
-    QSystemTrayIcon, QMenu
+    QLabel, QSizePolicy, QMessageBox
 )
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QRect, Signal, Property, QTimer, QEvent, QSize, QAbstractNativeEventFilter, QAbstractEventDispatcher, Slot, Qt
-from PySide6.QtGui import (QIcon, QAction, QColor, QPalette, QPainter, QPen, QBrush,
-                         QRadialGradient, QLinearGradient, QFont, QCursor,
-                         QPainterPath, QRegion, QShortcut, QKeySequence, QPixmap)
+from PySide6.QtCore import QTimer, QEvent, QSize, Qt
+from PySide6.QtGui import QIcon, QShortcut, QKeySequence
 
 try:
     import ctypes  # type: ignore
-    from ctypes import wintypes  # type: ignore
 except Exception:
     ctypes = None
-    wintypes = None
 
 
 from .managers import (
     AudioManager, WhisperManager, OutputManager, StatisticsManager,
-    ThemeManager, get_theme_manager, WindowManager, SoundManager, TrayManager,
+    get_theme_manager, WindowManager, SoundManager, TrayManager,
     WindowsGlobalHotkeyManager
 )
 from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
 from .config_manager import ConfigManager
-from .icon_manager import get_icon, get_button_icon, get_white_button_icon, get_themed_button_icon
+from .icon_manager import get_button_icon, get_themed_button_icon
 from .frozen_compat import get_base_path
 from .custom_titlebar import CustomTitleBar
 from .settings.modern_buttons import ModernButton, ButtonVariant
