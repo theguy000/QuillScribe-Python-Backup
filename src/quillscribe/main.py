@@ -18,12 +18,7 @@ except Exception:
     ctypes = None
 
 
-from .managers import (
-    AudioManager, WhisperManager, OutputManager, StatisticsManager,
-    get_theme_manager, WindowManager, SoundManager, TrayManager,
-    WindowsGlobalHotkeyManager
-)
-from .settings import SettingsDialog, UISettingsDialog, WindowManagerDialog
+from .managers.theme_manager import get_theme_manager
 from .config_manager import ConfigManager
 from .icon_manager import get_button_icon, get_themed_button_icon
 from .frozen_compat import get_base_path
@@ -98,6 +93,7 @@ class QuillScribeMainWindow(QMainWindow):
     def audio_manager(self):
         """Lazy-loaded audio manager"""
         if self._audio_manager is None:
+            from .managers.audio_manager import AudioManager
             self._audio_manager = AudioManager()
         return self._audio_manager
 
@@ -105,6 +101,7 @@ class QuillScribeMainWindow(QMainWindow):
     def whisper_manager(self):
         """Lazy-loaded whisper manager"""
         if self._whisper_manager is None:
+            from .managers.whisper_manager import WhisperManager
             self._whisper_manager = WhisperManager()
         return self._whisper_manager
 
@@ -112,6 +109,7 @@ class QuillScribeMainWindow(QMainWindow):
     def output_manager(self):
         """Lazy-loaded output manager"""
         if self._output_manager is None:
+            from .managers.output_manager import OutputManager
             self._output_manager = OutputManager(self.config_manager)
         return self._output_manager
 
@@ -119,6 +117,7 @@ class QuillScribeMainWindow(QMainWindow):
     def sound_manager(self):
         """Lazy-loaded sound manager"""
         if self._sound_manager is None:
+            from .managers.sound_manager import SoundManager
             self._sound_manager = SoundManager()
         return self._sound_manager
 
@@ -126,6 +125,7 @@ class QuillScribeMainWindow(QMainWindow):
     def statistics_manager(self):
         """Lazy-loaded statistics manager"""
         if self._statistics_manager is None:
+            from .managers.statistics_manager import StatisticsManager
             self._statistics_manager = StatisticsManager(self.config_manager)
         return self._statistics_manager
 
@@ -176,6 +176,7 @@ class QuillScribeMainWindow(QMainWindow):
         self.hotkey_manager = None
         try:
             if sys.platform == "win32":
+                from .managers.hotkey_manager import WindowsGlobalHotkeyManager
                 self.hotkey_manager = WindowsGlobalHotkeyManager(self)
         except Exception:
             self.hotkey_manager = None
@@ -348,6 +349,7 @@ class QuillScribeMainWindow(QMainWindow):
     def setup_tray_manager(self):
         """Setup system tray manager"""
         try:
+            from .managers.tray_manager import TrayManager
             self.tray_manager = TrayManager(self.config_manager, self)
 
             # Connect tray manager signals
@@ -364,6 +366,7 @@ class QuillScribeMainWindow(QMainWindow):
     def setup_window_manager(self):
         """Setup window management system"""
         try:
+            from .managers.window_manager import WindowManager
             self.window_manager = WindowManager(self, self.config_manager, self)
 
         except Exception as e:
@@ -567,11 +570,13 @@ class QuillScribeMainWindow(QMainWindow):
     def show_settings(self):
         """Show settings dialog"""
         if self.compact_mode:
+            from .settings import UISettingsDialog
             dialog = UISettingsDialog(self, self.config_manager)
             dialog.settings_saved.connect(self.load_settings)
             dialog.exec()
         else:
             if not self.settings_dialog:
+                from .settings import SettingsDialog
                 # Pass our config manager to ensure settings are shared
                 self.settings_dialog = SettingsDialog(self, self.config_manager)
                 # Connect to settings saved signal to reload settings when changed
@@ -588,6 +593,7 @@ class QuillScribeMainWindow(QMainWindow):
 
     def show_window_manager(self):
         """Show window manager dialog"""
+        from .settings import WindowManagerDialog
         dialog = WindowManagerDialog(self, self.config_manager, self.window_manager)
         dialog.settings_saved.connect(self.load_settings)
 

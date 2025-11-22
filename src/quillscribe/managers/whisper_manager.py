@@ -3,31 +3,23 @@ Whisper Manager for QuillScribe
 Handles both OpenAI Whisper API and prebuilt whisper.cpp from HuggingFace
 """
 
-import numpy as np
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from PySide6.QtCore import QObject, Signal, QThread
 import tempfile
 import os
 import wave
+import importlib.util
 
-# Try importing faster-whisper (stable C++ implementation)
-try:
-    from faster_whisper import WhisperModel
-    FASTER_WHISPER_AVAILABLE = True
-    WHISPER_TYPE = "faster"
-    print("Faster-Whisper available for local processing")
-except ImportError as e:
-    FASTER_WHISPER_AVAILABLE = False
-    WHISPER_TYPE = None
-    print(f"Faster-Whisper not available ({e}), only API mode will work")
+if TYPE_CHECKING:
+    import numpy as np
 
-# Try importing OpenAI
-try:
-    import openai
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-    print("OpenAI package not available, only local mode will work")
+# Lazy check for availability
+def is_package_available(name):
+    return importlib.util.find_spec(name) is not None
+
+FASTER_WHISPER_AVAILABLE = is_package_available("faster_whisper")
+WHISPER_TYPE = "faster" if FASTER_WHISPER_AVAILABLE else None
+OPENAI_AVAILABLE = is_package_available("openai")
 
 
 class TranscriptionWorker(QThread):
@@ -36,7 +28,7 @@ class TranscriptionWorker(QThread):
     transcription_complete = Signal(str)
     transcription_error = Signal(str)
     
-    def __init__(self, whisper_manager, audio_data: np.ndarray):
+    def __init__(self, whisper_manager, audio_data):
         super().__init__()
         self.whisper_manager = whisper_manager
         self.audio_data = audio_data
@@ -288,6 +280,8 @@ class WhisperManager(QObject):
 
             # Load the model using faster-whisper
             if WHISPER_TYPE == "faster":
+                from faster_whisper import WhisperModel
+                
                 # Choose device (CPU for compatibility, GPU if available)
                 device = "cpu"  # Can be changed to "cuda" if GPU available
                 compute_type = "int8"  # Good balance of speed and quality
@@ -318,7 +312,7 @@ class WhisperManager(QObject):
             return (FASTER_WHISPER_AVAILABLE and 
                     bool(self.local_model_name))
     
-    def transcribe_audio(self, audio_data: np.ndarray):
+    def transcribe_audio(self, audio_data):
         """Transcribe audio data (async)"""
         if not self.is_ready():
             if self.mode == "api":
@@ -347,18 +341,21 @@ class WhisperManager(QObject):
         self.current_worker.transcription_error.connect(self.transcription_error.emit)
         self.current_worker.start()
     
-    def _transcribe_sync(self, audio_data: np.ndarray) -> Optional[str]:
+    def _transcribe_sync(self, audio_data) -> Optional[str]:
         """Synchronous transcription (runs in worker thread)"""
         if self.mode == "api":
             return self._transcribe_api(audio_data)
         else:
             return self._transcribe_local(audio_data)
     
-    def _transcribe_api(self, audio_data: np.ndarray) -> Optional[str]:
+    def _transcribe_api(self, audio_data) -> Optional[str]:
         """Transcribe using OpenAI API"""
         if not OPENAI_AVAILABLE:
             raise RuntimeError("OpenAI package not available")
         
+        import numpy as np
+        import openai
+
         try:
             # Save audio to temporary WAV file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
@@ -396,10 +393,12 @@ class WhisperManager(QObject):
                 os.unlink(temp_path)
             raise e
     
-    def _transcribe_local(self, audio_data: np.ndarray) -> Optional[str]:
+    def _transcribe_local(self, audio_data) -> Optional[str]:
         """Transcribe using local faster-whisper"""
         if not FASTER_WHISPER_AVAILABLE:
             raise RuntimeError("No local Whisper available")
+
+        import numpy as np
 
         # Ensure model is loaded (lazy loading)
         self._ensure_local_model_loaded()
