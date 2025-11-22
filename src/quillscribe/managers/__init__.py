@@ -11,6 +11,7 @@ from .theme_manager import ThemeManager, get_theme_manager
 from .window_manager import WindowManager
 from .sound_manager import SoundManager
 from .tray_manager import TrayManager
+from .hotkey_manager import WindowsGlobalHotkeyManager
 
 __all__ = [
     'AudioManager',
@@ -22,5 +23,6 @@ __all__ = [
     'WindowManager',
     'SoundManager',
     'TrayManager',
+    'WindowsGlobalHotkeyManager',
 ]
 

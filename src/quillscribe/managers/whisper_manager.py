@@ -495,3 +495,16 @@ class WhisperManager(QObject):
         }
         
         return model_info.get(model_name, {"size": "Unknown", "memory": "Unknown", "speed": "Unknown", "quality": "Unknown"})
+
+    def cleanup(self):
+        """Cleanup resources and stop worker thread"""
+        if self.current_worker and self.current_worker.isRunning():
+            try:
+                self.current_worker.quit()
+                self.current_worker.wait(1000)  # Wait up to 1 second
+                if self.current_worker.isRunning():
+                    self.current_worker.terminate()  # Force terminate if still running
+                    self.current_worker.wait()
+            except Exception as e:
+                print(f"Error cleaning up WhisperManager: {e}")
+        self.current_worker = None
