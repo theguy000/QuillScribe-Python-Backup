@@ -213,6 +213,7 @@ class WhisperManager(QObject):
         """Set OpenAI API key"""
         self.api_key = api_key
         if OPENAI_AVAILABLE:
+            import openai
             openai.api_key = api_key
     
     def set_api_model(self, model_name: str):
@@ -356,9 +357,11 @@ class WhisperManager(QObject):
         import numpy as np
         import openai
 
+        temp_path = None
         try:
             # Save audio to temporary WAV file
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                temp_path = temp_file.name
                 # Convert float32 to int16
                 audio_int16 = (audio_data * 32767).astype(np.int16)
                 
@@ -368,8 +371,6 @@ class WhisperManager(QObject):
                     wav_file.setsampwidth(2)  # 16-bit
                     wav_file.setframerate(16000)  # 16kHz
                     wav_file.writeframes(audio_int16.tobytes())
-                
-                temp_path = temp_file.name
             
             # Transcribe using OpenAI API
             client = openai.OpenAI(api_key=self.api_key)
@@ -389,7 +390,7 @@ class WhisperManager(QObject):
             
         except Exception as e:
             # Clean up temp file if it exists
-            if 'temp_path' in locals() and os.path.exists(temp_path):
+            if temp_path and os.path.exists(temp_path):
                 os.unlink(temp_path)
             raise e
     
