@@ -25,25 +25,19 @@ class WindowManager(QObject):
     window_moved = Signal(QPoint)
     window_resized = Signal(QSize)
     monitor_changed = Signal(str)
-    snap_performed = Signal(str)  # edge name
+    monitor_changed = Signal(str)
 
     def __init__(self, window: QWidget, config_manager, parent=None):
         super().__init__(parent)
         self.window = window
         self.config_manager = config_manager
         self.current_monitor_id = None
-        self.snap_threshold = 20  # pixels
-        self.snap_enabled = True
+
         self.always_on_top = False
 
         # Monitor tracking
         self.monitors = {}
         self.update_monitor_info()
-
-        # Snap detection timer
-        self.snap_timer = QTimer()
-        self.snap_timer.setSingleShot(True)
-        self.snap_timer.timeout.connect(self._check_snap_position)
 
         # Connect to window events
         self.window.installEventFilter(self)
@@ -156,70 +150,7 @@ class WindowManager(QObject):
                 if saved_width and saved_height:
                     self.window.resize(saved_width, saved_height)
 
-    def snap_to_edge(self, edge: str):
-        """Snap window to specified edge of current monitor"""
-        current_monitor = self.get_current_monitor()
-        if not current_monitor:
-            return
 
-        monitor_info = self.monitors[current_monitor]
-        available_geometry = monitor_info['available_geometry']
-        window_size = self.window.size()
-
-        if edge == "left":
-            new_pos = QPoint(available_geometry.left(), available_geometry.top())
-        elif edge == "right":
-            new_pos = QPoint(
-                available_geometry.right() - window_size.width(),
-                available_geometry.top()
-            )
-        elif edge == "top":
-            new_pos = QPoint(available_geometry.left(), available_geometry.top())
-        elif edge == "bottom":
-            new_pos = QPoint(
-                available_geometry.left(),
-                available_geometry.bottom() - window_size.height()
-            )
-        elif edge == "center":
-            new_pos = QPoint(
-                available_geometry.center().x() - window_size.width() // 2,
-                available_geometry.center().y() - window_size.height() // 2
-            )
-        else:
-            return
-
-        self.window.move(new_pos)
-        self.snap_performed.emit(edge)
-
-    def _check_snap_position(self):
-        """Check if window should snap to edges"""
-        if not self.snap_enabled:
-            return
-
-        current_monitor = self.get_current_monitor()
-        if not current_monitor:
-            return
-
-        monitor_info = self.monitors[current_monitor]
-        available_geometry = monitor_info['available_geometry']
-        window_pos = self.window.pos()
-        window_size = self.window.size()
-
-        # Check proximity to edges
-        left_distance = abs(window_pos.x() - available_geometry.left())
-        right_distance = abs((window_pos.x() + window_size.width()) - available_geometry.right())
-        top_distance = abs(window_pos.y() - available_geometry.top())
-        bottom_distance = abs((window_pos.y() + window_size.height()) - available_geometry.bottom())
-
-        # Snap to closest edge if within threshold
-        if left_distance <= self.snap_threshold:
-            self.snap_to_edge("left")
-        elif right_distance <= self.snap_threshold:
-            self.snap_to_edge("right")
-        elif top_distance <= self.snap_threshold:
-            self.snap_to_edge("top")
-        elif bottom_distance <= self.snap_threshold:
-            self.snap_to_edge("bottom")
 
     def set_always_on_top(self, enabled: bool):
         """Set always-on-top behavior"""
@@ -282,15 +213,7 @@ class WindowManager(QObject):
         """Reapply always-on-top setting (useful after window flag changes)"""
         self._apply_always_on_top()
 
-    def set_snap_enabled(self, enabled: bool):
-        """Enable or disable snap-to-edges functionality"""
-        self.snap_enabled = enabled
-        self.config_manager.set_setting("ui/snap_to_edges", enabled)
 
-    def set_snap_threshold(self, threshold: int):
-        """Set snap threshold in pixels"""
-        self.snap_threshold = max(5, min(50, threshold))  # Clamp between 5-50 pixels
-        self.config_manager.set_setting("ui/snap_threshold", self.snap_threshold)
 
     def is_always_on_top(self) -> bool:
         """Check if window is currently set to always-on-top"""
@@ -312,8 +235,7 @@ class WindowManager(QObject):
     def load_window_settings(self):
         """Load window management settings"""
         self.always_on_top = self.config_manager.get_setting("ui/always_on_top", False)
-        self.snap_enabled = self.config_manager.get_setting("ui/snap_to_edges", True)
-        self.snap_threshold = self.config_manager.get_setting("ui/snap_threshold", 20)
+
 
         # Apply always on top setting
         if self.always_on_top:
@@ -330,10 +252,6 @@ class WindowManager(QObject):
                     if new_monitor:
                         self.monitor_changed.emit(new_monitor)
 
-                # Start snap timer
-                if self.snap_enabled:
-                    self.snap_timer.start(100)  # 100ms delay
-
                 self.window_moved.emit(self.window.pos())
 
             elif event.type() == event.Type.Resize:
@@ -344,6 +262,6 @@ class WindowManager(QObject):
     def cleanup(self):
         """Clean up window manager resources"""
         self.save_window_position()
-        self.snap_timer.stop()
+        self.save_window_position()
         if self.window:
             self.window.removeEventFilter(self)

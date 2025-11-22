@@ -877,21 +877,11 @@ class QuillScribeMainWindow(QMainWindow):
         try:
             self.window_manager = WindowManager(self, self.config_manager, self)
 
-            # Connect window manager signals
-            self.window_manager.monitor_changed.connect(self._on_monitor_changed)
-            self.window_manager.snap_performed.connect(self._on_snap_performed)
-
         except Exception as e:
             print(f"Warning: Could not setup window manager: {e}")
             self.window_manager = None
 
-    def _on_monitor_changed(self, monitor_id: str):
-        """Handle monitor change event"""
-        print(f"Window moved to monitor: {monitor_id}")
 
-    def _on_snap_performed(self, edge: str):
-        """Handle snap-to-edge event"""
-        print(f"Window snapped to: {edge}")
 
     def center_window(self):
         """Center the window on screen"""
@@ -1119,40 +1109,7 @@ class QuillScribeMainWindow(QMainWindow):
 
         dialog.exec()
 
-    def contextMenuEvent(self, event):
-        """Show context menu with application options"""
-        context_menu = QMenu(self)
 
-        # Apply theme to context menu
-        self._apply_context_menu_theme(context_menu)
-
-        # Settings action
-        settings_action = context_menu.addAction("Settings")
-        settings_action.setIcon(get_icon('settings', 16))
-        settings_action.triggered.connect(self.show_settings)
-
-        # Window Manager action
-        window_manager_action = context_menu.addAction("Window Manager")
-        window_manager_action.setIcon(get_icon('monitor', 16))
-        window_manager_action.triggered.connect(self.show_window_manager)
-
-        context_menu.addSeparator()
-
-        # Exit action
-        exit_action = context_menu.addAction("Exit")
-        exit_action.setIcon(get_icon('x', 16))
-        exit_action.triggered.connect(self.close)
-
-        context_menu.exec(event.globalPos())
-
-    def _apply_context_menu_theme(self, menu):
-        """Apply current theme to context menu using unified ThemeManager"""
-        current_theme = self.config_manager.get_setting("ui/theme", "white")
-        theme_manager = get_theme_manager()
-        
-        # Use unified menu stylesheet from ThemeManager
-        menu_style = theme_manager.get_menu_stylesheet(current_theme)
-        menu.setStyleSheet(menu_style)
 
     def load_settings(self):
         """Load and apply saved settings"""

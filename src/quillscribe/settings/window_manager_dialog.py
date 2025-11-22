@@ -101,7 +101,7 @@ class WindowManagerDialog(QDialog):
         self.monitor_info_label.setStyleSheet("color: #6c757d; font-size: 11px;")
         positioning_layout.addWidget(self.monitor_info_label)
 
-        layout.addWidget(positioning_group)
+        layout.addWidget(self.monitor_info_label)
 
         # Status Group
         status_group = ModernGroupBox("Status")
@@ -205,7 +205,7 @@ class WindowManagerDialog(QDialog):
         """Save window management settings"""
         # Save settings
         self.config_manager.set_setting("ui/always_on_top", self.always_on_top_checkbox.isChecked())
-        self.config_manager.set_setting("ui/snap_to_edges", self.snap_to_edges_checkbox.isChecked())
+        self.config_manager.set_setting("ui/always_on_top", self.always_on_top_checkbox.isChecked())
 
         # Apply settings to window manager
         if self.window_manager:
@@ -398,20 +398,6 @@ class WindowManagerDialog(QDialog):
 
     def save_settings(self):
         """Save window management settings"""
-        # Save settings
-        self.config_manager.set_setting("ui/always_on_top", self.always_on_top_checkbox.isChecked())
-        self.config_manager.set_setting("ui/snap_to_edges", self.snap_to_edges_checkbox.isChecked())
-
-        # Apply settings to window manager
-        if self.window_manager:
-            self.window_manager.set_always_on_top(self.always_on_top_checkbox.isChecked())
-            self.window_manager.set_snap_enabled(self.snap_to_edges_checkbox.isChecked())
-
-        self.settings_saved.emit()
-        self.accept()
-
-    def apply_theme(self, theme_name):
-        """Apply theme to dialog elements"""
         from ..managers import get_theme_manager
         theme_manager = get_theme_manager()
         colors = theme_manager.get_theme_colors(theme_name)

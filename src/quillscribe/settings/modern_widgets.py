@@ -309,7 +309,7 @@ class ModernKeySequenceEdit(QKeySequenceEdit):
                 accent = "#8B5CF6"
             else:
                 bg = "white"
-                text_color = "black"
+                text_color = "#212529"
                 border_color = "#4A90E2"  # Use focus color as default border
                 hover_border = "#4A90E2"  # Use focus color (no separate hover)
                 accent = "#4A90E2"
