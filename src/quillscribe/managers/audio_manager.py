@@ -39,6 +39,7 @@ class AudioManager(QObject):
 
         # Defer device enumeration until needed
         self.available_devices = []
+        self._cached_raw_devices = None
         self._devices_enumerated = False
         
         # Track currently selected device ID explicitly
@@ -48,21 +49,63 @@ class AudioManager(QObject):
         """Update list of available audio input devices"""
         try:
             devices = sd.query_devices()
+            
+            # Check if device list has changed to avoid re-validating everything constantly
+            # We convert to a list of tuples for comparison
+            current_raw_devices = [(d['name'], d['max_input_channels'], d['default_samplerate']) for d in devices]
+            
+            if self._cached_raw_devices == current_raw_devices:
+                return
+
             self.available_devices = []
 
             for i, device in enumerate(devices):
                 if device['max_input_channels'] > 0:
-                    self.available_devices.append({
-                        'id': i,
-                        'name': device['name'],
-                        'channels': device['max_input_channels'],
-                        'sample_rate': device['default_samplerate']
-                    })
+                    # Validate device before adding
+                    if self._is_device_working(i, device):
+                        self.available_devices.append({
+                            'id': i,
+                            'name': device['name'],
+                            'channels': device['max_input_channels'],
+                            'sample_rate': device['default_samplerate']
+                        })
+            
+            self._cached_raw_devices = current_raw_devices
             self._devices_enumerated = True
         except Exception as e:
             print(f"Error querying audio devices: {e}")
             self.available_devices = []
             self._devices_enumerated = True  # Mark as attempted even if failed
+
+    def _is_device_working(self, device_id, device_info) -> bool:
+        """Check if a device can actually be opened for input"""
+        try:
+            # Try to check input settings first (lighter weight)
+            try:
+                sd.check_input_settings(
+                    device=device_id,
+                    channels=1,
+                    dtype=np.float32,
+                    samplerate=16000
+                )
+                return True
+            except Exception:
+                # If check_input_settings fails, try opening a stream briefly
+                pass
+
+            # Fallback: Try to actually open the stream
+            with sd.InputStream(
+                device=device_id,
+                channels=1,
+                samplerate=16000,
+                dtype=np.float32,
+                blocksize=1024
+            ):
+                pass # Just opening and closing is enough
+            return True
+        except Exception:
+            # Device is invalid or inaccessible
+            return False
 
     def get_available_devices(self) -> List[dict]:
         """Get list of available audio input devices (lazy enumeration)"""
