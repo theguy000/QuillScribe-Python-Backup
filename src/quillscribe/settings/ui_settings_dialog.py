@@ -5,13 +5,16 @@ Compact frameless dialog for quick UI settings access
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QCheckBox
+    QCheckBox, QWidget, QFrame
 )
 from PySide6.QtCore import Qt, QSize, QEvent, Signal
 from PySide6.QtGui import QPixmap, QPainter, QPen, QColor, QIcon
 
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
+from .modern_buttons import ModernButton, ButtonVariant
+from .modern_widgets import AnimatedToggleSwitch
+from ..managers import get_theme_manager
 
 
 class UISettingsDialog(QDialog):
@@ -24,120 +27,140 @@ class UISettingsDialog(QDialog):
         self._drag_active = False
         self._drag_offset = None
         self.setup_ui()
+        self.apply_theme()
 
     def setup_ui(self):
         self.setWindowTitle("UI Settings")
-        self.setFixedSize(200, 200)
+        self.setFixedSize(240, 180) # Slightly wider for better layout
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
 
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(16)
+        layout.setContentsMargins(16, 16, 16, 16)
 
         # Top bar with right-aligned ✕ button
         top = QHBoxLayout()
-        title = QLabel("UI")
-        title.setStyleSheet("QLabel { color: #2c3e50; font-size: 12px; font-weight: 600; }")
-        top.addWidget(title)
+        self.title_label = QLabel("Interface Settings")
+        self.title_label.setStyleSheet("font-size: 14px; font-weight: 600;")
+        top.addWidget(self.title_label)
         top.addStretch()
-        self.close_btn = QPushButton(self)
-        self.close_btn.setIcon(get_button_icon('close', 12))
-        self.close_btn.setIconSize(QSize(12, 12))
-        self.close_btn.setFixedSize(20, 20)
-        self.close_btn.setStyleSheet(
-            """
-            QPushButton {
-                background: rgba(0,0,0,0.08);
-                color: #2c3e50;
-                border: 1px solid #ced4da;
-                border-radius: 10px;
-                font-size: 12px;
-                font-weight: bold;
-                padding: 0px;
-            }
-            QPushButton:hover { background: rgba(0,0,0,0.2); }
-            """
-        )
-        # Use a drawn icon for perfect centering of the close "X"
-        try:
-            cross_size = 10
-            pix = QPixmap(cross_size, cross_size)
-            pix.fill(Qt.GlobalColor.transparent)
-            p = QPainter(pix)
-            p.setRenderHint(QPainter.RenderHint.Antialiasing)
-            pen = QPen(QColor(44, 62, 80), 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap)
-            p.setPen(pen)
-            p.drawLine(2, 2, cross_size - 2, cross_size - 2)
-            p.drawLine(cross_size - 2, 2, 2, cross_size - 2)
-            p.end()
-            self.close_btn.setIcon(QIcon(pix))
-            self.close_btn.setIconSize(pix.rect().size())
-            self.close_btn.setText("")
-        except Exception:
-            pass
+        
+        self.close_btn = ModernButton(variant=ButtonVariant.GHOST)
+        self.close_btn.setFixedSize(24, 24)
+        self.close_btn.setIcon(get_button_icon('x', 14))
         self.close_btn.clicked.connect(self.reject)
+        # Custom styling for the close button to make it circular and subtle
+        self.close_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                border-radius: 12px;
+            }
+            QPushButton:hover {
+                background: rgba(0, 0, 0, 0.1);
+            }
+        """)
         top.addWidget(self.close_btn)
         layout.addLayout(top)
 
         # Content
-        info = QLabel("Super Compact UI")
-        info.setStyleSheet("QLabel { color: #495057; font-size: 11px; }")
-        layout.addWidget(info)
-
-        self.compact_checkbox = QCheckBox("Enable")
-        self.compact_checkbox.setStyleSheet("""
-            QCheckBox {
-                font-size: 12px;
-                color: #495057;
-                spacing: 8px;
-                outline: none;
-            }
-            QCheckBox::indicator {
-                width: 14px;
-                height: 14px;
-            }
-            QCheckBox::indicator:unchecked {
-                border: 2px solid #dee2e6;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QCheckBox::indicator:unchecked:hover {
-                border-color: #4A90E2;
-            }
-            QCheckBox::indicator:checked {
-                border: 2px solid #4A90E2;
-                border-radius: 3px;
-                background-color: #4A90E2;
-            }
-        """)
+        content_layout = QVBoxLayout()
+        content_layout.setSpacing(12)
+        
+        # Compact Mode Toggle Row
+        compact_row = QHBoxLayout()
+        
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(2)
+        self.compact_label = QLabel("Compact Mode")
+        self.compact_label.setStyleSheet("font-weight: 500; font-size: 13px;")
+        
+        self.compact_desc = QLabel("Minimal frameless window")
+        self.compact_desc.setStyleSheet("font-size: 11px; color: #6c757d;")
+        
+        info_layout.addWidget(self.compact_label)
+        info_layout.addWidget(self.compact_desc)
+        
+        compact_row.addLayout(info_layout)
+        compact_row.addStretch()
+        
+        self.compact_checkbox = AnimatedToggleSwitch()
         self.compact_checkbox.setChecked(bool(self.config_manager.get_setting("ui/compact_mode", False)))
-        layout.addWidget(self.compact_checkbox)
+        compact_row.addWidget(self.compact_checkbox)
+        
+        content_layout.addLayout(compact_row)
+        layout.addLayout(content_layout)
 
         layout.addStretch()
 
         # Buttons
         buttons = QHBoxLayout()
         buttons.addStretch()
-        save_btn = QPushButton("Save")
-        save_btn.setStyleSheet(
-            "QPushButton { background: #4A90E2; color: white; border: none; border-radius: 6px; padding: 8px 20px; font-size: 13px; min-width: 80px; min-height: 32px; }"
-        )
-        save_btn.clicked.connect(self.save_and_close)
-        buttons.addWidget(save_btn)
+        
+        self.save_btn = ModernButton("Save Changes", variant=ButtonVariant.PRIMARY)
+        self.save_btn.setFixedSize(120, 32)
+        self.save_btn.clicked.connect(self.save_and_close)
+        buttons.addWidget(self.save_btn)
+        
         layout.addLayout(buttons)
 
         # Drag anywhere support
         self.installEventFilter(self)
 
-        # Styling
-        self.setStyleSheet(
-            """
-            QDialog {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #ffffff, stop:1 #f8f9fa);
-            }
-            """
-        )
+    def apply_theme(self):
+        """Apply current theme to the dialog"""
+        theme_manager = get_theme_manager()
+        is_dark = theme_manager.is_dark_theme()
+        colors = theme_manager.get_theme_colors()
+        
+        # Dialog Background
+        bg_color = colors.get("secondary", "#ffffff")
+        text_primary = colors.get("text_primary", "#212529")
+        text_secondary = colors.get("text_secondary", "#6c757d")
+        border_color = colors.get("border", "#dee2e6")
+        
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 12px;
+            }}
+        """)
+        
+        # Labels
+        self.title_label.setStyleSheet(f"color: {text_primary}; font-size: 14px; font-weight: 600;")
+        self.compact_label.setStyleSheet(f"color: {text_primary}; font-weight: 500; font-size: 13px;")
+        self.compact_desc.setStyleSheet(f"color: {text_secondary}; font-size: 11px;")
+        
+        # Components
+        self.compact_checkbox.apply_theme(is_dark, colors)
+        self.save_btn.apply_theme(is_dark, colors)
+        
+        # Close button icon update
+        if is_dark:
+            self.close_btn.setIcon(get_white_button_icon('x', 14))
+            self.close_btn.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    border-radius: 12px;
+                }
+                QPushButton:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                }
+            """)
+        else:
+            self.close_btn.setIcon(get_button_icon('x', 14))
+            self.close_btn.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    border: none;
+                    border-radius: 12px;
+                }
+                QPushButton:hover {
+                    background: rgba(0, 0, 0, 0.05);
+                }
+            """)
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
