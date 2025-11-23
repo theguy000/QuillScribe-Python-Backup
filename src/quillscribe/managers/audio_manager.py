@@ -93,12 +93,13 @@ class AudioManager(QObject):
         
         # Always calculate level for real-time monitoring
         if indata is not None and len(indata) > 0:
-            # Calculate RMS level for visualization
-            rms = np.sqrt(np.mean(indata.flatten() ** 2))
+            # OPTIMIZATION: Use Mean Absolute Value (MAV) instead of RMS
+            # MAV is significantly faster (no square, no sqrt) and sufficient for visualization
+            amplitude = np.mean(np.abs(indata))
             
             # Smooth the level changes
-            self.current_level = (self.level_smoothing * self.current_level + 
-                                (1 - self.level_smoothing) * rms)
+            self.current_level = (self.level_smoothing * self.current_level +
+                                (1 - self.level_smoothing) * amplitude)
         
         if self.is_recording:
             # Add to buffer
@@ -122,31 +123,78 @@ class AudioManager(QObject):
         if hasattr(self, 'stream') and self.stream is not None and hasattr(self.stream, 'active') and self.stream.active:
             return
 
-        try:
-            # Start level timer if not already running
-            if not self.level_timer.isActive():
-                self.level_timer.start(50)  # Update every 50ms
+        # Start level timer if not already running
+        if not self.level_timer.isActive():
+            self.level_timer.start(50)  # Update every 50ms
 
-            # Start audio stream for monitoring only
-            self.stream = sd.InputStream(
-                device=self.current_input_device_id,
-                callback=self.audio_callback,
-                channels=self.channels,
-                samplerate=self.sample_rate,
-                dtype=np.float32,
-                blocksize=1024
-            )
-            self.stream.start()
+        try:
+            # Attempt to open stream with current device
+            self._open_stream(self.current_input_device_id)
 
         except Exception as e:
-            print(f"Error starting audio monitoring: {e}")
-            # Try to get device info for debugging
+            print(f"Error starting audio monitoring with device {self.current_input_device_id}: {e}")
+            print("Attempting to find a working fallback device...")
+            
+            # Fallback mechanism: Try to find ANY working input device
+            if self._attempt_fallback_device():
+                print(f"Successfully fell back to device ID: {self.current_input_device_id}")
+                # Signal that the device has changed so UI can update dropdowns
+                # We need to emit a signal or update state that the UI observes
+                # Since we don't have a direct signal for device change, we rely on the UI
+                # refreshing its list or checking current_input_device_id
+            else:
+                # If fallback fails, re-raise the original error
+                print("All fallback attempts failed.")
+                raise e
+
+    def _open_stream(self, device_id):
+        """Helper to open audio stream with specific device"""
+        self.stream = sd.InputStream(
+            device=device_id,
+            callback=self.audio_callback,
+            channels=self.channels,
+            samplerate=self.sample_rate,
+            dtype=np.float32,
+            blocksize=1024
+        )
+        self.stream.start()
+
+    def _attempt_fallback_device(self) -> bool:
+        """Iterate through available devices to find one that works"""
+        # Ensure we have the latest list of devices
+        self.update_available_devices()
+        
+        # First, try to find a device with "Microphone" in the name as they are most likely what we want
+        priority_devices = []
+        other_devices = []
+        
+        for device in self.available_devices:
+            if "Microphone" in device['name']:
+                priority_devices.append(device)
+            else:
+                other_devices.append(device)
+                
+        # Check priority devices first, then others
+        for device in priority_devices + other_devices:
+            device_id = device['id']
+            # Skip the one that just failed if it was specific
+            if device_id == self.current_input_device_id:
+                continue
+                
             try:
-                device_info = sd.query_devices(kind='input')
-                print(f"Default input device: {device_info}")
-            except:
-                pass
-            raise
+                print(f"Testing fallback device: {device['name']} (ID: {device_id})")
+                self._open_stream(device_id)
+                
+                # If we got here, it worked! Update current device
+                self.current_input_device_id = device_id
+                # Update system default for this session to match
+                sd.default.device[0] = device_id
+                return True
+            except Exception as e:
+                print(f"Device {device_id} failed: {e}")
+                continue
+        
+        return False
     
     def start_recording(self):
         """Start audio recording"""
@@ -180,7 +228,11 @@ class AudioManager(QObject):
                 audio_data = np.concatenate(self.audio_buffer, axis=0)
                 # Convert to mono if needed
                 if audio_data.ndim > 1:
-                    audio_data = np.mean(audio_data, axis=1)
+                    # OPTIMIZATION: flatten is faster than mean if we know it's 1 channel but 2D array
+                    if audio_data.shape[1] == 1:
+                        audio_data = audio_data.flatten()
+                    else:
+                        audio_data = np.mean(audio_data, axis=1)
             
             # Clear buffer but keep monitoring active for animation
             self.audio_buffer = []
@@ -297,11 +349,15 @@ class AudioManager(QObject):
         try:
             devices_with_audio = []
             
+            # OPTIMIZATION: Reduce test duration from 0.3s to 0.1s
+            # This makes scanning multiple devices 3x faster
+            test_duration = 0.1
+            
             # Test each available input device for audio activity
             for device in self.available_devices:
                 device_id = device['id']
                 try:
-                    # Quick audio test - record for 0.3 seconds
+                    # Quick audio test
                     with sd.InputStream(
                         device=device_id,
                         channels=1,
@@ -310,15 +366,15 @@ class AudioManager(QObject):
                         blocksize=1024
                     ) as stream:
                         # Read a small amount of audio data
-                        audio_data, _ = stream.read(int(0.3 * 16000))
+                        audio_data, _ = stream.read(int(test_duration * 16000))
                         
-                        # Calculate RMS level
+                        # Calculate level (use MAV for speed)
                         if len(audio_data) > 0:
-                            rms = np.sqrt(np.mean(audio_data.flatten() ** 2))
+                            level = np.mean(np.abs(audio_data))
                             # If there's significant audio activity (above noise floor)
-                            if rms > 0.001:  # Threshold for detecting actual audio
-                                devices_with_audio.append((device_id, rms, device['name']))
-                                print(f"Device {device['name']} has audio activity: {rms:.6f}")
+                            if level > 0.001:  # Threshold for detecting actual audio
+                                devices_with_audio.append((device_id, level, device['name']))
+                                print(f"Device {device['name']} has audio activity: {level:.6f}")
                         
                 except Exception as e:
                     # Device might be in use or not accessible
