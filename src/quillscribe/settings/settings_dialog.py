@@ -661,8 +661,8 @@ class SettingsDialog(QDialog):
                     border-radius: 6px;
                     padding: 8px 16px;
                     text-align: left;
-                    font-size: 15px;
-                    font-weight: 500;
+                    font-size: 14px;
+                    font-weight: 600;
                     margin-bottom: 2px;
                 }}
                 QPushButton:hover {{
@@ -673,6 +673,7 @@ class SettingsDialog(QDialog):
                     background-color: {active_bg};
                     color: {colors["text_primary"]};
                     font-weight: 600;
+                    padding: 8px 16px;
                 }}
             """)
 
