@@ -14,7 +14,7 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..managers import WhisperManager, get_theme_manager
 from ..icon_manager import get_button_icon, get_themed_button_icon
-from .ui_components import ModernGroupBox
+from .ui_components import ModernGroupBox, apply_label_theme, apply_theme_recursively
 from .modern_buttons import ModernButton, ButtonVariant
 from .modern_widgets import (
     ModernComboBox, ModernLineEdit, ModernRadioButton,
@@ -617,33 +617,12 @@ class WhisperTab(QWidget):
                 margin-top: 4px;
             """)
 
-        # Update all labels
-        from PySide6.QtWidgets import QLabel
-        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
-        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
-        
-        for label in self.findChildren(QLabel):
-            # Skip pricing info as it's handled above
-            if label == getattr(self, 'api_pricing_info', None):
-                continue
-            
-            name = label.objectName()
-            if name == "section_label":
-                label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
-            elif name == "setting_label":
-                label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
-            elif name == "setting_desc":
-                label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+        # Update all labels using shared helper
+        # Note: api_pricing_info doesn't have standard objectName so it won't be affected
+        apply_label_theme(self, is_dark, colors)
 
         # Unified theme application for child widgets
-        from PySide6.QtWidgets import QWidget
-        
-        for widget in self.findChildren(QWidget):
-            if hasattr(widget, 'apply_theme'):
-                try:
-                    widget.apply_theme(is_dark, colors)
-                except Exception:
-                    pass
+        apply_theme_recursively(self, is_dark, colors)
 
         # Update API Key Toggle Button Style (Override ModernButton default)
         accent = colors.get("accent")

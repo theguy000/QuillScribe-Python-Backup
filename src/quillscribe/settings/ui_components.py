@@ -95,3 +95,27 @@ def apply_theme_recursively(widget, is_dark: bool, colors: dict):
             except Exception as e:
                 # print(f"Error applying theme to child {child}: {e}")
                 pass
+
+
+def apply_label_theme(widget, is_dark: bool, colors: dict):
+    """
+    Apply theme to all QLabels within a widget based on their objectName.
+    Standardizes label styling across all settings tabs.
+    """
+    from PySide6.QtWidgets import QLabel
+    
+    text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
+    text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
+    text_muted = colors.get("text_muted", "#b0b0b0" if is_dark else "#6c757d")
+    warning_color = "#ffc107" if is_dark else "#856404"
+
+    for label in widget.findChildren(QLabel):
+        name = label.objectName()
+        if name == "section_label":
+            label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
+        elif name == "setting_label":
+            label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
+        elif name == "setting_desc":
+            label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+        elif name == "setting_note":
+            label.setStyleSheet(f"color: {warning_color}; font-size: 11px; font-style: italic; margin-top: 4px; margin-left: 52px;")

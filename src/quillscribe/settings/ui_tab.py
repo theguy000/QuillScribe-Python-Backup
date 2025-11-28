@@ -13,7 +13,7 @@ from PySide6.QtGui import QKeySequence
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_icon
 from ..managers import get_theme_manager
-from .ui_components import ModernGroupBox
+from .ui_components import ModernGroupBox, apply_label_theme, apply_theme_recursively
 from .modern_widgets import ModernComboBox, ModernCheckBox, ModernKeySequenceEdit, AnimatedToggleSwitch, ModernSlider
 
 
@@ -76,6 +76,7 @@ class UITab(QWidget):
         self.theme_dropdown.addItem("Dark Purple", "dark_purple")
         self.theme_dropdown.addItem("Dark Forest", "dark_forest")
         self.theme_dropdown.addItem("Dark Burgundy", "dark_burgundy")
+        self.theme_dropdown.addItem("Obsidian", "obsidian")
         
         theme_row.addWidget(self.theme_dropdown)
         appearance_layout.addLayout(theme_row)
@@ -428,30 +429,11 @@ class UITab(QWidget):
         for sep in self.separators:
             sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
 
-        # Update Labels
-        text_primary = "#ffffff" if is_dark else "#212529"
-        text_secondary = "#e0e0e0" if is_dark else "#495057"
-        text_muted = "#b0b0b0" if is_dark else "#6c757d"
-
-        for label in self.findChildren(QLabel):
-            name = label.objectName()
-            if name == "section_label":
-                label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
-            elif name == "setting_label":
-                label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
-            elif name == "setting_desc":
-                label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+        # Update Labels using shared helper
+        apply_label_theme(self, is_dark, colors)
 
         # Unified theme application for child widgets
-        from PySide6.QtWidgets import QWidget
-        
-        # Iterate over all child widgets and apply theme if supported
-        for widget in self.findChildren(QWidget):
-            if hasattr(widget, 'apply_theme'):
-                try:
-                    widget.apply_theme(is_dark, colors)
-                except Exception as e:
-                    pass # Ignore errors for widgets that might have different signatures (though we aimed to unify them)
+        apply_theme_recursively(self, is_dark, colors)
 
         # Update animation controls
         self._style_animation_controls(theme_name)

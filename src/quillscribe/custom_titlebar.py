@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .icon_manager import get_icon, get_themed_icon
 from .frozen_compat import get_base_path
+from .managers import get_theme_manager
 
 
 class CustomTitleBar(QWidget):
@@ -127,20 +128,29 @@ class CustomTitleBar(QWidget):
         """Update the titlebar title"""
         self.title_label.setText(title)
 
-    def apply_theme(self, is_dark: bool):
-        """Apply theme colors to the titlebar"""
+    def apply_theme(self, is_dark: bool, theme_name: str = None):
+        """Apply theme colors to the titlebar using the theme manager's colors"""
+        theme_manager = get_theme_manager()
+        
+        # Get the actual theme name if not provided
+        if theme_name is None:
+            theme_name = theme_manager.get_current_theme()
+        
+        # Get theme colors from the centralized theme manager
+        colors = theme_manager.get_theme_colors(theme_name)
+        
+        # Use theme colors for titlebar styling
+        titlebar_bg = colors.get("secondary", colors["primary"])
+        titlebar_border = colors.get("border", "#555555" if is_dark else "#d0d0d0")
+        titlebar_text = colors.get("text_primary", "#ffffff" if is_dark else "#2c3e50")
+        
+        # Button hover uses a slightly lighter/darker version of the background
         if is_dark:
-            titlebar_bg = "#3c3c3c"
-            titlebar_border = "#555555"
-            titlebar_text = "#ffffff"
-            titlebar_btn_hover = "#555555"
-            titlebar_btn_pressed = "#2c2c2c"
+            titlebar_btn_hover = theme_manager.lighten_color(titlebar_bg, 0.1)
+            titlebar_btn_pressed = theme_manager.darken_color(titlebar_bg, 0.1)
         else:
-            titlebar_bg = "#f0f0f0"
-            titlebar_border = "#d0d0d0"
-            titlebar_text = "#2c3e50"
-            titlebar_btn_hover = "#e0e0e0"
-            titlebar_btn_pressed = "#d0d0d0"
+            titlebar_btn_hover = theme_manager.darken_color(titlebar_bg, 0.08)
+            titlebar_btn_pressed = theme_manager.darken_color(titlebar_bg, 0.15)
 
         # Main titlebar styling
         self.setStyleSheet(f"""

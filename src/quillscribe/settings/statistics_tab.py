@@ -13,7 +13,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
 
 from ..managers import StatisticsManager, get_theme_manager
-from .ui_components import ModernGroupBox
+from .ui_components import ModernGroupBox, apply_theme_recursively
 from .modern_buttons import ModernButton, ButtonVariant
 from .base_tab import BaseSettingsTab
 
@@ -172,11 +172,8 @@ class StatisticsTab(QWidget):
         if hasattr(self, 'history_list'):
             self.history_list.setStyleSheet(history_style)
 
-        # Apply theme to all ModernGroupBox components
-        from .ui_components import ModernGroupBox
-        for group_box in self.findChildren(ModernGroupBox):
-            if hasattr(group_box, 'apply_theme'):
-                group_box.apply_theme(is_dark, colors)
+        # Apply theme to all child widgets (GroupBoxes, StatCards, Buttons)
+        apply_theme_recursively(self, is_dark, colors)
 
         # Apply background color and text color to the tab itself
         text_color = "#e9ecef" if is_dark else "#212529"
@@ -197,11 +194,6 @@ class StatisticsTab(QWidget):
                 background-color: {colors['primary']};
             }}
         """)
-        
-        # Apply theme to all StatCards
-        # We need to pass the correct text color for the title/value logic inside StatCard
-        for card in self.findChildren(StatCard):
-            card.apply_theme(is_dark, colors)
     
     def setup_ui(self):
         """Setup the statistics tab UI"""

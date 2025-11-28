@@ -14,7 +14,7 @@ from PySide6.QtGui import QColor, QPainter, QBrush
 from ..managers import AudioManager, get_theme_manager
 from ..config_manager import ConfigManager
 from ..icon_manager import get_button_icon, get_white_button_icon
-from .ui_components import ModernGroupBox
+from .ui_components import ModernGroupBox, apply_label_theme, apply_theme_recursively
 from .modern_buttons import ModernButton, ButtonVariant
 from .modern_widgets import ModernComboBox, ModernCheckBox, AnimatedToggleSwitch, ModernProgressBar, SegmentedProgressBar
 
@@ -223,46 +223,17 @@ class AudioTab(QWidget):
         for sep in self.separators:
             sep.setStyleSheet(f"background-color: {separator_color}; border: none; max-height: 1px;")
 
-        # Update Labels
-        text_primary = colors.get("text_primary", "#ffffff" if is_dark else "#212529")
-        text_secondary = colors.get("text_secondary", "#e0e0e0" if is_dark else "#495057")
-        text_muted = colors.get("text_muted", "#b0b0b0" if is_dark else "#6c757d")
-
-        for label in self.findChildren(QLabel):
-            name = label.objectName()
-            if name == "section_label":
-                label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {text_primary};")
-            elif name == "setting_label":
-                label.setStyleSheet(f"font-weight: 500; font-size: 13px; color: {text_secondary};")
-            elif name == "setting_desc":
-                label.setStyleSheet(f"color: {text_muted}; font-size: 11px;")
+        # Update Labels using shared helper
+        apply_label_theme(self, is_dark, colors)
 
         # Unified theme application for child widgets
-        from PySide6.QtWidgets import QWidget
-        
-        for widget in self.findChildren(QWidget):
-            if hasattr(widget, 'apply_theme'):
-                try:
-                    widget.apply_theme(is_dark, colors)
-                except Exception:
-                    pass
+        apply_theme_recursively(self, is_dark, colors)
 
-        # Update Buttons (Detect Now & Manage)
-        # ModernButton handles its own styling via apply_theme
-        pass
-
-        # Update Refresh Button
-        # Rely on ModernButton's built-in theming for consistency
-        # If specific overrides are needed, apply them here, but avoid full re-styling
-        pass
-
+        # Update Refresh Button Icon
         if is_dark:
             self.refresh_button.setIcon(get_white_button_icon('refresh', 14))
         else:
             self.refresh_button.setIcon(get_button_icon('refresh', 14))
-
-        # Update Level Bar
-        self.level_bar.apply_theme(is_dark, colors)
 
     def start_monitoring(self):
         """Start continuous audio monitoring for the level meter"""
